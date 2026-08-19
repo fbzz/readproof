@@ -143,6 +143,20 @@ GET  /healthz
 `--s3-endpoint`/`--s3-access-key`/`--s3-secret-key`/`--s3-bucket`/`--s3-use-ssl`
 (Postgres+S3 mode) — also settable via `CTXD_*` env vars.
 
+## TypeScript SDK
+
+`sdk/typescript` (`@ctx/sdk`) is a typed client for `ctxd`'s HTTP API —
+`ctx.resolve(uri)`, `ctx.run({ id }).mount(uri)...commit()`, plus
+`registerResource`/`listResources`/`history`/`diff`/`replay`. No runtime
+dependencies (Node 18+ global `fetch`), no `any` in the public surface. See
+[`sdk/typescript/README.md`](sdk/typescript/README.md).
+
+```bash
+cd sdk/typescript && npm install && npm run build && npm test
+docker compose up -d --build   # from the repo root, for the example below
+npm run example                 # resolves a real URI against ctxd
+```
+
 ## Observability
 
 Every stage of the resolve pipeline is traced — span names match the
@@ -193,8 +207,8 @@ asserting the SHA256 replay invariant.
 Implemented against the v0.1 launch Definition of Done: storage swap
 (Postgres/MinIO), all three source adapters, the HTTP API + `ctxd` + CLI
 `--server` mode, a `docker compose up` bring-up of the full stack (Postgres
-+ MinIO + `ctxd`, `ctxd`'s image built from this repo's `Dockerfile`), and
-OpenTelemetry tracing/metrics with a collector wired into Compose. Still
-ahead: the TypeScript SDK, the security baseline (auth, credential
++ MinIO + `ctxd`, `ctxd`'s image built from this repo's `Dockerfile`),
+OpenTelemetry tracing/metrics with a collector wired into Compose, and the
+TypeScript SDK. Still ahead: the security baseline (auth, credential
 redaction, dependency scanning), and release docs/CI — see the project
 plan for the full checklist.
