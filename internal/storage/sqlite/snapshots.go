@@ -11,7 +11,9 @@ import (
 	"ctx/internal/snapshot"
 )
 
-var ErrSnapshotNotFound = errors.New("sqlite: snapshot not found")
+// ErrSnapshotNotFound is an alias for snapshot.ErrNotFound, kept exported
+// here for callers that prefer referring to the storage package directly.
+var ErrSnapshotNotFound = snapshot.ErrNotFound
 
 type SnapshotStore struct {
 	DB *sql.DB

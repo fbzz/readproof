@@ -2,8 +2,13 @@ package manifest
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrNotFound is returned by Store.Get/GetByIDOrRun when no Manifest
+// matches.
+var ErrNotFound = errors.New("manifest: not found")
 
 // Entry is one resolved resource within a Manifest. Position is preserved —
 // entry order is a hard invariant since it can change effective model input.

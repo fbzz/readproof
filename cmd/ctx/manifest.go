@@ -15,13 +15,13 @@ func newManifestCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			target := args[0]
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
-			man, err := a.Manifests.GetByIDOrRun(context.Background(), target)
+			man, err := c.GetManifest(context.Background(), target)
 			if err != nil {
 				return err
 			}

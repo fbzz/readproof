@@ -2,8 +2,12 @@ package snapshot
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrNotFound is returned by Store.Get when a Snapshot doesn't exist.
+var ErrNotFound = errors.New("snapshot: not found")
 
 // Snapshot is an immutable representation of a Resource at an observed
 // point in time. It must never mutate after creation.

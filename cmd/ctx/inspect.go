@@ -17,18 +17,18 @@ func newInspectCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			uri := args[0]
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
 			ctx := context.Background()
-			res, err := a.Resources.Get(ctx, uri)
+			res, err := c.GetResource(ctx, uri)
 			if err != nil {
 				return err
 			}
-			history, err := a.Snapshots.ListByResource(ctx, uri)
+			history, err := c.History(ctx, uri)
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ func newInspectCmd() *cobra.Command {
 			if res.CurrentSnapshotID == "" {
 				fmt.Println("Current snapshot: none (never resolved — run `ctx get` first)")
 			} else {
-				snap, err := a.Snapshots.Get(ctx, res.CurrentSnapshotID)
+				snap, err := c.GetSnapshot(ctx, res.CurrentSnapshotID)
 				if err != nil {
 					return err
 				}

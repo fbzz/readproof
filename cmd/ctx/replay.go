@@ -14,13 +14,13 @@ func newReplayCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			target := args[0]
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
-			result, err := a.Replayer.Replay(context.Background(), target)
+			result, err := c.Replay(context.Background(), target)
 			if err != nil {
 				return err
 			}

@@ -1,0 +1,303 @@
+// Package api exposes the Ctx resolution pipeline over HTTP: the wire
+// contract every handler here implements is defined in internal/wire, and
+// shared by internal/client/remote on the client side.
+package api
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"time"
+
+	"ctx/internal/app"
+	"ctx/internal/diff"
+	"ctx/internal/manifest"
+	"ctx/internal/resource"
+	"ctx/internal/run"
+	"ctx/internal/snapshot"
+	"ctx/internal/wire"
+)
+
+// NewHandler builds the full Ctx HTTP API over an already-opened App.
+func NewHandler(a *app.App) http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /v1/resources", handleRegisterResource(a))
+	mux.HandleFunc("GET /v1/resources", handleListResources(a))
+	mux.HandleFunc("GET /v1/resources/get", handleGetResource(a))
+	mux.HandleFunc("GET /v1/resources/history", handleHistory(a))
+	mux.HandleFunc("GET /v1/snapshots", handleGetSnapshot(a))
+	mux.HandleFunc("POST /v1/resolve", handleResolve(a))
+	mux.HandleFunc("POST /v1/runs", handleRunStart(a))
+	mux.HandleFunc("POST /v1/runs/mount", handleRunMount(a))
+	mux.HandleFunc("POST /v1/runs/commit", handleRunCommit(a))
+	mux.HandleFunc("GET /v1/manifests", handleGetManifest(a))
+	mux.HandleFunc("GET /v1/diff", handleDiff(a))
+	mux.HandleFunc("GET /v1/replay", handleReplay(a))
+	mux.HandleFunc("GET /healthz", handleHealthz)
+
+	return mux
+}
+
+func handleHealthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func handleRegisterResource(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req wire.RegisterResourceRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		parsed, err := resource.ParseURI(req.URI)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		res := resource.Resource{
+			URI:          req.URI,
+			Namespace:    parsed.Namespace,
+			Path:         parsed.Path,
+			SourceConfig: wire.SourceFromWire(req.Source),
+			Policy:       wire.PolicyFromWire(req.Policy),
+		}
+		if err := a.Resources.Create(r.Context(), res); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		created, err := a.Resources.Get(r.Context(), req.URI)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, wire.ResourceToWire(created))
+	}
+}
+
+func handleListResources(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resources, err := a.Resources.List(r.Context())
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		out := make([]wire.ResourceWire, len(resources))
+		for i, res := range resources {
+			out[i] = wire.ResourceToWire(res)
+		}
+		writeJSON(w, http.StatusOK, wire.ResourceListResponse{Resources: out})
+	}
+}
+
+func handleGetResource(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uri := r.URL.Query().Get("uri")
+		if uri == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameter: uri"))
+			return
+		}
+		res, err := a.Resources.Get(r.Context(), uri)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.ResourceToWire(res))
+	}
+}
+
+func handleHistory(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uri := r.URL.Query().Get("uri")
+		if uri == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameter: uri"))
+			return
+		}
+		history, err := a.Snapshots.ListByResource(r.Context(), uri)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		out := make([]wire.SnapshotWire, len(history))
+		for i, s := range history {
+			out[i] = wire.SnapshotToWire(s)
+		}
+		writeJSON(w, http.StatusOK, wire.HistoryResponse{Snapshots: out})
+	}
+}
+
+func handleGetSnapshot(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameter: id"))
+			return
+		}
+		snap, err := a.Snapshots.Get(r.Context(), id)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.SnapshotToWire(snap))
+	}
+}
+
+func handleResolve(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req wire.ResolveRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		result, err := a.Resolver.Resolve(r.Context(), req.URI)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.ResolveResultToWire(result, time.Now().UTC()))
+	}
+}
+
+func handleRunStart(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req wire.RunStartRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		if err := a.RunBuilder.Start(r.Context(), req.RunID); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleRunMount(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req wire.RunMountRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		mounts, err := a.Runs.ListMounts(r.Context(), req.RunID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		position := len(mounts)
+
+		result, err := a.RunBuilder.Mount(r.Context(), req.RunID, req.URI)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.RunMountResponse{
+			Position: position,
+			Resolve:  wire.ResolveResultToWire(result, time.Now().UTC()),
+		})
+	}
+}
+
+func handleRunCommit(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req wire.RunCommitRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		man, err := a.RunBuilder.Commit(r.Context(), req.RunID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.ManifestToWire(man))
+	}
+}
+
+func handleGetManifest(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		target := r.URL.Query().Get("target")
+		if target == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameter: target"))
+			return
+		}
+		man, err := a.Manifests.GetByIDOrRun(r.Context(), target)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.ManifestToWire(man))
+	}
+}
+
+func handleDiff(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		targetA := r.URL.Query().Get("a")
+		targetB := r.URL.Query().Get("b")
+		if targetA == "" || targetB == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameters: a, b"))
+			return
+		}
+		manA, err := a.Manifests.GetByIDOrRun(r.Context(), targetA)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		manB, err := a.Manifests.GetByIDOrRun(r.Context(), targetB)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		result, err := diff.Compute(manA, manB, a.Blobs)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.DiffResultToWire(result))
+	}
+}
+
+func handleReplay(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		target := r.URL.Query().Get("target")
+		if target == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameter: target"))
+			return
+		}
+		result, err := a.Replayer.Replay(r.Context(), target)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.ReplayResultToWire(result))
+	}
+}
+
+// writeDomainError maps well-known domain sentinel errors to their proper
+// HTTP status; everything else is a 500.
+func writeDomainError(w http.ResponseWriter, err error) {
+	if errors.Is(err, resource.ErrNotFound) ||
+		errors.Is(err, snapshot.ErrNotFound) ||
+		errors.Is(err, manifest.ErrNotFound) ||
+		errors.Is(err, run.ErrNotFound) {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	writeError(w, http.StatusInternalServerError, err)
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("invalid request body: "+err.Error()))
+		return false
+	}
+	return true
+}
+
+func writeJSON(w http.ResponseWriter, status int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(body)
+}
+
+func writeError(w http.ResponseWriter, status int, err error) {
+	writeJSON(w, status, wire.ErrorResponse{Error: err.Error()})
+}

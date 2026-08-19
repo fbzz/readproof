@@ -79,11 +79,11 @@ func newResourceAddCmd() *cobra.Command {
 				return fmt.Errorf("unsupported --policy %q (want require_fresh or allow_stale)", policyName)
 			}
 
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
 			res := resource.Resource{
 				URI:          uri,
@@ -92,7 +92,7 @@ func newResourceAddCmd() *cobra.Command {
 				SourceConfig: cfg,
 				Policy:       pol,
 			}
-			if err := a.Resources.Create(context.Background(), res); err != nil {
+			if err := c.RegisterResource(context.Background(), res); err != nil {
 				return err
 			}
 
@@ -121,13 +121,13 @@ func newResourceListCmd() *cobra.Command {
 		Short: "List registered context resources",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
-			resources, err := a.Resources.List(context.Background())
+			resources, err := c.ListResources(context.Background())
 			if err != nil {
 				return err
 			}

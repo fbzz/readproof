@@ -15,13 +15,13 @@ func newHistoryCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			uri := args[0]
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
-			history, err := a.Snapshots.ListByResource(context.Background(), uri)
+			history, err := c.History(context.Background(), uri)
 			if err != nil {
 				return err
 			}

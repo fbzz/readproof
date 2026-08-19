@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,9 @@ import (
 	"ctx/internal/manifest"
 	"ctx/internal/resolver"
 )
+
+// ErrNotFound is returned by RunStore.GetRun when no Run matches.
+var ErrNotFound = errors.New("run: not found")
 
 type Status string
 

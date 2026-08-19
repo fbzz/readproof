@@ -19,27 +19,27 @@ func newRunCmd() *cobra.Command {
 			if len(args) == 0 {
 				return fmt.Errorf("at least one <uri> is required")
 			}
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
 			ctx := context.Background()
-			if err := a.RunBuilder.Start(ctx, runID); err != nil {
+			if err := c.RunStart(ctx, runID); err != nil {
 				return err
 			}
 			fmt.Printf("Started run %s\n", runID)
 
-			for i, uri := range args {
-				result, err := a.RunBuilder.Mount(ctx, runID, uri)
+			for _, uri := range args {
+				result, position, err := c.RunMount(ctx, runID, uri)
 				if err != nil {
 					return err
 				}
-				fmt.Printf("Mounted %s -> snapshot %s (position %d)\n", uri, result.Snapshot.SnapshotID, i)
+				fmt.Printf("Mounted %s -> snapshot %s (position %d)\n", uri, result.Snapshot.SnapshotID, position)
 			}
 
-			man, err := a.RunBuilder.Commit(ctx, runID)
+			man, err := c.RunCommit(ctx, runID)
 			if err != nil {
 				return err
 			}
@@ -59,12 +59,12 @@ func newRunStartCmd() *cobra.Command {
 		Short: "Start a new context run",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
-			if err := a.RunBuilder.Start(context.Background(), args[0]); err != nil {
+			defer c.Close()
+			if err := c.RunStart(context.Background(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("Started run %s\n", args[0])
@@ -80,20 +80,13 @@ func newRunMountCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID, uri := args[0], args[1]
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
-			ctx := context.Background()
-			mounts, err := a.Runs.ListMounts(ctx, runID)
-			if err != nil {
-				return err
-			}
-			position := len(mounts)
-
-			result, err := a.RunBuilder.Mount(ctx, runID, uri)
+			result, position, err := c.RunMount(context.Background(), runID, uri)
 			if err != nil {
 				return err
 			}
@@ -110,13 +103,13 @@ func newRunCommitCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID := args[0]
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
-			man, err := a.RunBuilder.Commit(context.Background(), runID)
+			man, err := c.RunCommit(context.Background(), runID)
 			if err != nil {
 				return err
 			}

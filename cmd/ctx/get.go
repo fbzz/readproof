@@ -14,13 +14,13 @@ func newGetCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			uri := args[0]
-			a, err := openApp()
+			c, err := openClient()
 			if err != nil {
 				return err
 			}
-			defer a.Close()
+			defer c.Close()
 
-			result, err := a.Resolver.Resolve(context.Background(), uri)
+			result, err := c.Resolve(context.Background(), uri)
 			if err != nil {
 				return err
 			}

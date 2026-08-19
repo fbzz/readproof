@@ -10,7 +10,9 @@ import (
 	"ctx/internal/manifest"
 )
 
-var ErrManifestNotFound = errors.New("sqlite: manifest not found")
+// ErrManifestNotFound is an alias for manifest.ErrNotFound, kept exported
+// here for callers that prefer referring to the storage package directly.
+var ErrManifestNotFound = manifest.ErrNotFound
 
 type ManifestStore struct {
 	DB *sql.DB

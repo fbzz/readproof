@@ -10,7 +10,9 @@ import (
 	"ctx/internal/run"
 )
 
-var ErrRunNotFound = errors.New("sqlite: run not found")
+// ErrRunNotFound is an alias for run.ErrNotFound, kept exported here for
+// callers that prefer referring to the storage package directly.
+var ErrRunNotFound = run.ErrNotFound
 
 type RunStore struct {
 	DB *sql.DB

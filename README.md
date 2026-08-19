@@ -6,16 +6,16 @@ context to AI agents.
 > Models are probabilistic, but many context failures are infrastructural.
 > Agent reliability is bounded by context reliability.
 
-This repository is the **walking skeleton**: a CLI-only implementation of
-Ctx's core domain model — Source, Resource, Snapshot, Materialization,
-Manifest, Policy — proving the resolve → manifest → diff → replay loop
-end-to-end. It is not yet the full v0.1 MVP described in the product spec
-(no HTTP API, TypeScript SDK, Postgres/Redis/MinIO, Docker Compose, or
-OpenTelemetry — see "Status" below).
+This repository implements Ctx's core domain model — Source, Resource,
+Snapshot, Materialization, Manifest, Policy — proving the resolve →
+manifest → diff → replay loop end-to-end, both as an embedded CLI tool and
+as a client/server system (`ctx` + `ctxd`) backed by Postgres and an
+S3-compatible object store. See "Status" below for what's still ahead of a
+full v0.1 launch.
 
-## Quickstart
+## Quickstart — embedded mode
 
-Requires Go 1.22+.
+Requires Go 1.22+. No external services needed.
 
 ```bash
 go build -o ctx ./cmd/ctx
@@ -32,11 +32,44 @@ For the full reference demo (register → resolve → diff → replay, proving
 `SHA256(original) == SHA256(replay)`), see
 [`examples/refund-agent/README.md`](examples/refund-agent/README.md).
 
+## Quickstart — client/server mode
+
+Start Postgres + MinIO (`docker compose up -d`), then run `ctxd`:
+
+```bash
+docker compose up -d
+
+go build -o ctxd ./cmd/ctxd
+./ctxd --addr :8080 \
+  --postgres-dsn 'postgres://ctx:ctx_dev_password@localhost:5434/ctx?sslmode=disable' \
+  --s3-endpoint localhost:9000 --s3-access-key ctxadmin --s3-secret-key ctx_dev_password_minio
+```
+
+Or run `ctxd` in embedded mode (no Postgres/MinIO) by omitting `--postgres-dsn`
+— it falls back to SQLite + local disk, same as the CLI's default.
+
+Point the CLI at it:
+
+```bash
+go build -o ctx ./cmd/ctx
+export CTX_SERVER_URL=http://localhost:8080   # or --server on any command
+
+./ctx resource add ctx://demo/policies/refunds \
+  --source-type filesystem --path /absolute/path/to/refunds.md --policy require_fresh
+./ctx get ctx://demo/policies/refunds
+```
+
+Every CLI command works identically in both modes. Note: with a filesystem
+source, paths are resolved on whichever process actually fetches the
+content — the CLI process in embedded mode, the `ctxd` process in server
+mode — so use absolute paths (or a GitHub/HTTP source) once client and
+server aren't colocated.
+
 ## Data model
 
 Six domain primitives, one composition root:
 
-- **Source** — physical origin (`internal/source`; filesystem and GitHub adapters).
+- **Source** — physical origin (`internal/source`; filesystem, GitHub, and HTTP adapters).
 - **Resource** — stable logical identity, `ctx://<namespace>/<path>` (`internal/resource`).
 - **Policy** — freshness strategy: `require_fresh` | `allow_stale` | `pinned` (`internal/policy`).
 - **Snapshot** — immutable observed state, content-addressed (`internal/snapshot`).
@@ -44,17 +77,28 @@ Six domain primitives, one composition root:
 - **Manifest** — the ordered, immutable record of everything resolved during a run (`internal/manifest`).
 
 `internal/resolver` is the resolution pipeline; `internal/run` is the
-CLI-only run/mount/commit orchestrator standing in for the future SDK's
+run/mount/commit orchestrator standing in for the future SDK's
 `ctx.run({id}).mount(uri)...commit()`; `internal/replay` reconstructs a
-manifest's exact delivered bytes without touching the live source.
-`internal/storage/sqlite` and `internal/storage/blob` are the local
-metadata/blob stores — both behind interfaces so Postgres/S3
-implementations are drop-in swaps later.
+manifest's exact delivered bytes without touching the live source;
+`internal/diff` computes the resolved-context difference between two
+manifests. Every store is behind a domain interface with two
+implementations:
+
+- `internal/storage/sqlite` + `internal/storage/blob` — embedded SQLite + local disk.
+- `internal/storage/postgres` + `internal/storage/s3blob` — PostgreSQL + an S3-compatible store (MinIO in dev).
+
+`internal/app` is the composition root (`Open` for embedded, `OpenPostgres`
+for Postgres+S3). `internal/client` defines the operations the CLI needs,
+with a `local` implementation (direct in-process calls) and a `remote`
+implementation (HTTP calls to `ctxd`) — every `cmd/ctx` command is written
+against this interface, so it's identical either way. `internal/wire`
+defines the JSON contract shared by `internal/api` (the server) and
+`internal/client/remote` (the client).
 
 ## CLI
 
 ```
-ctx resource add <uri> --source-type <filesystem|github> [flags] --policy <strategy>
+ctx resource add <uri> --source-type <filesystem|github|http> [flags] --policy <strategy>
 ctx resource list
 ctx get <uri>
 ctx inspect <uri>
@@ -66,6 +110,31 @@ ctx diff <target-a> <target-b>
 ctx replay <manifest-or-run>
 ```
 
+Global flags: `--data-dir <path>` (embedded mode data directory) and
+`--server <url>` / `$CTX_SERVER_URL` (talk to a `ctxd` instead).
+
+## HTTP API (`ctxd`)
+
+```
+POST /v1/resources              register a resource
+GET  /v1/resources               list resources
+GET  /v1/resources/get?uri=      get one resource
+GET  /v1/resources/history?uri=  snapshot history
+GET  /v1/snapshots?id=           get one snapshot
+POST /v1/resolve                 resolve a uri
+POST /v1/runs                    start a run
+POST /v1/runs/mount               mount a uri into a run
+POST /v1/runs/commit               commit a run into a manifest
+GET  /v1/manifests?target=          get a manifest (by manifest id or run id)
+GET  /v1/diff?a=&b=                  diff two manifests/runs
+GET  /v1/replay?target=               replay a manifest/run
+GET  /healthz
+```
+
+`ctxd` flags: `--addr`, `--data-dir` (embedded mode) or `--postgres-dsn` +
+`--s3-endpoint`/`--s3-access-key`/`--s3-secret-key`/`--s3-bucket`/`--s3-use-ssl`
+(Postgres+S3 mode) — also settable via `CTXD_*` env vars.
+
 ## Testing
 
 ```bash
@@ -74,13 +143,28 @@ go vet ./...
 go test ./...
 ```
 
-`internal/e2e/demo_test.go` runs the full Refund Agent demo programmatically
-and asserts the SHA256 replay invariant as a real test.
+Live-infra tests (Postgres/MinIO storage backends, and the Postgres+MinIO
+demo replay) are skipped unless their env vars are set:
+
+```bash
+docker compose up -d
+export CTX_TEST_POSTGRES_DSN='postgres://ctx:ctx_dev_password@localhost:5434/ctx?sslmode=disable'
+export CTX_TEST_MINIO_ENDPOINT=localhost:9000
+export CTX_TEST_MINIO_ACCESS_KEY=ctxadmin
+export CTX_TEST_MINIO_SECRET_KEY=ctx_dev_password_minio
+go test ./...
+```
+
+`internal/e2e/` runs the full Refund Agent demo programmatically — over
+embedded SQLite (`demo_test.go`), over Postgres+MinIO
+(`demo_postgres_test.go`), and over a real HTTP round-trip through
+`internal/api` + `internal/client/remote` (`demo_remote_test.go`) — each
+asserting the SHA256 replay invariant.
 
 ## Status
 
-This is the walking-skeleton milestone. See the project plan for the full
-Definition of Done targeting a public v0.1 launch (HTTP Resolve API,
-TypeScript SDK, Postgres/Redis/MinIO via Docker Compose, OpenTelemetry,
-security baseline, and docs) — every store here is behind a Go interface
-specifically so that work extends this code rather than replacing it.
+Implemented against the v0.1 launch Definition of Done: storage swap
+(Postgres/MinIO), all three source adapters, and the HTTP API + `ctxd` +
+CLI `--server` mode. Still ahead: OpenTelemetry, the TypeScript SDK, the
+security baseline (auth, credential redaction, dependency scanning), and
+release docs/CI — see the project plan for the full checklist.
