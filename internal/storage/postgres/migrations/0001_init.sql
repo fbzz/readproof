@@ -1,6 +1,6 @@
 CREATE TABLE sources (
     source_id   TEXT PRIMARY KEY,
-    kind        TEXT NOT NULL CHECK (kind IN ('filesystem','github')),
+    kind        TEXT NOT NULL CHECK (kind IN ('filesystem','github','http')),
     config_json TEXT NOT NULL,
     created_at  TEXT NOT NULL
 );

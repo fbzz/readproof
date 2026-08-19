@@ -50,6 +50,21 @@ func pluralEntries(n int) string {
 	return "ies"
 }
 
+func parseHeaders(raw []string) (map[string]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	headers := make(map[string]string, len(raw))
+	for _, h := range raw {
+		key, value, ok := strings.Cut(h, ":")
+		if !ok || strings.TrimSpace(key) == "" {
+			return nil, fmt.Errorf("invalid --header %q, want Key:Value", h)
+		}
+		headers[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	}
+	return headers, nil
+}
+
 func indent(text, prefix string) string {
 	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
 	var b strings.Builder

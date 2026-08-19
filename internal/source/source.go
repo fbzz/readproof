@@ -13,6 +13,7 @@ type Kind string
 const (
 	KindFilesystem Kind = "filesystem"
 	KindGitHub     Kind = "github"
+	KindHTTP       Kind = "http"
 )
 
 type FilesystemConfig struct {
@@ -26,11 +27,17 @@ type GitHubConfig struct {
 	Ref   string `json:"ref"`
 }
 
+type HTTPConfig struct {
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
 // Config is the persisted, source-kind-specific configuration for a Resource.
 type Config struct {
 	Kind       Kind              `json:"kind"`
 	Filesystem *FilesystemConfig `json:"filesystem,omitempty"`
 	GitHub     *GitHubConfig     `json:"github,omitempty"`
+	HTTP       *HTTPConfig       `json:"http,omitempty"`
 }
 
 type FetchRequest struct {

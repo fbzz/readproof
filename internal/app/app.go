@@ -17,6 +17,7 @@ import (
 	"ctx/internal/source"
 	fsSource "ctx/internal/source/filesystem"
 	ghSource "ctx/internal/source/github"
+	httpSource "ctx/internal/source/http"
 	"ctx/internal/storage/blob"
 	"ctx/internal/storage/postgres"
 	"ctx/internal/storage/s3blob"
@@ -135,6 +136,7 @@ func wire(
 	sources := source.NewRegistry()
 	sources.Register(source.KindFilesystem, fsSource.New())
 	sources.Register(source.KindGitHub, ghSource.New())
+	sources.Register(source.KindHTTP, httpSource.New())
 
 	res := &resolver.Resolver{
 		Resources:        resources,

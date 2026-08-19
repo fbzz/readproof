@@ -47,6 +47,8 @@ func newInspectCmd() *cobra.Command {
 				fmt.Printf("  repo: %s/%s\n", gh.Owner, gh.Repo)
 				fmt.Printf("  path: %s\n", gh.Path)
 				fmt.Printf("  ref:  %s\n", gh.Ref)
+			case source.KindHTTP:
+				fmt.Printf("  url: %s\n", res.SourceConfig.HTTP.URL)
 			}
 			fmt.Println()
 

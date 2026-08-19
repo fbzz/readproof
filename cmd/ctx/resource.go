@@ -28,6 +28,8 @@ func newResourceAddCmd() *cobra.Command {
 		ghOwner    string
 		ghRepo     string
 		ghRef      string
+		url        string
+		headers    []string
 		policyName string
 		maxAge     time.Duration
 	)
@@ -54,8 +56,17 @@ func newResourceAddCmd() *cobra.Command {
 					return fmt.Errorf("--owner, --repo, and --path are required for --source-type github")
 				}
 				cfg = source.Config{Kind: source.KindGitHub, GitHub: &source.GitHubConfig{Owner: ghOwner, Repo: ghRepo, Path: path, Ref: ghRef}}
+			case source.KindHTTP:
+				if url == "" {
+					return fmt.Errorf("--url is required for --source-type http")
+				}
+				hdrs, err := parseHeaders(headers)
+				if err != nil {
+					return err
+				}
+				cfg = source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{URL: url, Headers: hdrs}}
 			default:
-				return fmt.Errorf("unsupported --source-type %q (want filesystem or github)", sourceType)
+				return fmt.Errorf("unsupported --source-type %q (want filesystem, github, or http)", sourceType)
 			}
 
 			var pol policy.Policy
@@ -91,11 +102,13 @@ func newResourceAddCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&sourceType, "source-type", "", "source type: filesystem | github (required)")
+	cmd.Flags().StringVar(&sourceType, "source-type", "", "source type: filesystem | github | http (required)")
 	cmd.Flags().StringVar(&path, "path", "", "path to the source content (file path for filesystem, path within repo for github)")
 	cmd.Flags().StringVar(&ghOwner, "owner", "", "github: repository owner")
 	cmd.Flags().StringVar(&ghRepo, "repo", "", "github: repository name")
 	cmd.Flags().StringVar(&ghRef, "ref", "main", "github: branch or ref")
+	cmd.Flags().StringVar(&url, "url", "", "http: source URL")
+	cmd.Flags().StringArrayVar(&headers, "header", nil, "http: request header as Key:Value (repeatable)")
 	cmd.Flags().StringVar(&policyName, "policy", string(policy.StrategyRequireFresh), "freshness policy: require_fresh | allow_stale")
 	cmd.Flags().DurationVar(&maxAge, "max-age", 0, "allow_stale: maximum snapshot age before refresh")
 	cmd.MarkFlagRequired("source-type")
