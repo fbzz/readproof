@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -26,13 +26,13 @@ func NewResourceStore(db *sql.DB) *ResourceStore {
 func (s *ResourceStore) Create(ctx context.Context, r resource.Resource) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("sqlite: begin: %w", err)
+		return fmt.Errorf("postgres: begin: %w", err)
 	}
 	defer tx.Rollback()
 
 	sourceCfg, err := json.Marshal(r.SourceConfig)
 	if err != nil {
-		return fmt.Errorf("sqlite: marshal source config: %w", err)
+		return fmt.Errorf("postgres: marshal source config: %w", err)
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
@@ -41,10 +41,10 @@ func (s *ResourceStore) Create(ctx context.Context, r resource.Resource) error {
 		sourceID = ids.New("src")
 	}
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO sources (source_id, kind, config_json, created_at) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO sources (source_id, kind, config_json, created_at) VALUES ($1, $2, $3, $4)`,
 		sourceID, string(r.SourceConfig.Kind), string(sourceCfg), now,
 	); err != nil {
-		return fmt.Errorf("sqlite: insert source: %w", err)
+		return fmt.Errorf("postgres: insert source: %w", err)
 	}
 
 	policyID := r.PolicyID
@@ -60,18 +60,18 @@ func (s *ResourceStore) Create(ctx context.Context, r resource.Resource) error {
 		pinnedSnapshotID = sql.NullString{String: r.Policy.PinnedSnapshotID, Valid: true}
 	}
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO policies (policy_id, strategy, max_age_seconds, pinned_snapshot_id, created_at) VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO policies (policy_id, strategy, max_age_seconds, pinned_snapshot_id, created_at) VALUES ($1, $2, $3, $4, $5)`,
 		policyID, string(r.Policy.Strategy), maxAgeSeconds, pinnedSnapshotID, now,
 	); err != nil {
-		return fmt.Errorf("sqlite: insert policy: %w", err)
+		return fmt.Errorf("postgres: insert policy: %w", err)
 	}
 
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO resources (uri, namespace, path, source_id, policy_id, current_snapshot_id, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
+		 VALUES ($1, $2, $3, $4, $5, NULL, $6, $7)`,
 		r.URI, r.Namespace, r.Path, sourceID, policyID, now, now,
 	); err != nil {
-		return fmt.Errorf("sqlite: insert resource: %w", err)
+		return fmt.Errorf("postgres: insert resource: %w", err)
 	}
 
 	return tx.Commit()
@@ -85,7 +85,7 @@ func (s *ResourceStore) Get(ctx context.Context, uri string) (resource.Resource,
 		FROM resources r
 		JOIN sources src ON src.source_id = r.source_id
 		JOIN policies p ON p.policy_id = r.policy_id
-		WHERE r.uri = ?`, uri)
+		WHERE r.uri = $1`, uri)
 
 	var (
 		res                  resource.Resource
@@ -104,11 +104,11 @@ func (s *ResourceStore) Get(ctx context.Context, uri string) (resource.Resource,
 		if errors.Is(err, sql.ErrNoRows) {
 			return resource.Resource{}, fmt.Errorf("%w: %s", resource.ErrNotFound, uri)
 		}
-		return resource.Resource{}, fmt.Errorf("sqlite: get resource: %w", err)
+		return resource.Resource{}, fmt.Errorf("postgres: get resource: %w", err)
 	}
 
 	if err := json.Unmarshal([]byte(sourceConfigJSON), &res.SourceConfig); err != nil {
-		return resource.Resource{}, fmt.Errorf("sqlite: unmarshal source config: %w", err)
+		return resource.Resource{}, fmt.Errorf("postgres: unmarshal source config: %w", err)
 	}
 
 	res.Policy = policy.Policy{Strategy: policy.Strategy(strategy)}
@@ -129,7 +129,7 @@ func (s *ResourceStore) Get(ctx context.Context, uri string) (resource.Resource,
 func (s *ResourceStore) List(ctx context.Context) ([]resource.Resource, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT uri FROM resources ORDER BY uri`)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: list resources: %w", err)
+		return nil, fmt.Errorf("postgres: list resources: %w", err)
 	}
 	defer rows.Close()
 
@@ -137,7 +137,7 @@ func (s *ResourceStore) List(ctx context.Context) ([]resource.Resource, error) {
 	for rows.Next() {
 		var uri string
 		if err := rows.Scan(&uri); err != nil {
-			return nil, fmt.Errorf("sqlite: scan resource uri: %w", err)
+			return nil, fmt.Errorf("postgres: scan resource uri: %w", err)
 		}
 		uris = append(uris, uri)
 	}
@@ -159,11 +159,11 @@ func (s *ResourceStore) List(ctx context.Context) ([]resource.Resource, error) {
 func (s *ResourceStore) UpdateCurrentSnapshot(ctx context.Context, uri, snapshotID string) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE resources SET current_snapshot_id = ?, updated_at = ? WHERE uri = ?`,
+		`UPDATE resources SET current_snapshot_id = $1, updated_at = $2 WHERE uri = $3`,
 		snapshotID, now, uri,
 	)
 	if err != nil {
-		return fmt.Errorf("sqlite: update current snapshot: %w", err)
+		return fmt.Errorf("postgres: update current snapshot: %w", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {

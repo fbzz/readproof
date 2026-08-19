@@ -1,0 +1,41 @@
+# Local dev infrastructure for Ctx. Grows across the v0.1 launch milestones
+# (Postgres + MinIO land in M1; Redis + ctxd + an OTel collector land in
+# later milestones). Credentials below are dev-only defaults — do not use
+# outside local development.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ctx
+      POSTGRES_PASSWORD: ctx_dev_password
+      POSTGRES_DB: ctx
+    ports:
+      - "5434:5432"
+    volumes:
+      - ctx_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctx -d ctx"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ctxadmin
+      MINIO_ROOT_PASSWORD: ctx_dev_password_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ctx_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ctx_postgres_data:
+  ctx_minio_data:

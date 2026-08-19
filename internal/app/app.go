@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -17,6 +18,8 @@ import (
 	fsSource "ctx/internal/source/filesystem"
 	ghSource "ctx/internal/source/github"
 	"ctx/internal/storage/blob"
+	"ctx/internal/storage/postgres"
+	"ctx/internal/storage/s3blob"
 	"ctx/internal/storage/sqlite"
 )
 
@@ -68,6 +71,67 @@ func Open(dataDir string) (*App, error) {
 	manifests := sqlite.NewManifestStore(db)
 	runs := sqlite.NewRunStore(db)
 
+	return wire(db, resources, snapshots, materializations, manifests, runs, blobStore), nil
+}
+
+// PostgresConfig selects the Postgres metadata backend for OpenPostgres.
+type PostgresConfig struct {
+	DSN string
+}
+
+// S3Config selects the S3-compatible blob backend for OpenPostgres.
+type S3Config struct {
+	Endpoint        string
+	AccessKeyID     string
+	SecretAccessKey string
+	Bucket          string
+	UseSSL          bool
+}
+
+// OpenPostgres wires the same pipeline as Open, but backed by PostgreSQL
+// metadata storage and an S3-compatible (e.g. MinIO) blob store, instead of
+// embedded SQLite and local disk. Every store is behind the same domain
+// interfaces, so this is a drop-in swap — callers see the same *App shape.
+func OpenPostgres(ctx context.Context, pg PostgresConfig, s3 S3Config) (*App, error) {
+	db, err := postgres.Open(pg.DSN)
+	if err != nil {
+		return nil, err
+	}
+	if err := postgres.Migrate(db); err != nil {
+		return nil, err
+	}
+
+	blobStore, err := s3blob.New(ctx, s3blob.Config{
+		Endpoint:        s3.Endpoint,
+		AccessKeyID:     s3.AccessKeyID,
+		SecretAccessKey: s3.SecretAccessKey,
+		Bucket:          s3.Bucket,
+		UseSSL:          s3.UseSSL,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resources := postgres.NewResourceStore(db)
+	snapshots := postgres.NewSnapshotStore(db)
+	materializations := postgres.NewMaterializationStore(db)
+	manifests := postgres.NewManifestStore(db)
+	runs := postgres.NewRunStore(db)
+
+	return wire(db, resources, snapshots, materializations, manifests, runs, blobStore), nil
+}
+
+// wire assembles the resolver, run builder, and replayer over an arbitrary
+// set of store implementations — the same wiring regardless of backend.
+func wire(
+	db *sql.DB,
+	resources resource.Store,
+	snapshots snapshot.Store,
+	materializations materialization.Store,
+	manifests manifest.Store,
+	runs run.RunStore,
+	blobStore blob.Store,
+) *App {
 	sources := source.NewRegistry()
 	sources.Register(source.KindFilesystem, fsSource.New())
 	sources.Register(source.KindGitHub, ghSource.New())
@@ -104,7 +168,7 @@ func Open(dataDir string) (*App, error) {
 		Resolver:         res,
 		RunBuilder:       builder,
 		Replayer:         replayer,
-	}, nil
+	}
 }
 
 func (a *App) Close() error {

@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"ctx/internal/snapshot"
 )
 
-var ErrSnapshotNotFound = errors.New("sqlite: snapshot not found")
+var ErrSnapshotNotFound = errors.New("postgres: snapshot not found")
 
 type SnapshotStore struct {
 	DB *sql.DB
@@ -24,17 +24,17 @@ func NewSnapshotStore(db *sql.DB) *SnapshotStore {
 func (s *SnapshotStore) Create(ctx context.Context, snap snapshot.Snapshot) error {
 	provenance, err := json.Marshal(snap.Provenance)
 	if err != nil {
-		return fmt.Errorf("sqlite: marshal provenance: %w", err)
+		return fmt.Errorf("postgres: marshal provenance: %w", err)
 	}
 	_, err = s.DB.ExecContext(ctx, `
 		INSERT INTO snapshots (snapshot_id, resource_uri, source_revision, content_hash, observed_at, created_at, content_type, bytes, provenance_json)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		snap.SnapshotID, snap.ResourceURI, snap.SourceRevision, snap.ContentHash,
 		snap.ObservedAt.UTC().Format(time.RFC3339Nano), snap.CreatedAt.UTC().Format(time.RFC3339Nano),
 		snap.ContentType, snap.Bytes, string(provenance),
 	)
 	if err != nil {
-		return fmt.Errorf("sqlite: insert snapshot: %w", err)
+		return fmt.Errorf("postgres: insert snapshot: %w", err)
 	}
 	return nil
 }
@@ -42,10 +42,10 @@ func (s *SnapshotStore) Create(ctx context.Context, snap snapshot.Snapshot) erro
 func (s *SnapshotStore) Get(ctx context.Context, id string) (snapshot.Snapshot, error) {
 	row := s.DB.QueryRowContext(ctx, `
 		SELECT snapshot_id, resource_uri, source_revision, content_hash, observed_at, created_at, content_type, bytes, provenance_json
-		FROM snapshots WHERE snapshot_id = ?`, id)
+		FROM snapshots WHERE snapshot_id = $1`, id)
 	snap, err := scanSnapshot(row)
 	if err != nil {
-		return snapshot.Snapshot{}, fmt.Errorf("sqlite: get snapshot %s: %w", id, err)
+		return snapshot.Snapshot{}, fmt.Errorf("postgres: get snapshot %s: %w", id, err)
 	}
 	return snap, nil
 }
@@ -53,9 +53,9 @@ func (s *SnapshotStore) Get(ctx context.Context, id string) (snapshot.Snapshot, 
 func (s *SnapshotStore) ListByResource(ctx context.Context, uri string) ([]snapshot.Snapshot, error) {
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT snapshot_id, resource_uri, source_revision, content_hash, observed_at, created_at, content_type, bytes, provenance_json
-		FROM snapshots WHERE resource_uri = ? ORDER BY observed_at DESC`, uri)
+		FROM snapshots WHERE resource_uri = $1 ORDER BY observed_at DESC`, uri)
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: list snapshots: %w", err)
+		return nil, fmt.Errorf("postgres: list snapshots: %w", err)
 	}
 	defer rows.Close()
 
