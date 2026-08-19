@@ -14,6 +14,8 @@ import type {
 export interface CtxOptions {
   /** Base URL of a running ctxd, e.g. "http://localhost:8080". */
   endpoint: string;
+  /** Sent as "Authorization: Bearer <apiKey>" if the server has --api-key set. */
+  apiKey?: string;
   /** Override fetch (e.g. for testing). Defaults to the global fetch. */
   fetch?: typeof fetch;
 }
@@ -69,10 +71,12 @@ function isErrorResponse(v: unknown): v is { error: string } {
  */
 export class Ctx {
   private readonly endpoint: string;
+  private readonly apiKey?: string;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: CtxOptions) {
     this.endpoint = options.endpoint.replace(/\/+$/, "");
+    this.apiKey = options.apiKey;
     this.fetchImpl = options.fetch ?? fetch;
   }
 
@@ -146,9 +150,17 @@ export class Ctx {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+    if (this.apiKey) {
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
+    }
+
     const res = await this.fetchImpl(`${this.endpoint}${path}`, {
       method,
-      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 

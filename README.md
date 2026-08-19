@@ -34,6 +34,10 @@ For the full reference demo (register → resolve → diff → replay, proving
 
 ## Quickstart — client/server mode
 
+**⚠️ `docker-compose.yml`'s default credentials (Postgres, MinIO) are
+dev-only placeholders — do not reuse them, or this file as-is, outside
+local development.** Override via a `.env` file; see `.env.example`.
+
 `docker compose up -d` brings up Postgres, MinIO, and `ctxd` itself
 (building `ctxd`'s image from the repo's `Dockerfile`), healthy, from a
 clean clone — no manual DB/bucket setup:
@@ -143,6 +147,11 @@ GET  /healthz
 `--s3-endpoint`/`--s3-access-key`/`--s3-secret-key`/`--s3-bucket`/`--s3-use-ssl`
 (Postgres+S3 mode) — also settable via `CTXD_*` env vars.
 
+`--api-key` (`CTXD_API_KEY`) requires a matching `Authorization: Bearer
+<key>` on every request except `/healthz`; off (unauthenticated) by
+default. The CLI (`ctx --api-key` / `CTX_API_KEY`) and TS SDK
+(`new Ctx({ apiKey })`) send it when set.
+
 ## TypeScript SDK
 
 `sdk/typescript` (`@ctx/sdk`) is a typed client for `ctxd`'s HTTP API —
@@ -202,13 +211,47 @@ embedded SQLite (`demo_test.go`), over Postgres+MinIO
 `internal/api` + `internal/client/remote` (`demo_remote_test.go`) — each
 asserting the SHA256 replay invariant.
 
+## Security
+
+This is a v0.1 baseline, not enterprise IAM.
+
+- **No plaintext credentials at rest.** `GITHUB_TOKEN` is read from
+  ctxd's own environment at fetch time and never stored. HTTP source
+  headers support `"${VAR_NAME}"` references (e.g.
+  `Authorization: Bearer ${GITHUB_TOKEN}`), resolved from ctxd's
+  environment at fetch time — see `internal/source/http`. As
+  defense-in-depth for headers supplied as raw values instead,
+  `internal/redact` masks sensitive header values (`Authorization`,
+  `Cookie`, anything matching `*token*`/`*key*`/`*secret*`/`*password*`/
+  `*credential*`/`*auth*`) in every API response and in `ctx inspect` —
+  see `internal/api/api_test.go`'s `TestHTTPHeaderCredentialsAreRedactedInResponses`.
+- **Optional API auth.** `ctxd --api-key` (`CTXD_API_KEY`) requires a
+  matching `Authorization: Bearer` on every request except `/healthz`;
+  off by default. The CLI and TS SDK both support sending it.
+- **Dev-only credentials, clearly labeled.** `docker-compose.yml`'s
+  Postgres/MinIO credentials are placeholders, called out in this README
+  and in the compose file itself; override via `.env` (`.env.example`
+  documents every variable). `.env` is gitignored.
+- **Dependency scanning.** `govulncheck ./...` and `npm audit`
+  (`sdk/typescript`) are clean. One transitive advisory,
+  [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932) (`golang.org/x/crypto/openpgp`,
+  unmaintained by design, no fix available): not imported by any package
+  this module builds (`go mod why golang.org/x/crypto` confirms the main
+  module doesn't need it) — a transitive `go.sum` entry only, reviewed
+  and accepted.
+- **SSRF**: the HTTP source adapter has no target-IP restrictions —
+  acceptable while resource registration is only ever done by the
+  operator running `ctx`/`ctxd`. This becomes a real requirement once
+  `ctxd` accepts registration from less-trusted callers (noted in
+  `internal/source/http`).
+
 ## Status
 
 Implemented against the v0.1 launch Definition of Done: storage swap
 (Postgres/MinIO), all three source adapters, the HTTP API + `ctxd` + CLI
 `--server` mode, a `docker compose up` bring-up of the full stack (Postgres
 + MinIO + `ctxd`, `ctxd`'s image built from this repo's `Dockerfile`),
-OpenTelemetry tracing/metrics with a collector wired into Compose, and the
-TypeScript SDK. Still ahead: the security baseline (auth, credential
-redaction, dependency scanning), and release docs/CI — see the project
-plan for the full checklist.
+OpenTelemetry tracing/metrics with a collector wired into Compose, the
+TypeScript SDK, and the security baseline (see "Security" above). Still
+ahead: release docs/CI and tagging v0.1.0 — see the project plan for the
+full checklist.

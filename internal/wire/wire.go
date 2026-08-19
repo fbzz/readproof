@@ -12,6 +12,7 @@ import (
 	"ctx/internal/manifest"
 	"ctx/internal/materialization"
 	"ctx/internal/policy"
+	"ctx/internal/redact"
 	"ctx/internal/replay"
 	"ctx/internal/resolver"
 	"ctx/internal/resource"
@@ -58,6 +59,21 @@ func SourceToWire(cfg source.Config) SourceWire {
 	}
 	if cfg.HTTP != nil {
 		w.HTTP = &HTTPConfigWire{URL: cfg.HTTP.URL, Headers: cfg.HTTP.Headers}
+	}
+	return w
+}
+
+// SourceToWireRedacted is SourceToWire with sensitive HTTP header values
+// masked — use this (never SourceToWire) when building an API *response*.
+// SourceToWire itself stays unredacted because it's also used to encode
+// *requests* (e.g. RegisterResourceRequest on the client side), which must
+// carry the real header values for ctxd to authenticate with.
+func SourceToWireRedacted(cfg source.Config) SourceWire {
+	w := SourceToWire(cfg)
+	if w.HTTP != nil {
+		redactedHTTP := *w.HTTP
+		redactedHTTP.Headers = redact.Headers(w.HTTP.Headers)
+		w.HTTP = &redactedHTTP
 	}
 	return w
 }
@@ -118,6 +134,14 @@ func ResourceToWire(r resource.Resource) ResourceWire {
 		CurrentSnapshotID: r.CurrentSnapshotID,
 		CreatedAt:         r.CreatedAt, UpdatedAt: r.UpdatedAt,
 	}
+}
+
+// ResourceToWireRedacted is ResourceToWire with sensitive HTTP header
+// values masked — use this for API responses (see SourceToWireRedacted).
+func ResourceToWireRedacted(r resource.Resource) ResourceWire {
+	w := ResourceToWire(r)
+	w.Source = SourceToWireRedacted(r.SourceConfig)
+	return w
 }
 
 func ResourceFromWire(w ResourceWire) resource.Resource {

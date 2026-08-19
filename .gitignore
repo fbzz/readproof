@@ -1,3 +1,7 @@
 .ctx/
 /ctx
+/ctxd
 *.test
+.env
+.env.*
+!.env.example

@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"ctx/internal/redact"
 	"ctx/internal/source"
 )
 
@@ -49,6 +51,21 @@ func newInspectCmd() *cobra.Command {
 				fmt.Printf("  ref:  %s\n", gh.Ref)
 			case source.KindHTTP:
 				fmt.Printf("  url: %s\n", res.SourceConfig.HTTP.URL)
+				// Applied even in embedded mode where this value was never
+				// sent over the wire: sensitive header values should never
+				// be echoed by `ctx inspect`, regardless of client mode.
+				headers := redact.Headers(res.SourceConfig.HTTP.Headers)
+				if len(headers) > 0 {
+					fmt.Println("  headers:")
+					keys := make([]string, 0, len(headers))
+					for k := range headers {
+						keys = append(keys, k)
+					}
+					sort.Strings(keys)
+					for _, k := range keys {
+						fmt.Printf("    %s: %s\n", k, headers[k])
+					}
+				}
 			}
 			fmt.Println()
 

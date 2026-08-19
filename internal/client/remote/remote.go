@@ -23,11 +23,15 @@ import (
 
 type Client struct {
 	baseURL string
+	apiKey  string
 	http    *http.Client
 }
 
-func New(baseURL string) *Client {
-	return &Client{baseURL: strings.TrimSuffix(baseURL, "/"), http: http.DefaultClient}
+// New constructs a remote client. apiKey is sent as "Authorization: Bearer
+// <apiKey>" on every request when non-empty; pass "" for a ctxd instance
+// with no --api-key configured.
+func New(baseURL, apiKey string) *Client {
+	return &Client{baseURL: strings.TrimSuffix(baseURL, "/"), apiKey: apiKey, http: http.DefaultClient}
 }
 
 func (c *Client) Close() error { return nil }
@@ -152,6 +156,9 @@ func (c *Client) doJSON(ctx context.Context, method, path string, body, out any)
 	}
 	if reqBody != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
 
 	resp, err := c.http.Do(req)

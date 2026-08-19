@@ -27,6 +27,7 @@ func main() {
 	s3SecretKey := flag.String("s3-secret-key", os.Getenv("CTXD_S3_SECRET_KEY"), "S3-compatible secret key (postgres mode only)")
 	s3Bucket := flag.String("s3-bucket", envOr("CTXD_S3_BUCKET", "ctx-blobs"), "S3-compatible bucket name (postgres mode only)")
 	s3UseSSL := flag.Bool("s3-use-ssl", envBool("CTXD_S3_USE_SSL", false), "use TLS for the S3-compatible endpoint (postgres mode only)")
+	apiKey := flag.String("api-key", os.Getenv("CTXD_API_KEY"), "if set, require this value as a Bearer token on every request except /healthz (off by default)")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -42,14 +43,18 @@ func main() {
 	}
 	defer a.Close()
 
-	handler := api.NewHandler(a)
+	handler := api.NewHandler(a, api.Options{APIKey: *apiKey})
 	server := &http.Server{
 		Addr:              *addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	log.Printf("ctxd listening on %s (backend: %s)", *addr, backend)
+	authNote := "no API key set — unauthenticated"
+	if *apiKey != "" {
+		authNote = "API key required"
+	}
+	log.Printf("ctxd listening on %s (backend: %s, %s)", *addr, backend, authNote)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("ctxd: %v", err)
 	}

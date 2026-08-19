@@ -39,10 +39,10 @@ func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
 	}
 	defer a.Close()
 
-	server := httptest.NewServer(api.NewHandler(a))
+	server := httptest.NewServer(api.NewHandler(a, api.Options{}))
 	defer server.Close()
 
-	c := remote.New(server.URL)
+	c := remote.New(server.URL, "")
 	defer c.Close()
 
 	ctx := context.Background()

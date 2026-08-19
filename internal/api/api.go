@@ -4,9 +4,11 @@
 package api
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"ctx/internal/app"
@@ -18,8 +20,17 @@ import (
 	"ctx/internal/wire"
 )
 
+// Options configures the HTTP API.
+type Options struct {
+	// APIKey, when non-empty, requires every request except /healthz to
+	// carry a matching "Authorization: Bearer <APIKey>" header. Empty
+	// (the default) leaves the API unauthenticated — fine for local
+	// development, not for exposing ctxd beyond localhost.
+	APIKey string
+}
+
 // NewHandler builds the full Ctx HTTP API over an already-opened App.
-func NewHandler(a *app.App) http.Handler {
+func NewHandler(a *app.App, opts Options) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /v1/resources", handleRegisterResource(a))
@@ -36,7 +47,33 @@ func NewHandler(a *app.App) http.Handler {
 	mux.HandleFunc("GET /v1/replay", handleReplay(a))
 	mux.HandleFunc("GET /healthz", handleHealthz)
 
-	return mux
+	if opts.APIKey == "" {
+		return mux
+	}
+	return requireAPIKey(opts.APIKey, mux)
+}
+
+// requireAPIKey wraps next so every request (except /healthz, which
+// container/orchestrator healthchecks need to reach unauthenticated) must
+// carry "Authorization: Bearer <key>" matching key exactly.
+func requireAPIKey(key string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		const prefix = "Bearer "
+		auth := r.Header.Get("Authorization")
+		if !strings.HasPrefix(auth, prefix) || !constantTimeEqual(strings.TrimPrefix(auth, prefix), key) {
+			writeError(w, http.StatusUnauthorized, errors.New("missing or invalid API key"))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func constantTimeEqual(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }
 
 func handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +108,7 @@ func handleRegisterResource(a *app.App) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
-		writeJSON(w, http.StatusCreated, wire.ResourceToWire(created))
+		writeJSON(w, http.StatusCreated, wire.ResourceToWireRedacted(created))
 	}
 }
 
@@ -84,7 +121,7 @@ func handleListResources(a *app.App) http.HandlerFunc {
 		}
 		out := make([]wire.ResourceWire, len(resources))
 		for i, res := range resources {
-			out[i] = wire.ResourceToWire(res)
+			out[i] = wire.ResourceToWireRedacted(res)
 		}
 		writeJSON(w, http.StatusOK, wire.ResourceListResponse{Resources: out})
 	}
@@ -102,7 +139,7 @@ func handleGetResource(a *app.App) http.HandlerFunc {
 			writeDomainError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, wire.ResourceToWire(res))
+		writeJSON(w, http.StatusOK, wire.ResourceToWireRedacted(res))
 	}
 }
 

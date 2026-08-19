@@ -17,6 +17,7 @@ import (
 var (
 	dataDir   string
 	serverURL string
+	apiKey    string
 )
 
 func main() {
@@ -32,6 +33,7 @@ func run() int {
 	}
 	root.PersistentFlags().StringVar(&dataDir, "data-dir", "", "path to the local .ctx data directory (default: .ctx, or $CTX_HOME); ignored with --server")
 	root.PersistentFlags().StringVar(&serverURL, "server", os.Getenv("CTX_SERVER_URL"), "ctxd server URL (e.g. http://localhost:8080); when unset, runs against the local embedded data directory")
+	root.PersistentFlags().StringVar(&apiKey, "api-key", os.Getenv("CTX_API_KEY"), "API key to send to a --server that requires one")
 
 	root.AddCommand(
 		newResourceCmd(),
@@ -65,7 +67,7 @@ func run() int {
 // either way.
 func openClient() (client.Client, error) {
 	if serverURL != "" {
-		return remote.New(serverURL), nil
+		return remote.New(serverURL, apiKey), nil
 	}
 	a, err := app.Open(dataDir)
 	if err != nil {

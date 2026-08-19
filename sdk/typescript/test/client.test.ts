@@ -221,3 +221,37 @@ test("non-2xx responses throw CtxError with the server's error message", async (
     await close();
   }
 });
+
+test("apiKey is sent as an Authorization: Bearer header", async () => {
+  let receivedAuth: string | undefined;
+  const { url, close } = await startMockServer((req, res) => {
+    receivedAuth = req.headers["authorization"];
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ resources: [] }));
+  });
+
+  try {
+    const ctx = new Ctx({ endpoint: url, apiKey: "secret-key" });
+    await ctx.listResources();
+    assert.equal(receivedAuth, "Bearer secret-key");
+  } finally {
+    await close();
+  }
+});
+
+test("no apiKey means no Authorization header is sent", async () => {
+  let receivedAuth: string | undefined;
+  const { url, close } = await startMockServer((req, res) => {
+    receivedAuth = req.headers["authorization"];
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ resources: [] }));
+  });
+
+  try {
+    const ctx = new Ctx({ endpoint: url });
+    await ctx.listResources();
+    assert.equal(receivedAuth, undefined);
+  } finally {
+    await close();
+  }
+});

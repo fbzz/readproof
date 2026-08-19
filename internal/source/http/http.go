@@ -12,10 +12,36 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"regexp"
 
 	"ctx/internal/ids"
 	"ctx/internal/source"
 )
+
+// envVarRef matches "${VAR_NAME}" references embedded anywhere in a header
+// value (e.g. "Bearer ${GITHUB_TOKEN}"). Matched references are resolved
+// from ctxd's own environment at fetch time — the referenced secret is
+// never persisted in a Resource's stored SourceConfig, only the reference
+// to it.
+var envVarRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
+
+func resolveHeaderValue(value string) (string, error) {
+	var resolveErr error
+	resolved := envVarRef.ReplaceAllStringFunc(value, func(match string) string {
+		name := envVarRef.FindStringSubmatch(match)[1]
+		v, ok := os.LookupEnv(name)
+		if !ok {
+			resolveErr = fmt.Errorf("header value references $%s, which is not set in ctxd's environment", name)
+			return match
+		}
+		return v
+	})
+	if resolveErr != nil {
+		return "", resolveErr
+	}
+	return resolved, nil
+}
 
 type Fetcher struct {
 	HTTPClient *http.Client
@@ -39,7 +65,11 @@ func (f *Fetcher) Fetch(ctx context.Context, req source.FetchRequest) (source.Fe
 		return source.FetchResult{}, fmt.Errorf("http: build request: %w", err)
 	}
 	for k, v := range cfg.Headers {
-		httpReq.Header.Set(k, v)
+		resolved, err := resolveHeaderValue(v)
+		if err != nil {
+			return source.FetchResult{}, fmt.Errorf("http: header %q: %w", k, err)
+		}
+		httpReq.Header.Set(k, resolved)
 	}
 
 	client := f.HTTPClient
