@@ -10,8 +10,7 @@ This repository implements Ctx's core domain model — Source, Resource,
 Snapshot, Materialization, Manifest, Policy — proving the resolve →
 manifest → diff → replay loop end-to-end, both as an embedded CLI tool and
 as a client/server system (`ctx` + `ctxd`) backed by Postgres and an
-S3-compatible object store. See "Status" below for what's still ahead of a
-full v0.1 launch.
+S3-compatible object store. See "Status" below.
 
 ## Quickstart — embedded mode
 
@@ -53,10 +52,11 @@ Point the CLI at it:
 go build -o ctx ./cmd/ctx
 export CTX_SERVER_URL=http://localhost:8080   # or --server on any command
 
-./ctx resource add ctx://demo/policies/refunds \
-  --source-type http --url https://raw.githubusercontent.com/<owner>/<repo>/main/refunds.md \
+# any public URL works here — this one is just to prove the wiring end to end
+./ctx resource add ctx://demo/hello-world \
+  --source-type http --url https://raw.githubusercontent.com/octocat/Hello-World/master/README \
   --policy require_fresh
-./ctx get ctx://demo/policies/refunds
+./ctx get ctx://demo/hello-world
 ```
 
 Every CLI command works identically in embedded and server mode — same
@@ -126,6 +126,8 @@ Global flags: `--data-dir <path>` (embedded mode data directory) and
 `--server <url>` / `$CTX_SERVER_URL` (talk to a `ctxd` instead).
 
 ## HTTP API (`ctxd`)
+
+Full request/response schemas: [`docs/api.md`](docs/api.md).
 
 ```
 POST /v1/resources              register a resource
@@ -247,11 +249,14 @@ This is a v0.1 baseline, not enterprise IAM.
 
 ## Status
 
-Implemented against the v0.1 launch Definition of Done: storage swap
-(Postgres/MinIO), all three source adapters, the HTTP API + `ctxd` + CLI
-`--server` mode, a `docker compose up` bring-up of the full stack (Postgres
-+ MinIO + `ctxd`, `ctxd`'s image built from this repo's `Dockerfile`),
-OpenTelemetry tracing/metrics with a collector wired into Compose, the
-TypeScript SDK, and the security baseline (see "Security" above). Still
-ahead: release docs/CI and tagging v0.1.0 — see the project plan for the
-full checklist.
+**v0.1.0.** Every item on the launch Definition of Done is implemented and
+verified against live infrastructure: storage swap (Postgres/MinIO), all
+three source adapters, the HTTP API + `ctxd` + CLI `--server` mode, a
+`docker compose up` bring-up of the full stack (Postgres + MinIO +
+`ctxd`, `ctxd`'s image built from this repo's `Dockerfile`), OpenTelemetry
+tracing/metrics with a collector wired into Compose, the TypeScript SDK,
+and the security baseline (see "Security" above). CI (`.github/workflows/ci.yml`)
+runs Go build/vet/test, the TS SDK's build/test, and a Docker Compose
+integration test — including a CLI-driven rerun of the reference demo
+against the built `ctxd` image — on every push/PR. No LICENSE yet; this
+is a private-repo checkpoint, not a public release.

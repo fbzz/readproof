@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    name: Go build, vet, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build ./...
+      - run: go vet ./...
+      - name: gofmt (fails if any file is unformatted)
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "$unformatted"
+            exit 1
+          fi
+      - run: go test ./...
+
+  typescript:
+    name: TypeScript SDK build + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: node --test dist/test/*.test.js
+
+  integration:
+    name: Docker Compose integration (Postgres + MinIO + ctxd)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: docker compose up -d --build
+
+      - name: Wait for ctxd to report healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/healthz; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "ctxd did not become healthy in time"
+          docker compose logs
+          exit 1
+
+      - name: Run the full test suite against the composed stack
+        env:
+          CTX_TEST_POSTGRES_DSN: postgres://ctx:ctx_dev_password@localhost:5434/ctx?sslmode=disable
+          CTX_TEST_MINIO_ENDPOINT: localhost:9000
+          CTX_TEST_MINIO_ACCESS_KEY: ctxadmin
+          CTX_TEST_MINIO_SECRET_KEY: ctx_dev_password_minio
+        run: go test ./...
+
+      - name: Reference demo, driven by the CLI, against the built ctxd image
+        run: |
+          set -e
+          go build -o /tmp/ctx ./cmd/ctx
+
+          # A containerized ctxd has no access to the runner's filesystem, so
+          # this uses an HTTP source (reachable via host.docker.internal) —
+          # the same technique documented in the README for local testing.
+          mkdir -p /tmp/demo
+          printf 'Products can be refunded within 30 days.\n' > /tmp/demo/refunds.md
+          python3 -m http.server 8765 --directory /tmp/demo &
+          sleep 1
+
+          export CTX_SERVER_URL=http://localhost:8080
+          /tmp/ctx resource add ctx://ci/policies/refunds \
+            --source-type http --url http://host.docker.internal:8765/refunds.md --policy require_fresh
+          /tmp/ctx run --id ci-run-a ctx://ci/policies/refunds
+
+          printf 'Products can be refunded within 14 days.\n' > /tmp/demo/refunds.md
+          /tmp/ctx run --id ci-run-b ctx://ci/policies/refunds
+
+          /tmp/ctx diff ci-run-a ci-run-b
+          /tmp/ctx replay ci-run-a | tee /tmp/replay.out
+          grep -q "Replay verified: SHA256 match for 1/1 entries." /tmp/replay.out
+
+      - name: docker compose logs (on failure)
+        if: failure()
+        run: docker compose logs
+
+      - run: docker compose down -v
+        if: always()

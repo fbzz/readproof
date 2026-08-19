@@ -52,6 +52,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Lets an http-source resource reach a server running on the host
+    # (e.g. `python3 -m http.server` for local testing) via
+    # http://host.docker.internal:<port>/... — resolved automatically on
+    # Docker Desktop/Colima, explicit here so it also works on plain
+    # Linux Docker (CI runners included).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
