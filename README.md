@@ -34,19 +34,14 @@ For the full reference demo (register → resolve → diff → replay, proving
 
 ## Quickstart — client/server mode
 
-Start Postgres + MinIO (`docker compose up -d`), then run `ctxd`:
+`docker compose up -d` brings up Postgres, MinIO, and `ctxd` itself
+(building `ctxd`'s image from the repo's `Dockerfile`), healthy, from a
+clean clone — no manual DB/bucket setup:
 
 ```bash
-docker compose up -d
-
-go build -o ctxd ./cmd/ctxd
-./ctxd --addr :8080 \
-  --postgres-dsn 'postgres://ctx:ctx_dev_password@localhost:5434/ctx?sslmode=disable' \
-  --s3-endpoint localhost:9000 --s3-access-key ctxadmin --s3-secret-key ctx_dev_password_minio
+docker compose up -d --build
+curl http://localhost:8080/healthz   # -> ok
 ```
-
-Or run `ctxd` in embedded mode (no Postgres/MinIO) by omitting `--postgres-dsn`
-— it falls back to SQLite + local disk, same as the CLI's default.
 
 Point the CLI at it:
 
@@ -55,15 +50,28 @@ go build -o ctx ./cmd/ctx
 export CTX_SERVER_URL=http://localhost:8080   # or --server on any command
 
 ./ctx resource add ctx://demo/policies/refunds \
-  --source-type filesystem --path /absolute/path/to/refunds.md --policy require_fresh
+  --source-type http --url https://raw.githubusercontent.com/<owner>/<repo>/main/refunds.md \
+  --policy require_fresh
 ./ctx get ctx://demo/policies/refunds
 ```
 
-Every CLI command works identically in both modes. Note: with a filesystem
-source, paths are resolved on whichever process actually fetches the
-content — the CLI process in embedded mode, the `ctxd` process in server
-mode — so use absolute paths (or a GitHub/HTTP source) once client and
-server aren't colocated.
+Every CLI command works identically in embedded and server mode — same
+output, same semantics. One real difference: **`ctxd` running via Docker
+Compose has no access to your host filesystem**, so a `filesystem` source
+only works there if the file is baked into the image or volume-mounted;
+GitHub and HTTP sources are the natural fit for a containerized `ctxd`
+(for local host-side testing, `http://host.docker.internal:<port>/...`
+reaches a server running on the host).
+
+To run `ctxd` directly instead of via Compose (e.g. against Postgres/MinIO
+you started separately, or in embedded mode by omitting `--postgres-dsn`):
+
+```bash
+go build -o ctxd ./cmd/ctxd
+./ctxd --addr :8080 \
+  --postgres-dsn 'postgres://ctx:ctx_dev_password@localhost:5434/ctx?sslmode=disable' \
+  --s3-endpoint localhost:9000 --s3-access-key ctxadmin --s3-secret-key ctx_dev_password_minio
+```
 
 ## Data model
 
@@ -164,7 +172,9 @@ asserting the SHA256 replay invariant.
 ## Status
 
 Implemented against the v0.1 launch Definition of Done: storage swap
-(Postgres/MinIO), all three source adapters, and the HTTP API + `ctxd` +
-CLI `--server` mode. Still ahead: OpenTelemetry, the TypeScript SDK, the
-security baseline (auth, credential redaction, dependency scanning), and
-release docs/CI — see the project plan for the full checklist.
+(Postgres/MinIO), all three source adapters, the HTTP API + `ctxd` + CLI
+`--server` mode, and a `docker compose up` bring-up of the full stack
+(Postgres + MinIO + `ctxd`, `ctxd`'s image built from this repo's
+`Dockerfile`). Still ahead: OpenTelemetry, the TypeScript SDK, the security
+baseline (auth, credential redaction, dependency scanning), and release
+docs/CI — see the project plan for the full checklist.
