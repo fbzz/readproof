@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -10,6 +11,7 @@ import (
 	"ctx/internal/client"
 	"ctx/internal/client/local"
 	"ctx/internal/client/remote"
+	"ctx/internal/telemetry"
 )
 
 var (
@@ -18,6 +20,12 @@ var (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+// run's defer runs before main calls os.Exit — os.Exit itself skips
+// deferred functions, so the telemetry flush has to happen inside here.
+func run() int {
 	root := &cobra.Command{
 		Use:   "ctx",
 		Short: "Ctx — reliable, versioned, reproducible context for AI agents",
@@ -36,10 +44,19 @@ func main() {
 		newReplayCmd(),
 	)
 
+	ctx := context.Background()
+	shutdownTelemetry, err := telemetry.Init(ctx, "ctx")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 1
+	}
+	defer shutdownTelemetry(ctx)
+
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // openClient returns the local (embedded) client by default, or a remote

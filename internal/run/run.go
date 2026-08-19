@@ -6,9 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"ctx/internal/ids"
 	"ctx/internal/manifest"
 	"ctx/internal/resolver"
+	"ctx/internal/telemetry"
 )
 
 // ErrNotFound is returned by RunStore.GetRun when no Run matches.
@@ -86,8 +91,22 @@ func (b *Builder) Mount(ctx context.Context, runID, uri string) (resolver.Resolv
 		MaterializationID: result.Materialization.MaterializationID,
 		ContentHash:       result.Materialization.ContentHash,
 	}
-	if err := b.Runs.AppendMount(ctx, runID, entry); err != nil {
-		return resolver.ResolveResult{}, fmt.Errorf("run: append mount: %w", err)
+	appendErr := func() error {
+		actx, aspan := telemetry.Tracer.Start(ctx, "ctx.manifest.append", trace.WithAttributes(
+			attribute.String("ctx.resource.uri", uri),
+			attribute.String("ctx.snapshot.id", entry.SnapshotID),
+			attribute.Int("ctx.manifest.position", entry.Position),
+		))
+		defer aspan.End()
+		e := b.Runs.AppendMount(actx, runID, entry)
+		if e != nil {
+			aspan.RecordError(e)
+			aspan.SetStatus(codes.Error, e.Error())
+		}
+		return e
+	}()
+	if appendErr != nil {
+		return resolver.ResolveResult{}, fmt.Errorf("run: append mount: %w", appendErr)
 	}
 	return result, nil
 }
@@ -118,6 +137,7 @@ func (b *Builder) Commit(ctx context.Context, runID string) (manifest.Manifest, 
 	if err := b.Manifests.Create(ctx, man); err != nil {
 		return manifest.Manifest{}, fmt.Errorf("run: create manifest: %w", err)
 	}
+	telemetry.RecordManifestCreated(ctx)
 	if err := b.Runs.MarkCommitted(ctx, runID, man.ManifestID); err != nil {
 		return manifest.Manifest{}, fmt.Errorf("run: mark committed: %w", err)
 	}

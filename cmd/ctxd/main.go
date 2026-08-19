@@ -14,6 +14,7 @@ import (
 
 	"ctx/internal/api"
 	"ctx/internal/app"
+	"ctx/internal/telemetry"
 )
 
 func main() {
@@ -28,7 +29,14 @@ func main() {
 	s3UseSSL := flag.Bool("s3-use-ssl", envBool("CTXD_S3_USE_SSL", false), "use TLS for the S3-compatible endpoint (postgres mode only)")
 	flag.Parse()
 
-	a, backend, err := openApp(context.Background(), *dataDir, *postgresDSN, *s3Endpoint, *s3AccessKey, *s3SecretKey, *s3Bucket, *s3UseSSL)
+	ctx := context.Background()
+	shutdownTelemetry, err := telemetry.Init(ctx, "ctxd")
+	if err != nil {
+		log.Fatalf("ctxd: telemetry: %v", err)
+	}
+	defer shutdownTelemetry(ctx)
+
+	a, backend, err := openApp(ctx, *dataDir, *postgresDSN, *s3Endpoint, *s3AccessKey, *s3SecretKey, *s3Bucket, *s3UseSSL)
 	if err != nil {
 		log.Fatalf("ctxd: %v", err)
 	}

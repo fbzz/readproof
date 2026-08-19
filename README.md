@@ -143,6 +143,25 @@ GET  /healthz
 `--s3-endpoint`/`--s3-access-key`/`--s3-secret-key`/`--s3-bucket`/`--s3-use-ssl`
 (Postgres+S3 mode) — also settable via `CTXD_*` env vars.
 
+## Observability
+
+Every stage of the resolve pipeline is traced — span names match the
+product spec: `ctx.resolve` (root), `ctx.resource.lookup`,
+`ctx.policy.evaluate`, `ctx.cache.lookup`, `ctx.source.fetch`,
+`ctx.snapshot.create`, `ctx.materialize`, `ctx.manifest.append`. Baseline
+metrics: `ctx_resolve_total`/`_duration_seconds`/`_errors_total`,
+`ctx_cache_hit_total`/`_miss_total`, `ctx_source_fetch_total`/
+`_duration_seconds`/`_errors_total`, `ctx_snapshot_created_total`,
+`ctx_materialization_created_total`, `ctx_manifest_created_total`.
+Resolved content is never attached to spans or metrics.
+
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable export (both `ctx` and `ctxd`
+read it); unset, every instrumentation call is a safe no-op — no collector
+required for normal use. `docker compose up -d` already wires `ctxd` to a
+collector (`otel-collector`, logging received telemetry via its `debug`
+exporter — see `otel-collector-config.yaml`); watch it with
+`docker compose logs -f otel-collector`.
+
 ## Testing
 
 ```bash
@@ -173,8 +192,9 @@ asserting the SHA256 replay invariant.
 
 Implemented against the v0.1 launch Definition of Done: storage swap
 (Postgres/MinIO), all three source adapters, the HTTP API + `ctxd` + CLI
-`--server` mode, and a `docker compose up` bring-up of the full stack
-(Postgres + MinIO + `ctxd`, `ctxd`'s image built from this repo's
-`Dockerfile`). Still ahead: OpenTelemetry, the TypeScript SDK, the security
-baseline (auth, credential redaction, dependency scanning), and release
-docs/CI — see the project plan for the full checklist.
+`--server` mode, a `docker compose up` bring-up of the full stack (Postgres
++ MinIO + `ctxd`, `ctxd`'s image built from this repo's `Dockerfile`), and
+OpenTelemetry tracing/metrics with a collector wired into Compose. Still
+ahead: the TypeScript SDK, the security baseline (auth, credential
+redaction, dependency scanning), and release docs/CI — see the project
+plan for the full checklist.
