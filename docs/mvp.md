@@ -1,6 +1,6 @@
 # MVP plan — v0.2 "public + pluggable"
 
-Status page for the work that turns the v0.1 walking skeleton into a
+**Status: complete — v0.2.0 tagged 2026-08-21.** Status page for the work that turns the v0.1 walking skeleton into a
 minimum viable product. Planned 2026-08-20 from the landscape review
 (closest neighbors: ContextNest, Microsoft APM, Laminar, lakeFS for
 Agentic AI — none combine identity + policy + snapshot + manifest + diff +
@@ -98,7 +98,7 @@ the rename, LICENSE choice (owner decision).
 
 ## WP-F — Release polish
 
-- [ ] README: reposition as "lockfile + replay primitive for what agents
+- [x] README: reposition as "lockfile + replay primitive for what agents
   read" (complement to APM/skills-lock for static config); MCP/evidence/
   tags/OTel sections; `docs/roadmap.md`; CHANGELOG; CI covers new tests;
   cold-clone dogfood; tag v0.2.0.

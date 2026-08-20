@@ -24,7 +24,7 @@ export const EVIDENCE_STATEMENT_TYPE = "https://in-toto.io/Statement/v1";
 export const EVIDENCE_PREDICATE_TYPE = "urn:ctx:evidence:v0.2";
 
 export const EVIDENCE_EXPORTER_NAME = "ctx";
-export const EVIDENCE_EXPORTER_VERSION = "0.2.0-dev";
+export const EVIDENCE_EXPORTER_VERSION = "0.2.0";
 
 export const EVIDENCE_MERKLE_ALGORITHM = "sha256";
 export const EVIDENCE_MERKLE_LEAF_FORMULA =

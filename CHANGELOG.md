@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-08-21
 
 The release that turns the v0.1 walking skeleton into something usable
 from outside the repo: movable tags, diffs that explain themselves,
@@ -101,6 +101,22 @@ status: [`docs/mvp.md`](docs/mvp.md).
   test proves it upgrades a database created at `0001`.
 
 ### Fixed
+
+- `ctx run commit` / `POST /v1/runs/commit` / MCP `ctx_run_commit` on a run
+  that was never started used to succeed with an empty manifest; it now
+  fails with `run: not found` (HTTP 404). Committing an already-committed
+  run used to mint a second manifest; it now fails with
+  `run: already committed` (HTTP 409). `run mount` applies the same guards
+  before resolving, so a bogus run id can no longer create snapshots or
+  orphan mount rows.
+- Runtime errors no longer dump the cobra usage block (`ctx: <error>` once,
+  non-zero exit); genuine usage errors (missing args, unknown flags) still
+  show usage.
+- `ctx version` / `ctx --version` / `ctxd --version` report a single
+  `internal/version` source (`0.2.0`, `+<sha>` via `-ldflags -X
+  ctx/internal/version.Commit=…`); the evidence exporter and MCP server
+  version strings read the same constant in Go and TS.
+
 
 - **`ctx replay` is strict**: it exits non-zero if any entry's bytes fail
   to reproduce their recorded SHA256, or if a blob is missing. There is no

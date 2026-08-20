@@ -398,7 +398,7 @@ A baseline, not enterprise IAM.
 
 ## Status
 
-**v0.2.0 — unreleased.** New since v0.1.0: tags and `@ref` resolution
+**v0.2.0 (2026-08-21).** New since v0.1.0: tags and `@ref` resolution
 (`use_tag`; policy not consulted) across CLI, HTTP API, and SDK;
 provenance-aware `ctx diff`; strict `ctx replay`; evidence bundles (`ctx
 evidence export/verify`, `buildEvidence` in the SDK, a Merkle root shared

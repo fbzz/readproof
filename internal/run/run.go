@@ -131,6 +131,24 @@ func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (result resol
 		span.End()
 	}()
 
+	// Check the run before resolving: resolving can create snapshots, and a
+	// mount into a run that was never started (or is already committed)
+	// would otherwise leave orphan run_mounts rows and a side effect on the
+	// resource's history for a run that can never be committed.
+	existing, err := b.Runs.GetRun(ctx, runID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			err = fmt.Errorf("%w: %s", ErrNotFound, runID)
+		} else {
+			err = fmt.Errorf("run: get run: %w", err)
+		}
+		return resolver.ResolveResult{}, err
+	}
+	if existing.Status == StatusCommitted {
+		err = fmt.Errorf("%w: %s (manifest %s)", ErrAlreadyCommitted, runID, existing.ManifestID)
+		return resolver.ResolveResult{}, err
+	}
+
 	result, err = b.Resolver.ResolveRef(ctx, uri, ref)
 	if err != nil {
 		return resolver.ResolveResult{}, err

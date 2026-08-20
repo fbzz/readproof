@@ -82,3 +82,56 @@ func TestCommitTwiceFails(t *testing.T) {
 		t.Errorf("manifest has %d entries, want 1", len(got.Entries))
 	}
 }
+
+// Mounting into a run that was never started used to resolve the resource
+// (possibly creating a snapshot) and write an orphan run_mounts row that no
+// commit could ever pick up. The guard has to fire before the resolve so the
+// resource's history stays untouched.
+func TestMountUnknownRunFails(t *testing.T) {
+	a := newDemoApp(t)
+	ctx := context.Background()
+
+	before, err := a.Snapshots.ListByResource(ctx, refundsURI)
+	if err != nil {
+		t.Fatalf("list snapshots: %v", err)
+	}
+
+	_, err = a.RunBuilder.Mount(ctx, "run-never-started", refundsURI)
+	if !errors.Is(err, run.ErrNotFound) {
+		t.Fatalf("mount into unknown run: err = %v, want run.ErrNotFound", err)
+	}
+	if !strings.Contains(err.Error(), "run-never-started") {
+		t.Errorf("error %q does not name the run id", err)
+	}
+
+	after, err := a.Snapshots.ListByResource(ctx, refundsURI)
+	if err != nil {
+		t.Fatalf("list snapshots: %v", err)
+	}
+	if len(after) != len(before) {
+		t.Errorf("mount into unknown run created a snapshot: %d -> %d", len(before), len(after))
+	}
+	if mounts, _ := a.Runs.ListMounts(ctx, "run-never-started"); len(mounts) != 0 {
+		t.Errorf("orphan mounts written for unknown run: %d", len(mounts))
+	}
+}
+
+func TestMountCommittedRunFails(t *testing.T) {
+	a := newDemoApp(t)
+	ctx := context.Background()
+
+	if err := a.RunBuilder.Start(ctx, "run-done"); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	if _, err := a.RunBuilder.Mount(ctx, "run-done", refundsURI); err != nil {
+		t.Fatalf("mount: %v", err)
+	}
+	if _, err := a.RunBuilder.Commit(ctx, "run-done"); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	_, err := a.RunBuilder.Mount(ctx, "run-done", refundsURI)
+	if !errors.Is(err, run.ErrAlreadyCommitted) {
+		t.Fatalf("mount into committed run: err = %v, want run.ErrAlreadyCommitted", err)
+	}
+}
