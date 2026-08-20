@@ -130,6 +130,21 @@ func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
 		t.Fatalf("expected 1 manifest entry for run-a, got %d", len(manA.Entries))
 	}
 
+	setTag, err := c.SetTag(ctx, uri, "prod", manA.Entries[0].SnapshotID)
+	if err != nil {
+		t.Fatalf("set tag: %v", err)
+	}
+	if setTag.SnapshotID != manA.Entries[0].SnapshotID {
+		t.Fatalf("set tag returned %+v", setTag)
+	}
+	listed, err := c.ListTags(ctx, uri)
+	if err != nil {
+		t.Fatalf("list tags: %v", err)
+	}
+	if len(listed) != 1 || listed[0].Name != "prod" {
+		t.Fatalf("unexpected tag list: %+v", listed)
+	}
+
 	if err := os.WriteFile(fixturePath, []byte(updatedContent), 0o644); err != nil {
 		t.Fatalf("edit fixture: %v", err)
 	}
@@ -146,6 +161,42 @@ func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
 	}
 	if manA.Entries[0].ContentHash == manB.Entries[0].ContentHash {
 		t.Fatalf("expected manifest content hashes to differ after the source changed")
+	}
+
+	// A tagged mount over HTTP delivers the OLD bytes and records the ref.
+	if err := c.RunStart(ctx, "run-c"); err != nil {
+		t.Fatalf("run start (c): %v", err)
+	}
+	mountC, _, err := c.RunMount(ctx, "run-c", uri+"@prod")
+	if err != nil {
+		t.Fatalf("run mount (c, by tag): %v", err)
+	}
+	if string(mountC.Content) != originalContent {
+		t.Fatalf("tagged mount content mismatch: got %q, want %q", string(mountC.Content), originalContent)
+	}
+	if mountC.Decision != policy.DecisionUseTag || mountC.Ref != "prod" {
+		t.Fatalf("tagged mount lost its decision/ref over the wire: decision=%s ref=%q", mountC.Decision, mountC.Ref)
+	}
+	manC, err := c.RunCommit(ctx, "run-c")
+	if err != nil {
+		t.Fatalf("run commit (c): %v", err)
+	}
+	if manC.Entries[0].URI != uri || manC.Entries[0].Ref != "prod" {
+		t.Fatalf("run-c manifest entry did not record uri+ref over the wire: %+v", manC.Entries[0])
+	}
+	replayC, err := c.Replay(ctx, "run-c")
+	if err != nil {
+		t.Fatalf("replay run-c: %v", err)
+	}
+	if !replayC.AllMatch() || string(replayC.Entries[0].Content) != originalContent {
+		t.Fatalf("replay of the tagged run failed: %+v", replayC.Entries)
+	}
+
+	if err := c.DeleteTag(ctx, uri, "prod"); err != nil {
+		t.Fatalf("delete tag: %v", err)
+	}
+	if _, err := c.Resolve(ctx, uri+"@prod"); err == nil {
+		t.Fatalf("expected an error resolving a deleted tag")
 	}
 
 	fetchedManA, err := c.GetManifest(ctx, "run-a")
@@ -173,6 +224,15 @@ func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
 	}
 	if diffResult.Entries[0].UnifiedDiff == "" {
 		t.Fatalf("expected a non-empty unified diff for the changed entry")
+	}
+	// The provenance behind the change must survive the wire round-trip —
+	// it's what `ctx diff`'s "why" line prints.
+	changedEntry := diffResult.Entries[0]
+	if changedEntry.SourceRevisionA == "" || changedEntry.SourceRevisionB == "" || changedEntry.SourceRevisionA == changedEntry.SourceRevisionB {
+		t.Fatalf("diff provenance lost over the wire: %q vs %q", changedEntry.SourceRevisionA, changedEntry.SourceRevisionB)
+	}
+	if changedEntry.ObservedAtA.IsZero() || changedEntry.ObservedAtB.IsZero() {
+		t.Fatalf("diff observed_at lost over the wire: %+v", changedEntry)
 	}
 
 	replayResult, err := c.Replay(ctx, "run-a")
