@@ -1,0 +1,25 @@
+{
+  "name": "ctx-langgraph-example",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LangGraph.js example: mount ctx:// resources in a graph node, record the manifest id in the checkpoint, replay it byte-for-byte later.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/run.js",
+    "replay": "node dist/replay.js"
+  },
+  "dependencies": {
+    "@ctx/sdk": "file:../../sdk/typescript",
+    "@langchain/core": "1.2.9",
+    "@langchain/langgraph": "1.4.12",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "typescript": "5.9.3"
+  }
+}
