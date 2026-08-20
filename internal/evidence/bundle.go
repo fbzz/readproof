@@ -91,7 +91,10 @@ type Merkle struct {
 type Entry struct {
 	Position int    `json:"position"`
 	URI      string `json:"uri"`
-	// TODO(WP-A): emit the manifest entry's `ref` here as `Ref string` with tag `json:"ref,omitempty"` once manifest.Entry carries it (descriptive only — it must not change the Merkle leaf).
+	// Ref is the "@<tag>" the entry was mounted by ("" for a plain URI).
+	// Descriptive only — it is deliberately NOT part of the Merkle leaf, so
+	// roots stay stable for manifests recorded before tags existed.
+	Ref               string            `json:"ref,omitempty"`
 	SnapshotID        string            `json:"snapshot_id"`
 	MaterializationID string            `json:"materialization_id"`
 	ContentHash       string            `json:"content_hash"`

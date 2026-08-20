@@ -107,6 +107,7 @@ func buildEntries(
 		e := Entry{
 			Position:          me.Position,
 			URI:               me.URI,
+			Ref:               me.Ref,
 			SnapshotID:        me.SnapshotID,
 			MaterializationID: me.MaterializationID,
 			ContentHash:       me.ContentHash,

@@ -53,7 +53,8 @@ export interface EvidenceMerkle {
 export interface EvidenceEntry {
   position: number;
   uri: string;
-  // TODO(WP-A): emit the manifest entry's `ref` here as `ref?: string` once ManifestEntry carries it (descriptive only — it must not change the merkle leaf).
+  /** The "@<tag>" the entry was mounted by; absent for a plain URI. Descriptive only — never part of the merkle leaf. */
+  ref?: string;
   snapshot_id: string;
   materialization_id: string;
   content_hash: string;
@@ -301,6 +302,7 @@ async function buildEntries(
     const entry: EvidenceEntry = {
       position: me.position,
       uri: me.uri,
+      ...(me.ref ? { ref: me.ref } : {}),
       snapshot_id: me.snapshot_id,
       materialization_id: me.materialization_id,
       content_hash: me.content_hash,

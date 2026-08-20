@@ -13,7 +13,7 @@ the rename, LICENSE choice (owner decision).
 
 ## WP-A — Model: tags, provenance-aware diff, strict replay  (core Go + SDK)
 
-- [ ] **Tags**: named, movable pointers `(resource_uri, tag) → snapshot_id`.
+- [x] **Tags**: named, movable pointers `(resource_uri, tag) → snapshot_id`.
   - `ctx tag set <uri> <tag> <snapshot-id>` / `ctx tag list <uri>` / `ctx tag rm <uri> <tag>`
   - URI suffix `ctx://ns/path@<tag>` accepted by `get`, `inspect`, `run mount`,
     `run --id`, `/v1/resolve`, `/v1/runs/mount`, SDK `resolve()`/`mount()`:
@@ -25,16 +25,16 @@ the rename, LICENSE choice (owner decision).
     `ref` column on `manifest_entries` and `run_mounts`). Both backends.
   - API: `PUT /v1/tags`, `GET /v1/tags?uri=`, `DELETE /v1/tags?uri=&tag=`;
     wire types; `client.Client` + local + remote; TS SDK `setTag/listTags/deleteTag`.
-- [ ] **Provenance-aware diff**: `diff.EntryDiff` carries each side's
+- [x] **Provenance-aware diff**: `diff.EntryDiff` carries each side's
   `SourceRevision`, `ObservedAt`, `Ref`; `ctx diff` prints a one-line "why"
   for changed entries (`source revision X → Y, observed T1 → T2`); wire +
   SDK types extended. HTTP adapter records `etag`/`last_modified` in
   snapshot provenance when present (verify; add if missing).
-- [ ] **Strict replay**: `ctx replay` exits non-zero on any mismatch or
+- [x] **Strict replay**: `ctx replay` exits non-zero on any mismatch or
   missing blob (verify current behavior; add `--strict` only if it doesn't).
-- [ ] Tests: storage (both backends), resolver tag path, API round-trip,
+- [x] Tests: storage (both backends), resolver tag path, API round-trip,
   e2e demo extended with a `@prod` tag mounted in a run; SDK tests.
-- [ ] Docs: README CLI/API sections, `docs/api.md`.
+- [x] Docs: README CLI/API sections, `docs/api.md`.
 
 ## WP-B — MCP server  (`ctx mcp`)
 
