@@ -425,6 +425,7 @@ func TestUnknownReferences(t *testing.T) {
 		{"unknown resource", "ctx_resolve", map[string]any{"uri": "ctx://demo/policies/missing"}, "not found"},
 		{"unknown tag", "ctx_resolve", map[string]any{"uri": demoURI + "@nope"}, "tag"},
 		{"malformed uri", "ctx_resolve", map[string]any{"uri": "not-a-uri"}, "ctx://"},
+		{"unknown run commit", "ctx_run_commit", map[string]any{"run_id": "run-nope"}, "not found"},
 		{"unknown manifest", "ctx_manifest", map[string]any{"target": "run-nope"}, "not found"},
 		{"unknown replay target", "ctx_replay", map[string]any{"target": "run-nope"}, "not found"},
 		{"unknown snapshot for tag", "ctx_tag_set", map[string]any{"uri": demoURI, "tag": "prod", "snapshot_id": "snap_nope"}, "not found"},

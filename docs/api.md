@@ -6,7 +6,8 @@ TypeScript SDK both decode it to text transparently. If `ctxd --api-key`
 is set, every route below except `/healthz` requires
 `Authorization: Bearer <key>`. Errors are `{"error": "<message>"}` with a
 4xx/5xx status — 404 for "not found", 400 for a bad request, 401 for a
-missing/wrong API key, 500 otherwise.
+missing/wrong API key, 409 for a conflict with existing state, 500
+otherwise.
 
 Source: [`internal/wire/wire.go`](../internal/wire/wire.go) (types) and
 [`internal/api/api.go`](../internal/api/api.go) (handlers).
@@ -210,6 +211,13 @@ that entry was mounted by and is omitted for a plain URI. `ref` is
 informational — replay and diff key off `snapshot_id`/`content_hash`, so
 moving a tag afterwards can never change what a committed manifest
 replays.
+
+A run has exactly one manifest, and only a run that `POST /v1/runs`
+started can be committed: `404` if `run_id` was never started, `409` if it
+was already committed (the message names the manifest it already has).
+Committing a started run with no mounts is legitimate and yields a
+manifest with an empty `entries` array — "this run read nothing" is a
+claim only a real run gets to make.
 
 ## `GET /v1/manifests?target=<manifest-id-or-run-id>`
 
