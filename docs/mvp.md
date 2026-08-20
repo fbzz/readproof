@@ -68,10 +68,10 @@ the rename, LICENSE choice (owner decision).
 
 ## WP-D — Evidence export  (`ctx evidence`)
 
-- [ ] `internal/evidence`: `Build(ctx, client, target, opts) → Bundle`,
+- [x] `internal/evidence`: `Build(ctx, client, target, opts) → Bundle`,
   composed purely from existing client calls (manifest, snapshots,
   resources, replay) — no new storage or wire types.
-- [ ] Bundle = in-toto Statement v1 shape: `_type`, `subject` =
+- [x] Bundle = in-toto Statement v1 shape: `_type`, `subject` =
   `{name: manifest_id, digest: {sha256: <merkle root>}}`, `predicateType`
   (placeholder URN, updated at rename), `predicate` = manifest + per-entry
   `{position, uri, ref, snapshot_id, content_hash, source_revision,
@@ -79,13 +79,13 @@ the rename, LICENSE choice (owner decision).
   resource definitions (redacted source config, policy) + replay
   verification + `generated_at` + exporter version; `--with-content` embeds
   base64 bytes per entry.
-- [ ] Merkle root: leaf = sha256(position ‖ uri ‖ content_hash), root over
+- [x] Merkle root: leaf = sha256(position ‖ uri ‖ content_hash), root over
   leaves in position order; documented, deterministic, tested.
-- [ ] `ctx evidence export <manifest-or-run> [--out f] [--with-content]`,
+- [x] `ctx evidence export <manifest-or-run> [--out f] [--with-content]`,
   `ctx evidence verify <bundle>` (recompute root; re-hash embedded content;
   if a store is reachable, cross-check via replay). Non-zero exit on failure.
-- [ ] TS SDK: `evidence(target, {withContent})` composed client-side.
-- [ ] `docs/evidence.md`: what the bundle proves / doesn't, EU AI Act Art.
+- [x] TS SDK: `evidence(target, {withContent})` composed client-side.
+- [x] `docs/evidence.md`: what the bundle proves / doesn't, EU AI Act Art.
   12 and SOC 2 "what did the agent see" framing, explicit not-legal-advice note.
 
 ## WP-E — LangGraph example  (`examples/langgraph-ts`)
