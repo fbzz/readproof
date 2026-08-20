@@ -42,6 +42,31 @@ jobs:
       - run: npm run build
       - run: node --test dist/test/*.test.js
 
+  langgraph-example:
+    name: LangGraph example build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: examples/langgraph-ts/package-lock.json
+
+      # The example consumes @ctx/sdk as a file: dependency, so the SDK's
+      # dist/ has to exist before its own build can resolve the types.
+      - name: Build the SDK the example depends on
+        working-directory: sdk/typescript
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build the example (build only — running it needs a live ctxd)
+        working-directory: examples/langgraph-ts
+        run: |
+          npm ci
+          npm run build
+
   integration:
     name: Docker Compose integration (Postgres + MinIO + ctxd)
     runs-on: ubuntu-latest

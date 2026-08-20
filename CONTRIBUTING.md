@@ -44,6 +44,9 @@ npm test
 
 - `go build ./... && go vet ./... && gofmt -l . && go test ./...` clean
 - `cd sdk/typescript && npm run build && npm test` clean
+- If you touched the SDK's public surface: `cd examples/langgraph-ts &&
+  npm ci && npm run build` clean too — it consumes `@ctx/sdk` as a `file:`
+  dependency, and CI builds it
 - If you touched `docker-compose.yml`, `Dockerfile`, or anything `ctxd`
   reads at startup: `docker compose up -d --build` from a clean state
   (`docker compose down -v` first) and confirm all services report
