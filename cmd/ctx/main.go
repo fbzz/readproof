@@ -40,6 +40,7 @@ func run() int {
 		newGetCmd(),
 		newInspectCmd(),
 		newHistoryCmd(),
+		newTagCmd(),
 		newRunCmd(),
 		newManifestCmd(),
 		newDiffCmd(),

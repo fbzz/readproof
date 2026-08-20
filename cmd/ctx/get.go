@@ -9,7 +9,7 @@ import (
 
 func newGetCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <uri>",
+		Use:   "get <uri>[@<tag>]",
 		Short: "Resolve a context resource and print its content",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -26,6 +26,9 @@ func newGetCmd() *cobra.Command {
 			}
 
 			fmt.Printf("uri:          %s\n", uri)
+			if result.Ref != "" {
+				fmt.Printf("ref:          %s\n", result.Ref)
+			}
 			fmt.Printf("snapshot:     %s\n", result.Snapshot.SnapshotID)
 			fmt.Printf("content_hash: %s\n", result.Snapshot.ContentHash)
 			fmt.Printf("freshness:    %s\n", freshnessLabel(result))

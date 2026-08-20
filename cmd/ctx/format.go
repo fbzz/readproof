@@ -25,6 +25,9 @@ func freshnessLabel(result resolver.ResolveResult) string {
 		return fmt.Sprintf("cached (age %s, policy %s)", age, result.Resource.Policy.Strategy)
 	case policy.DecisionUsePinned:
 		return fmt.Sprintf("pinned (snapshot %s)", result.Snapshot.SnapshotID)
+	case policy.DecisionUseTag:
+		return fmt.Sprintf("tagged (@%s -> snapshot %s, observed %s, policy not consulted)",
+			result.Ref, result.Snapshot.SnapshotID, result.Snapshot.ObservedAt.Format(time.RFC3339))
 	default:
 		return "unknown"
 	}

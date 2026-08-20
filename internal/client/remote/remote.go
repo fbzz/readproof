@@ -18,6 +18,7 @@ import (
 	"ctx/internal/resolver"
 	"ctx/internal/resource"
 	"ctx/internal/snapshot"
+	"ctx/internal/tag"
 	"ctx/internal/wire"
 )
 
@@ -84,6 +85,32 @@ func (c *Client) History(ctx context.Context, uri string) ([]snapshot.Snapshot, 
 		out[i] = wire.SnapshotFromWire(sw)
 	}
 	return out, nil
+}
+
+func (c *Client) SetTag(ctx context.Context, uri, name, snapshotID string) (tag.Tag, error) {
+	req := wire.SetTagRequest{URI: uri, Tag: name, SnapshotID: snapshotID}
+	var resp wire.TagWire
+	if err := c.doJSON(ctx, http.MethodPut, "/v1/tags", req, &resp); err != nil {
+		return tag.Tag{}, err
+	}
+	return wire.TagFromWire(resp), nil
+}
+
+func (c *Client) ListTags(ctx context.Context, uri string) ([]tag.Tag, error) {
+	var resp wire.TagListResponse
+	if err := c.doJSON(ctx, http.MethodGet, "/v1/tags?uri="+url.QueryEscape(uri), nil, &resp); err != nil {
+		return nil, err
+	}
+	out := make([]tag.Tag, len(resp.Tags))
+	for i, tw := range resp.Tags {
+		out[i] = wire.TagFromWire(tw)
+	}
+	return out, nil
+}
+
+func (c *Client) DeleteTag(ctx context.Context, uri, name string) error {
+	path := fmt.Sprintf("/v1/tags?uri=%s&tag=%s", url.QueryEscape(uri), url.QueryEscape(name))
+	return c.doJSON(ctx, http.MethodDelete, path, nil, nil)
 }
 
 func (c *Client) Resolve(ctx context.Context, uri string) (resolver.ResolveResult, error) {

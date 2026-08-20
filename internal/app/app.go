@@ -22,6 +22,7 @@ import (
 	"ctx/internal/storage/postgres"
 	"ctx/internal/storage/s3blob"
 	"ctx/internal/storage/sqlite"
+	"ctx/internal/tag"
 )
 
 // App is the composition root wiring every store, the resolver, the run
@@ -33,6 +34,7 @@ type App struct {
 	Materializations materialization.Store
 	Manifests        manifest.Store
 	Runs             run.RunStore
+	Tags             tag.Store
 	Blobs            blob.Store
 	Resolver         *resolver.Resolver
 	RunBuilder       *run.Builder
@@ -71,8 +73,9 @@ func Open(dataDir string) (*App, error) {
 	materializations := sqlite.NewMaterializationStore(db)
 	manifests := sqlite.NewManifestStore(db)
 	runs := sqlite.NewRunStore(db)
+	tags := sqlite.NewTagStore(db)
 
-	return wire(db, resources, snapshots, materializations, manifests, runs, blobStore), nil
+	return wire(db, resources, snapshots, materializations, manifests, runs, tags, blobStore), nil
 }
 
 // PostgresConfig selects the Postgres metadata backend for OpenPostgres.
@@ -118,8 +121,9 @@ func OpenPostgres(ctx context.Context, pg PostgresConfig, s3 S3Config) (*App, er
 	materializations := postgres.NewMaterializationStore(db)
 	manifests := postgres.NewManifestStore(db)
 	runs := postgres.NewRunStore(db)
+	tags := postgres.NewTagStore(db)
 
-	return wire(db, resources, snapshots, materializations, manifests, runs, blobStore), nil
+	return wire(db, resources, snapshots, materializations, manifests, runs, tags, blobStore), nil
 }
 
 // wire assembles the resolver, run builder, and replayer over an arbitrary
@@ -131,6 +135,7 @@ func wire(
 	materializations materialization.Store,
 	manifests manifest.Store,
 	runs run.RunStore,
+	tags tag.Store,
 	blobStore blob.Store,
 ) *App {
 	sources := source.NewRegistry()
@@ -142,6 +147,7 @@ func wire(
 		Resources:        resources,
 		Snapshots:        snapshots,
 		Materializations: materializations,
+		Tags:             tags,
 		Blobs:            blobStore,
 		Sources:          sources,
 		Materializer:     materialization.RawMaterializer{},
@@ -166,6 +172,7 @@ func wire(
 		Materializations: materializations,
 		Manifests:        manifests,
 		Runs:             runs,
+		Tags:             tags,
 		Blobs:            blobStore,
 		Resolver:         res,
 		RunBuilder:       builder,

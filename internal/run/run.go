@@ -13,6 +13,7 @@ import (
 	"ctx/internal/ids"
 	"ctx/internal/manifest"
 	"ctx/internal/resolver"
+	"ctx/internal/resource"
 	"ctx/internal/telemetry"
 )
 
@@ -36,8 +37,11 @@ type Run struct {
 
 // MountEntry is one resolved resource staged into an open Run before commit.
 type MountEntry struct {
-	Position          int
+	Position int
+	// URI is the bare ctx://<ns>/<path>; Ref is the "@<tag>" it was mounted
+	// by, or "" — see manifest.Entry.
 	URI               string
+	Ref               string
 	SnapshotID        string
 	MaterializationID string
 	ContentHash       string
@@ -73,10 +77,16 @@ func (b *Builder) Start(ctx context.Context, runID string) error {
 	return b.Runs.StartRun(ctx, runID)
 }
 
-// Mount resolves uri via the same pipeline `ctx get` uses, then stages it as
-// the next entry in the run.
-func (b *Builder) Mount(ctx context.Context, runID, uri string) (resolver.ResolveResult, error) {
-	result, err := b.Resolver.Resolve(ctx, uri)
+// Mount resolves rawURI via the same pipeline `ctx get` uses — including a
+// trailing "@<tag>" — then stages it as the next entry in the run. The
+// entry records the bare URI and the ref separately, so what the run
+// mounted stays readable without re-parsing the combined string.
+func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (resolver.ResolveResult, error) {
+	uri, ref, err := resource.SplitRef(rawURI)
+	if err != nil {
+		return resolver.ResolveResult{}, err
+	}
+	result, err := b.Resolver.ResolveRef(ctx, uri, ref)
 	if err != nil {
 		return resolver.ResolveResult{}, err
 	}
@@ -87,6 +97,7 @@ func (b *Builder) Mount(ctx context.Context, runID, uri string) (resolver.Resolv
 	entry := MountEntry{
 		Position:          len(mounts),
 		URI:               uri,
+		Ref:               ref,
 		SnapshotID:        result.Snapshot.SnapshotID,
 		MaterializationID: result.Materialization.MaterializationID,
 		ContentHash:       result.Materialization.ContentHash,
@@ -123,6 +134,7 @@ func (b *Builder) Commit(ctx context.Context, runID string) (manifest.Manifest, 
 		entries[i] = manifest.Entry{
 			Position:          m.Position,
 			URI:               m.URI,
+			Ref:               m.Ref,
 			SnapshotID:        m.SnapshotID,
 			MaterializationID: m.MaterializationID,
 			ContentHash:       m.ContentHash,

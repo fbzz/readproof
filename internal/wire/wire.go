@@ -18,6 +18,7 @@ import (
 	"ctx/internal/resource"
 	"ctx/internal/snapshot"
 	"ctx/internal/source"
+	"ctx/internal/tag"
 )
 
 type ErrorResponse struct {
@@ -218,18 +219,24 @@ func MaterializationFromWire(w MaterializationWire) materialization.Materializat
 // --- Resolve ---
 
 type ResolveRequest struct {
+	// URI may carry a trailing "@<tag>" (ctx://ns/path@prod), which resolves
+	// to exactly that tagged snapshot with no source fetch and no policy
+	// evaluation.
 	URI string `json:"uri"`
 }
 
 // ResolveResourceWire carries just enough of the Resource for a resolve
-// response — the URI and the policy that governed this resolution.
+// response — the URI, the tag ref it was resolved by (if any), and the
+// policy that governed this resolution.
 type ResolveResourceWire struct {
 	URI    string     `json:"uri"`
+	Ref    string     `json:"ref,omitempty"`
 	Policy PolicyWire `json:"policy"`
 }
 
 type FreshnessWire struct {
-	// Status matches policy.Decision.String(): "fetch" | "use_current" | "use_pinned".
+	// Status matches policy.Decision.String(): "fetch" | "use_current" |
+	// "use_pinned" | "use_tag".
 	Status     string  `json:"status"`
 	AgeSeconds float64 `json:"age_seconds"`
 }
@@ -245,7 +252,7 @@ type ResolveResponse struct {
 
 func ResolveResultToWire(result resolver.ResolveResult, now time.Time) ResolveResponse {
 	return ResolveResponse{
-		Resource:        ResolveResourceWire{URI: result.Resource.URI, Policy: PolicyToWire(result.Resource.Policy)},
+		Resource:        ResolveResourceWire{URI: result.Resource.URI, Ref: result.Ref, Policy: PolicyToWire(result.Resource.Policy)},
 		Snapshot:        SnapshotToWire(result.Snapshot),
 		Materialization: MaterializationToWire(result.Materialization),
 		Freshness: FreshnessWire{
@@ -263,6 +270,8 @@ func ResolveResponseToResult(w ResolveResponse) resolver.ResolveResult {
 		decision = policy.DecisionUseCurrent
 	case policy.DecisionUsePinned.String():
 		decision = policy.DecisionUsePinned
+	case policy.DecisionUseTag.String():
+		decision = policy.DecisionUseTag
 	default:
 		decision = policy.DecisionFetch
 	}
@@ -272,14 +281,17 @@ func ResolveResponseToResult(w ResolveResponse) resolver.ResolveResult {
 		Materialization: MaterializationFromWire(w.Materialization),
 		Content:         w.Content,
 		Decision:        decision,
+		Ref:             w.Resource.Ref,
 	}
 }
 
 // --- Manifest ---
 
 type ManifestEntryWire struct {
-	Position          int    `json:"position"`
-	URI               string `json:"uri"`
+	Position int    `json:"position"`
+	URI      string `json:"uri"`
+	// Ref is the "@<tag>" this entry was mounted by, absent for a plain URI.
+	Ref               string `json:"ref,omitempty"`
 	SnapshotID        string `json:"snapshot_id"`
 	MaterializationID string `json:"materialization_id"`
 	ContentHash       string `json:"content_hash"`
@@ -296,7 +308,7 @@ func ManifestToWire(m manifest.Manifest) ManifestWire {
 	entries := make([]ManifestEntryWire, len(m.Entries))
 	for i, e := range m.Entries {
 		entries[i] = ManifestEntryWire{
-			Position: e.Position, URI: e.URI, SnapshotID: e.SnapshotID,
+			Position: e.Position, URI: e.URI, Ref: e.Ref, SnapshotID: e.SnapshotID,
 			MaterializationID: e.MaterializationID, ContentHash: e.ContentHash,
 		}
 	}
@@ -307,7 +319,7 @@ func ManifestFromWire(w ManifestWire) manifest.Manifest {
 	entries := make([]manifest.Entry, len(w.Entries))
 	for i, e := range w.Entries {
 		entries[i] = manifest.Entry{
-			Position: e.Position, URI: e.URI, SnapshotID: e.SnapshotID,
+			Position: e.Position, URI: e.URI, Ref: e.Ref, SnapshotID: e.SnapshotID,
 			MaterializationID: e.MaterializationID, ContentHash: e.ContentHash,
 		}
 	}
@@ -322,12 +334,15 @@ type RunStartRequest struct {
 
 type RunMountRequest struct {
 	RunID string `json:"run_id"`
-	URI   string `json:"uri"`
+	// URI may carry a trailing "@<tag>", exactly as in ResolveRequest.
+	URI string `json:"uri"`
 }
 
 type RunMountResponse struct {
-	Position int             `json:"position"`
-	Resolve  ResolveResponse `json:"resolve"`
+	Position int `json:"position"`
+	// Resolve.resource.ref carries the tag this mount was pinned to, and is
+	// what the manifest entry's "ref" will hold after commit.
+	Resolve ResolveResponse `json:"resolve"`
 }
 
 type RunCommitRequest struct {
@@ -341,7 +356,16 @@ type DiffEntryWire struct {
 	Status      string `json:"status"`
 	SnapshotIDA string `json:"snapshot_id_a,omitempty"`
 	SnapshotIDB string `json:"snapshot_id_b,omitempty"`
-	UnifiedDiff string `json:"unified_diff,omitempty"`
+	// Per-side provenance: why the resolved bytes differ. Only populated for
+	// a side whose manifest actually contains the URI (omitzero drops the
+	// other side's zero timestamp rather than emitting year 1).
+	SourceRevisionA string    `json:"source_revision_a,omitempty"`
+	SourceRevisionB string    `json:"source_revision_b,omitempty"`
+	ObservedAtA     time.Time `json:"observed_at_a,omitzero"`
+	ObservedAtB     time.Time `json:"observed_at_b,omitzero"`
+	RefA            string    `json:"ref_a,omitempty"`
+	RefB            string    `json:"ref_b,omitempty"`
+	UnifiedDiff     string    `json:"unified_diff,omitempty"`
 }
 
 type DiffResponse struct {
@@ -355,7 +379,11 @@ func DiffResultToWire(r diff.Result) DiffResponse {
 	for i, e := range r.Entries {
 		entries[i] = DiffEntryWire{
 			URI: e.URI, Status: string(e.Status),
-			SnapshotIDA: e.SnapshotIDA, SnapshotIDB: e.SnapshotIDB, UnifiedDiff: e.UnifiedDiff,
+			SnapshotIDA: e.SnapshotIDA, SnapshotIDB: e.SnapshotIDB,
+			SourceRevisionA: e.SourceRevisionA, SourceRevisionB: e.SourceRevisionB,
+			ObservedAtA: e.ObservedAtA, ObservedAtB: e.ObservedAtB,
+			RefA: e.RefA, RefB: e.RefB,
+			UnifiedDiff: e.UnifiedDiff,
 		}
 	}
 	return DiffResponse{ManifestA: ManifestToWire(r.ManifestA), ManifestB: ManifestToWire(r.ManifestB), Entries: entries}
@@ -366,7 +394,11 @@ func DiffResponseToResult(w DiffResponse) diff.Result {
 	for i, e := range w.Entries {
 		entries[i] = diff.EntryDiff{
 			URI: e.URI, Status: diff.Status(e.Status),
-			SnapshotIDA: e.SnapshotIDA, SnapshotIDB: e.SnapshotIDB, UnifiedDiff: e.UnifiedDiff,
+			SnapshotIDA: e.SnapshotIDA, SnapshotIDB: e.SnapshotIDB,
+			SourceRevisionA: e.SourceRevisionA, SourceRevisionB: e.SourceRevisionB,
+			ObservedAtA: e.ObservedAtA, ObservedAtB: e.ObservedAtB,
+			RefA: e.RefA, RefB: e.RefB,
+			UnifiedDiff: e.UnifiedDiff,
 		}
 	}
 	return diff.Result{ManifestA: ManifestFromWire(w.ManifestA), ManifestB: ManifestFromWire(w.ManifestB), Entries: entries}
@@ -411,6 +443,35 @@ func ReplayResponseToResult(w ReplayResponse) replay.Result {
 		}
 	}
 	return replay.Result{Manifest: ManifestFromWire(w.Manifest), Entries: entries}
+}
+
+// --- Tags ---
+
+type TagWire struct {
+	URI        string    `json:"uri"`
+	Tag        string    `json:"tag"`
+	SnapshotID string    `json:"snapshot_id"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func TagToWire(t tag.Tag) TagWire {
+	return TagWire{URI: t.ResourceURI, Tag: t.Name, SnapshotID: t.SnapshotID, UpdatedAt: t.UpdatedAt}
+}
+
+func TagFromWire(w TagWire) tag.Tag {
+	return tag.Tag{ResourceURI: w.URI, Name: w.Tag, SnapshotID: w.SnapshotID, UpdatedAt: w.UpdatedAt}
+}
+
+// SetTagRequest is the PUT /v1/tags body. It's an upsert: setting an
+// existing tag re-points it at SnapshotID.
+type SetTagRequest struct {
+	URI        string `json:"uri"`
+	Tag        string `json:"tag"`
+	SnapshotID string `json:"snapshot_id"`
+}
+
+type TagListResponse struct {
+	Tags []TagWire `json:"tags"`
 }
 
 // --- Resource list ---

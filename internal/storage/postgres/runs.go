@@ -63,9 +63,9 @@ func (s *RunStore) GetRun(ctx context.Context, runID string) (run.Run, error) {
 
 func (s *RunStore) AppendMount(ctx context.Context, runID string, e run.MountEntry) error {
 	_, err := s.DB.ExecContext(ctx, `
-		INSERT INTO run_mounts (run_id, position, uri, snapshot_id, materialization_id, content_hash)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
-		runID, e.Position, e.URI, e.SnapshotID, e.MaterializationID, e.ContentHash,
+		INSERT INTO run_mounts (run_id, position, uri, ref, snapshot_id, materialization_id, content_hash)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		runID, e.Position, e.URI, e.Ref, e.SnapshotID, e.MaterializationID, e.ContentHash,
 	)
 	if err != nil {
 		return fmt.Errorf("postgres: append mount: %w", err)
@@ -75,7 +75,7 @@ func (s *RunStore) AppendMount(ctx context.Context, runID string, e run.MountEnt
 
 func (s *RunStore) ListMounts(ctx context.Context, runID string) ([]run.MountEntry, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT position, uri, snapshot_id, materialization_id, content_hash
+		SELECT position, uri, ref, snapshot_id, materialization_id, content_hash
 		FROM run_mounts WHERE run_id = $1 ORDER BY position ASC`, runID)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: list mounts: %w", err)
@@ -85,7 +85,7 @@ func (s *RunStore) ListMounts(ctx context.Context, runID string) ([]run.MountEnt
 	var mounts []run.MountEntry
 	for rows.Next() {
 		var e run.MountEntry
-		if err := rows.Scan(&e.Position, &e.URI, &e.SnapshotID, &e.MaterializationID, &e.ContentHash); err != nil {
+		if err := rows.Scan(&e.Position, &e.URI, &e.Ref, &e.SnapshotID, &e.MaterializationID, &e.ContentHash); err != nil {
 			return nil, fmt.Errorf("postgres: scan mount: %w", err)
 		}
 		mounts = append(mounts, e)
