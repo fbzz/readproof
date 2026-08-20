@@ -2,7 +2,8 @@
 
 TypeScript SDK for [Ctx](../../README.md) — talks to a running `ctxd` over
 HTTP. Every method maps 1:1 to one of `ctxd`'s API endpoints; see the root
-README's "HTTP API" section for the full list.
+README's "HTTP API" section for the full list. `buildEvidence` is the one
+exception: it composes an evidence bundle client-side out of those calls.
 
 ## Install
 
@@ -44,27 +45,77 @@ const manifest = await run.commit();
 The run starts lazily on the first `mount()` — no separate setup call
 needed.
 
-### Registering a resource
+### Tags and `@tag` refs
+
+A tag is a named, movable pointer from a resource to one of its snapshots
+(`(uri, tag) → snapshot_id`). Names must match
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
 
 ```ts
-await ctx.registerResource({
-  uri: "ctx://acme/policies/refunds",
-  source: { kind: "github", github: { owner: "acme", repo: "company-docs", path: "policies/refunds.md", ref: "main" } },
-  policy: { strategy: "require_fresh" },
-});
+await ctx.setTag("ctx://acme/policies/refunds", "prod", policy.snapshot.id);
+await ctx.listTags("ctx://acme/policies/refunds");  // Tag[], sorted by name
+await ctx.deleteTag("ctx://acme/policies/refunds", "prod");
 ```
 
+`resolve()` and `run().mount()` both accept a trailing `@<tag>`, which
+delivers exactly that snapshot: **no source fetch, and the resource's
+freshness policy is not consulted.**
+
+```ts
+const pinned = await ctx.resolve("ctx://acme/policies/refunds@prod");
+pinned.freshness.status;   // "use_tag"
+pinned.resource.ref;       // "prod"
+
+await run.mount("ctx://acme/policies/refunds@prod");
+```
+
+An unknown tag throws a `CtxError` naming both the URI and the tag.
+Manifest entries record the bare `uri` plus the `ref` they were mounted by,
+so moving a tag afterwards can never change what a committed manifest
+replays.
+
 ### Diff and replay
+
+Diff entries carry per-side provenance — the *why* behind a change:
+`source_revision_a`/`_b`, `observed_at_a`/`_b` (RFC 3339), and
+`ref_a`/`_b` when a side was mounted by tag. Each field is present only for
+a side whose manifest contains that URI.
 
 ```ts
 const diff = await ctx.diff("run-a", "run-b");
 for (const entry of diff.entries) {
-  if (entry.status === "changed") console.log(entry.unified_diff);
+  if (entry.status !== "changed") continue;
+  console.log(entry.uri, entry.source_revision_a, "->", entry.source_revision_b);
+  console.log(entry.unified_diff);
 }
 
 const replay = await ctx.replay("run-a");
 console.log(replay.entries.every((e) => e.match)); // -> true
 ```
+
+### Evidence bundles
+
+`buildEvidence()` assembles an [in-toto
+Statement](../../docs/evidence.md) for a manifest id or run id, using only
+public SDK calls (`getManifest` / `getSnapshot` / `getResource` /
+`replay`). For the same manifest it produces the same Merkle root — and
+byte-identical JSON apart from `generated_at` / `verified_at` — as `ctx
+evidence export`, and `ctx evidence verify` accepts it.
+
+```ts
+import { Ctx, buildEvidence, encodeEvidence } from "@ctx/sdk";
+
+const bundle = await buildEvidence(ctx, "run-a", { withContent: true });
+console.log(bundle.subject[0].digest.sha256);   // the merkle root
+await fs.writeFile("bundle.json", encodeEvidence(bundle));
+```
+
+`withContent` embeds each entry's bytes as base64 in `content_b64`; without
+it the bundle is metadata-only. `merkleRoot(entries)` and
+`merkleLeaf(entry)` are exported separately if you only want to recompute a
+root. `replay()` hands back decoded text, so `content_b64` is re-encoded
+from UTF-8 — for a genuinely binary source, use the Go exporter, which
+carries raw bytes through.
 
 ## Development
 
@@ -81,6 +132,7 @@ npm run example   # build, then run examples/resolve.ts against $CTX_ENDPOINT (d
 ## Notes
 
 - No runtime dependencies — uses Node's global `fetch` (Node 18+).
+  `buildEvidence` additionally uses Node's built-in `node:crypto`.
 - `content` fields (resolve, replay) are decoded to UTF-8 text by the SDK;
   the wire format is base64, matching how binary-safe `[]byte` fields
   serialize on the Go side.
