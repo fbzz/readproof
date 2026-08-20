@@ -22,14 +22,16 @@ import (
 	"ctx/internal/resource"
 	"ctx/internal/snapshot"
 	"ctx/internal/tag"
+	"ctx/internal/version"
 )
 
 const (
 	defaultServerName = "ctx"
-	// defaultServerVersion tracks the exporter version in internal/evidence:
-	// both identify the Ctx build that produced a record, and letting them
-	// drift apart would make two answers to the same question.
-	defaultServerVersion = "0.2.0-dev"
+	// defaultServerVersion and the exporter version in internal/evidence
+	// both come from internal/version: they identify the Ctx build that
+	// produced a record, and letting them drift apart would make two
+	// answers to the same question.
+	defaultServerVersion = version.Version
 
 	// uriTemplate uses RFC 6570 reserved expansion ({+path}) because a Ctx
 	// path is multi-segment ("policies/refunds") and may carry a tag ref

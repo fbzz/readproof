@@ -1,0 +1,29 @@
+// Package version is the single source of truth for the Ctx version.
+//
+// Everything that stamps a version into something durable — the evidence
+// bundle's exporter field, the MCP server info, `ctx version` — reads it
+// from here. A record that says "produced by ctx 0.2.0" is only useful if
+// every producer agrees on what 0.2.0 means, and separate literals drift.
+package version
+
+// Version is the released version of this build. Bump it here, and only
+// here, at release time.
+const Version = "0.2.0"
+
+// Commit is the short git SHA this binary was built from. It is empty for
+// an ordinary `go build`/`go test` and set at release time with:
+//
+//	go build -ldflags "-X ctx/internal/version.Commit=$(git rev-parse --short HEAD)" ./cmd/ctx
+//
+// Keeping it out of Version means the version a bundle records stays
+// reproducible across builds of the same source.
+var Commit string
+
+// String is the human-facing build identity: "0.2.0", or "0.2.0+a1b2c3d"
+// when the commit was stamped in.
+func String() string {
+	if Commit == "" {
+		return Version
+	}
+	return Version + "+" + Commit
+}

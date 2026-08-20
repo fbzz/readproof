@@ -304,7 +304,7 @@ func handleRunCommit(a *app.App) http.HandlerFunc {
 		}
 		man, err := a.RunBuilder.Commit(r.Context(), req.RunID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, err)
+			writeDomainError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, wire.ManifestToWire(man))
@@ -380,6 +380,11 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		errors.Is(err, run.ErrNotFound),
 		errors.Is(err, tag.ErrNotFound):
 		writeError(w, http.StatusNotFound, err)
+	case errors.Is(err, run.ErrAlreadyCommitted):
+		// The run exists and the request is well-formed; it just lost the
+		// race (or repeated itself) against the commit that already
+		// produced this run's one manifest.
+		writeError(w, http.StatusConflict, err)
 	case errors.Is(err, tag.ErrInvalidName), errors.Is(err, tag.ErrSnapshotMismatch):
 		// The caller sent a well-formed request naming something that can
 		// never be valid — a bad tag name, or a snapshot of another

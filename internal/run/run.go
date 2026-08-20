@@ -18,8 +18,16 @@ import (
 	"ctx/internal/telemetry"
 )
 
-// ErrNotFound is returned by RunStore.GetRun when no Run matches.
+// ErrNotFound is returned by RunStore.GetRun, and by Builder.Commit, when
+// no Run matches.
 var ErrNotFound = errors.New("run: not found")
+
+// ErrAlreadyCommitted is returned by Builder.Commit for a run that already
+// has a manifest. A manifest is the immutable record of what one run saw,
+// so a run gets exactly one: committing twice would leave two manifests
+// claiming to be that record, and every later `ctx manifest run-a` /
+// `ctx replay run-a` picking between them arbitrarily.
+var ErrAlreadyCommitted = errors.New("run: already committed")
 
 type Status string
 
@@ -164,7 +172,12 @@ func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (result resol
 }
 
 // Commit builds and persists the immutable Manifest from all staged mounts,
-// preserving entry order by construction.
+// preserving entry order by construction. It fails with ErrNotFound for a
+// run that was never started and ErrAlreadyCommitted for one that already
+// has a manifest — committing an unknown run id used to succeed and hand
+// back an empty manifest, which is indistinguishable from "this agent
+// genuinely read nothing" and is the one answer a provenance record must
+// never invent.
 //
 // The ctx.run.commit span carries the Merkle root of the committed entries
 // — the same value `ctx evidence export` puts in the bundle's in-toto
@@ -182,6 +195,20 @@ func (b *Builder) Commit(ctx context.Context, runID string) (man manifest.Manife
 		}
 		span.End()
 	}()
+
+	existing, err := b.Runs.GetRun(ctx, runID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			err = fmt.Errorf("%w: %s", ErrNotFound, runID)
+		} else {
+			err = fmt.Errorf("run: get run: %w", err)
+		}
+		return manifest.Manifest{}, err
+	}
+	if existing.Status == StatusCommitted {
+		err = fmt.Errorf("%w: %s (manifest %s)", ErrAlreadyCommitted, runID, existing.ManifestID)
+		return manifest.Manifest{}, err
+	}
 
 	mounts, err := b.Runs.ListMounts(ctx, runID)
 	if err != nil {

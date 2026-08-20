@@ -15,6 +15,7 @@ import (
 	"ctx/internal/api"
 	"ctx/internal/app"
 	"ctx/internal/telemetry"
+	"ctx/internal/version"
 )
 
 func main() {
@@ -28,7 +29,15 @@ func main() {
 	s3Bucket := flag.String("s3-bucket", envOr("CTXD_S3_BUCKET", "ctx-blobs"), "S3-compatible bucket name (postgres mode only)")
 	s3UseSSL := flag.Bool("s3-use-ssl", envBool("CTXD_S3_USE_SSL", false), "use TLS for the S3-compatible endpoint (postgres mode only)")
 	apiKey := flag.String("api-key", os.Getenv("CTXD_API_KEY"), "if set, require this value as a Bearer token on every request except /healthz (off by default)")
+	showVersion := flag.Bool("version", false, "print the ctxd version and exit")
 	flag.Parse()
+
+	// `ctxd version` as well as `ctxd --version`: ctxd takes no positional
+	// arguments otherwise, and both spellings get typed.
+	if *showVersion || flag.Arg(0) == "version" {
+		fmt.Printf("ctxd %s\n", version.String())
+		return
+	}
 
 	ctx := context.Background()
 	shutdownTelemetry, err := telemetry.Init(ctx, "ctxd")

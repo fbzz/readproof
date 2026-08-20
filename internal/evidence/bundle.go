@@ -13,6 +13,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"ctx/internal/version"
 )
 
 const (
@@ -29,10 +31,11 @@ const (
 	PredicateType = "urn:ctx:evidence:v0.2"
 
 	// ExporterName / ExporterVersion identify the producer of the bundle
-	// format, not the Ctx deployment it was exported from. Single const so
-	// the version is bumped in exactly one place per implementation.
+	// format, not the Ctx deployment it was exported from — hence the plain
+	// version.Version rather than version.String(): two builds of the same
+	// source must export byte-identical bundles.
 	ExporterName    = "ctx"
-	ExporterVersion = "0.2.0-dev"
+	ExporterVersion = version.Version
 
 	// MerkleAlgorithm and MerkleLeafFormula are embedded in every bundle
 	// so a verifier can recompute the root without reading this source.
