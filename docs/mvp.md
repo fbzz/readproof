@@ -90,11 +90,11 @@ the rename, LICENSE choice (owner decision).
 
 ## WP-E — LangGraph example  (`examples/langgraph-ts`)
 
-- [ ] Graph with a node that `run.start/mount/commit`s `ctx://` policy docs,
+- [x] Graph with a node that `run.start/mount/commit`s `ctx://` policy docs,
   calls a model (fake in-memory model by default, real one if API key set),
   stores `ctx_manifest_id` in checkpoint metadata; a second script replays
   from a checkpoint's manifest id and asserts identical bytes.
-- [ ] Pinned deps; `npm run build` in CI (run needs `ctxd`); README.
+- [x] Pinned deps; README. (CI build step → WP-F)
 
 ## WP-F — Release polish
 
