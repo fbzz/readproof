@@ -55,9 +55,13 @@ status: [`docs/mvp.md`](docs/mvp.md).
   `buildEvidence()` / `encodeEvidence()` / `merkleRoot()` / `merkleLeaf()`
   — a client-side bundle with the same Merkle root as `ctx evidence
   export`, using only `node:crypto`.
-- **MCP server** (WP-B, landing): `ctx mcp` serves registered resources
-  (`resources/list`, `resources/read`) and Ctx operations as tools over
-  stdio, reusing `--data-dir` / `--server` / `--api-key`. See
+- **MCP server**: `ctx mcp` serves registered resources over stdio
+  (`resources/list`, `resources/read` via the template
+  `ctx://{namespace}/{+path}`, `@tag` honored, per-content `_meta` with
+  snapshot id / content hash / source revision / observed-at / decision)
+  and 13 tools (`ctx_resolve`, `ctx_run_*`, `ctx_manifest`, `ctx_diff`,
+  `ctx_replay`, `ctx_tag_*`, `ctx_evidence_export`, …), reusing
+  `--data-dir` / `--server` / `--api-key`. Official Go MCP SDK. See
   [`docs/mcp.md`](docs/mcp.md).
 - **LangGraph.js example** ([`examples/langgraph-ts`](examples/langgraph-ts)):
   a two-node graph that mounts `ctx://` resources in a node, records the

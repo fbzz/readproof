@@ -33,7 +33,7 @@ START ──▶ load_context ──▶ answer_question ──▶ END
 
 ## Prerequisites
 
-- Node 18+ and Go 1.22+.
+- Node 18+ and Go 1.26+.
 - **`ctxd` running on the host, in embedded mode.** The demo resources are
   `filesystem` sources pointing into this repo, so `ctxd` has to be able to
   see those paths — a Compose/Docker `ctxd` cannot (see the root README).

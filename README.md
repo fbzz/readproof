@@ -274,10 +274,13 @@ the store by replay (`--offline` skips that last part). Both exit non-zero
 on failure and work embedded or with `--server`. Format, Merkle rule, and
 what it does and doesn't prove: [`docs/evidence.md`](docs/evidence.md).
 
-**MCP.** `ctx mcp` runs a stdio MCP server exposing registered resources
-(`resources/list`, `resources/read`) and Ctx operations as tools, reusing
-the same `--data-dir` / `--server` / `--api-key` flags as every other
-command. Client configuration snippets: [`docs/mcp.md`](docs/mcp.md).
+**MCP.** `ctx mcp` runs a stdio MCP server: registered resources are
+readable `ctx://` resources (`@tag` honored; each read carries `_meta`
+with snapshot id, content hash, source revision, observed-at, decision),
+and resolve / runs / manifest / diff / replay / tags / evidence export are
+13 tools, reusing the same `--data-dir` / `--server` / `--api-key` flags
+as every other command. Claude Code, Claude Desktop, and Cursor config
+snippets: [`docs/mcp.md`](docs/mcp.md).
 
 ## HTTP API (`ctxd`)
 
