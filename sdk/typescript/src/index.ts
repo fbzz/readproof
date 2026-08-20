@@ -25,4 +25,5 @@ export type {
   Snapshot,
   SourceConfig,
   SourceKind,
+  Tag,
 } from "./types.js";

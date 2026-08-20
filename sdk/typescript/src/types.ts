@@ -75,8 +75,18 @@ export interface Materialization {
   created_at: string;
 }
 
+/** A named, movable pointer from a resource to one of its snapshots. */
+export interface Tag {
+  uri: string;
+  tag: string;
+  snapshot_id: string;
+  updated_at: string;
+}
+
 // FreshnessStatus matches policy.Decision.String() on the Go side.
-export type FreshnessStatus = "fetch" | "use_current" | "use_pinned";
+// "use_tag" is a `ctx://ns/path@tag` resolve: exactly that snapshot, no
+// source fetch, policy not consulted.
+export type FreshnessStatus = "fetch" | "use_current" | "use_pinned" | "use_tag";
 
 export interface Freshness {
   status: FreshnessStatus;
@@ -85,6 +95,8 @@ export interface Freshness {
 
 export interface ResolveResourceSummary {
   uri: string;
+  /** The "@<tag>" this resolve was pinned to; absent for a plain URI. */
+  ref?: string;
   policy: Policy;
 }
 
@@ -99,7 +111,9 @@ export interface ResolveResult {
 
 export interface ManifestEntry {
   position: number;
+  /** Always the bare ctx://ns/path — the tag, if any, is in `ref`. */
   uri: string;
+  ref?: string;
   snapshot_id: string;
   materialization_id: string;
   content_hash: string;
@@ -119,6 +133,16 @@ export interface DiffEntry {
   status: DiffStatus;
   snapshot_id_a?: string;
   snapshot_id_b?: string;
+  /**
+   * Per-side provenance — why the resolved bytes differ. Present only for a
+   * side whose manifest contains this URI; timestamps are RFC3339.
+   */
+  source_revision_a?: string;
+  source_revision_b?: string;
+  observed_at_a?: string;
+  observed_at_b?: string;
+  ref_a?: string;
+  ref_b?: string;
   unified_diff?: string;
 }
 

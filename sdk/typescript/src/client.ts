@@ -9,6 +9,7 @@ import type {
   Resource,
   ResolveResult,
   Snapshot,
+  Tag,
 } from "./types.js";
 
 export interface CtxOptions {
@@ -80,10 +81,36 @@ export class Ctx {
     this.fetchImpl = options.fetch ?? fetch;
   }
 
-  /** Resolve a context resource to its current content and metadata. */
+  /**
+   * Resolve a context resource to its current content and metadata.
+   *
+   * `uri` may carry a trailing `@<tag>` (`ctx://acme/policies/refunds@prod`),
+   * which delivers exactly that tagged snapshot: no source fetch, and the
+   * resource's freshness policy is not consulted
+   * (`freshness.status === "use_tag"`).
+   */
   async resolve(uri: string): Promise<ResolveResult> {
     const raw = await this.request<RawResolveResponse>("POST", "/v1/resolve", { uri });
     return decodeResolveResponse(raw);
+  }
+
+  /**
+   * Point `tag` at `snapshotId`, creating the tag or moving an existing one.
+   * The snapshot must belong to `uri`.
+   */
+  async setTag(uri: string, tag: string, snapshotId: string): Promise<Tag> {
+    return this.request<Tag>("PUT", "/v1/tags", { uri, tag, snapshot_id: snapshotId });
+  }
+
+  /** A resource's tags, sorted by name. */
+  async listTags(uri: string): Promise<Tag[]> {
+    const res = await this.request<{ tags: Tag[] }>("GET", `/v1/tags?uri=${encodeURIComponent(uri)}`);
+    return res.tags;
+  }
+
+  /** Delete a tag. The snapshot it pointed at is untouched. */
+  async deleteTag(uri: string, tag: string): Promise<void> {
+    await this.request<void>("DELETE", `/v1/tags?uri=${encodeURIComponent(uri)}&tag=${encodeURIComponent(tag)}`);
   }
 
   async registerResource(input: RegisterResourceInput): Promise<Resource> {
