@@ -26,3 +26,31 @@ export type {
   SourceConfig,
   SourceKind,
 } from "./types.js";
+export {
+  buildEvidence,
+  encodeEvidence,
+  merkleLeaf,
+  merkleRoot,
+  EVIDENCE_EXPORTER_NAME,
+  EVIDENCE_EXPORTER_VERSION,
+  EVIDENCE_MERKLE_ALGORITHM,
+  EVIDENCE_MERKLE_LEAF_FORMULA,
+  EVIDENCE_PREDICATE_TYPE,
+  EVIDENCE_STATEMENT_TYPE,
+} from "./evidence.js";
+export type {
+  BuildEvidenceOptions,
+  EvidenceBundle,
+  EvidenceDigest,
+  EvidenceEntry,
+  EvidenceExporter,
+  EvidenceMerkle,
+  EvidencePolicy,
+  EvidencePredicate,
+  EvidenceReplay,
+  EvidenceReplayEntry,
+  EvidenceResource,
+  EvidenceSource,
+  EvidenceSourceConfig,
+  EvidenceSubject,
+} from "./evidence.js";
