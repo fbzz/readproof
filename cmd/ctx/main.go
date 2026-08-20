@@ -44,6 +44,7 @@ func run() int {
 		newManifestCmd(),
 		newDiffCmd(),
 		newReplayCmd(),
+		newEvidenceCmd(),
 	)
 
 	ctx := context.Background()
