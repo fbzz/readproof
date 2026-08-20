@@ -83,22 +83,19 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 	}
 	ctx, span := telemetry.Tracer.Start(ctx, "ctx.resolve", trace.WithAttributes(spanAttrs...))
 	start := time.Now()
+	var parsed resource.URI
 	defer func() {
 		telemetry.RecordResolve(ctx, uri, time.Since(start).Seconds(), err)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 		} else {
-			span.SetAttributes(
-				attribute.String("ctx.snapshot.id", result.Snapshot.SnapshotID),
-				attribute.String("ctx.materialization.id", result.Materialization.MaterializationID),
-				attribute.String("ctx.freshness.status", result.Decision.String()),
-			)
+			span.SetAttributes(resolveAttrs(parsed.Namespace, result)...)
 		}
 		span.End()
 	}()
 
-	if _, err = resource.ParseURI(uri); err != nil {
+	if parsed, err = resource.ParseURI(uri); err != nil {
 		return ResolveResult{}, err
 	}
 
@@ -134,6 +131,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 		decision = policy.DecisionUseTag
 		// A tag ref is always served from stored bytes, never a fetch.
 		telemetry.RecordCacheResult(ctx, true)
+		telemetry.RecordTagResolve(ctx)
 	} else {
 		var current snapshot.Snapshot
 		hasCurrent := res.CurrentSnapshotID != ""
@@ -330,6 +328,40 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 		Ref:             ref,
 	}
 	return result, nil
+}
+
+// resolveAttrs is everything the ctx.resolve span can only know once the
+// result exists. It is the span an observability backend keys off to answer
+// "what exactly did the agent read?", so it carries the identity of the
+// bytes (hashes, ids, source revision, observation time) and never the
+// bytes: content is what Ctx stores, not what it exports to telemetry.
+//
+// Two naming notes, both deliberate:
+//   - ctx.policy.decision and ctx.freshness.status always hold the same
+//     value. decision is the canonical name going forward (it also covers
+//     use_tag, which bypasses freshness evaluation entirely); status is kept
+//     because the v0.1 README documents it and dashboards may already query
+//     it. Neither will change meaning.
+//   - gen_ai.data_source.id is the OpenTelemetry GenAI semantic-convention
+//     attribute for the data source a retrieval read from. Ctx maps it to
+//     ctx://<namespace>, the coarsest stable identifier of the corpus — the
+//     per-document identity is on ctx.resource.uri/ctx.snapshot.* — so GenAI
+//     tooling can group Ctx retrievals alongside vector-store ones.
+func resolveAttrs(namespace string, result ResolveResult) []attribute.KeyValue {
+	decision := result.Decision.String()
+	return []attribute.KeyValue{
+		attribute.String("ctx.snapshot.id", result.Snapshot.SnapshotID),
+		attribute.String("ctx.snapshot.content_hash", result.Snapshot.ContentHash),
+		attribute.String("ctx.snapshot.source_revision", result.Snapshot.SourceRevision),
+		attribute.String("ctx.snapshot.observed_at", result.Snapshot.ObservedAt.UTC().Format(time.RFC3339)),
+		attribute.String("ctx.materialization.id", result.Materialization.MaterializationID),
+		attribute.Int64("ctx.materialization.bytes", result.Materialization.Bytes),
+		attribute.String("ctx.source.type", string(result.Resource.SourceConfig.Kind)),
+		attribute.String("ctx.policy.strategy", string(result.Resource.Policy.Strategy)),
+		attribute.String("ctx.policy.decision", decision),
+		attribute.String("ctx.freshness.status", decision),
+		attribute.String("gen_ai.data_source.id", "ctx://"+namespace),
+	}
 }
 
 // resolveTagged loads the snapshot a tag names, plus its stored bytes. The

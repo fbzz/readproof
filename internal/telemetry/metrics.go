@@ -41,6 +41,8 @@ var (
 	snapshotCreatedTotal        = mustCounter("ctx_snapshot_created_total", "Snapshot rows created")
 	materializationCreatedTotal = mustCounter("ctx_materialization_created_total", "Materialization rows created")
 	manifestCreatedTotal        = mustCounter("ctx_manifest_created_total", "Manifests created")
+	runCommittedTotal           = mustCounter("ctx_run_committed_total", "Runs committed to a manifest")
+	tagResolveTotal             = mustCounter("ctx_tag_resolve_total", "Resolves pinned to a tag ref")
 )
 
 func RecordResolve(ctx context.Context, uri string, durationSeconds float64, err error) {
@@ -79,4 +81,18 @@ func RecordMaterializationCreated(ctx context.Context) {
 
 func RecordManifestCreated(ctx context.Context) {
 	manifestCreatedTotal.Add(ctx, 1)
+}
+
+// RecordRunCommitted counts one run reaching a committed manifest. Run ids
+// are caller-supplied and unbounded, so they stay off the metric and live
+// only on the ctx.run.commit span, where cardinality is not a cost.
+func RecordRunCommitted(ctx context.Context) {
+	runCommittedTotal.Add(ctx, 1)
+}
+
+// RecordTagResolve counts one resolve served from a tag ref. The tag name
+// is deliberately not a label: tags are user-named and unbounded, and the
+// per-tag breakdown belongs in traces.
+func RecordTagResolve(ctx context.Context) {
+	tagResolveTotal.Add(ctx, 1)
 }

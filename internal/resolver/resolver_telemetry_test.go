@@ -4,8 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
@@ -17,73 +20,148 @@ import (
 	fsSource "ctx/internal/source/filesystem"
 	"ctx/internal/storage/blob"
 	"ctx/internal/storage/sqlite"
+	"ctx/internal/tag"
 	"ctx/internal/telemetry"
 )
 
-func TestResolveEmitsExpectedSpans(t *testing.T) {
+// fixtureContent is the demo's refund policy. Tests below assert these
+// bytes never reach a span — see TestSpansNeverCarryContent.
+const fixtureContent = "Products can be refunded within 30 days.\n"
+
+// recordSpans installs an in-memory span exporter for the duration of the
+// test and returns a flush-and-collect function. Init is not usable here:
+// it needs an OTLP endpoint, which would export off-box from a unit test.
+func recordSpans(t *testing.T) func() tracetest.SpanStubs {
+	t.Helper()
 	exporter := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
-	original := telemetry.Tracer
-	telemetry.Tracer = tp.Tracer("test")
-	t.Cleanup(func() { telemetry.Tracer = original })
+	t.Cleanup(telemetry.SetTracerProvider(tp))
+	return func() tracetest.SpanStubs {
+		if err := tp.ForceFlush(context.Background()); err != nil {
+			t.Fatalf("flush spans: %v", err)
+		}
+		return exporter.GetSpans()
+	}
+}
 
-	res, _ := newTestResolver(t)
-	ctx := context.Background()
+func findSpan(t *testing.T, spans tracetest.SpanStubs, name string) tracetest.SpanStub {
+	t.Helper()
+	for _, s := range spans {
+		if s.Name == name {
+			return s
+		}
+	}
+	t.Fatalf("no %q span found, spans seen: %v", name, spanNames(spans))
+	return tracetest.SpanStub{}
+}
 
+func spanNames(spans tracetest.SpanStubs) []string {
+	names := make([]string, 0, len(spans))
+	for _, s := range spans {
+		names = append(names, s.Name)
+	}
+	return names
+}
+
+func hasSpan(spans tracetest.SpanStubs, name string) bool {
+	for _, s := range spans {
+		if s.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func attrs(s tracetest.SpanStub) map[attribute.Key]attribute.Value {
+	out := make(map[attribute.Key]attribute.Value, len(s.Attributes))
+	for _, kv := range s.Attributes {
+		out[kv.Key] = kv.Value
+	}
+	return out
+}
+
+func wantString(t *testing.T, s tracetest.SpanStub, key, want string) {
+	t.Helper()
+	v, ok := attrs(s)[attribute.Key(key)]
+	if !ok {
+		t.Errorf("span %q is missing attribute %q", s.Name, key)
+		return
+	}
+	if got := v.AsString(); got != want {
+		t.Errorf("span %q attribute %q = %q, want %q", s.Name, key, got, want)
+	}
+}
+
+// newFixtureResolver registers one filesystem-backed resource holding
+// fixtureContent and returns the resolver, its URI and the fixture path.
+func newFixtureResolver(t *testing.T, strategy policy.Strategy) (*resolver.Resolver, string, string) {
+	t.Helper()
 	dir := t.TempDir()
-	filePath := filepath.Join(dir, "refunds.md")
-	if err := os.WriteFile(filePath, []byte("Products can be refunded within 30 days.\n"), 0o644); err != nil {
+
+	db, err := sqlite.Open(filepath.Join(dir, "ctx.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	if err := sqlite.Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	sources := source.NewRegistry()
+	sources.Register(source.KindFilesystem, fsSource.New())
+	res := &resolver.Resolver{
+		Resources:        sqlite.NewResourceStore(db),
+		Snapshots:        sqlite.NewSnapshotStore(db),
+		Materializations: sqlite.NewMaterializationStore(db),
+		Tags:             sqlite.NewTagStore(db),
+		Blobs:            blob.NewLocalStore(filepath.Join(dir, "blobs")),
+		Sources:          sources,
+		Materializer:     materialization.RawMaterializer{},
+	}
+
+	fixturePath := filepath.Join(t.TempDir(), "refunds.md")
+	if err := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
 
 	uri := "ctx://demo/policies/refunds"
-	if err := res.Resources.Create(ctx, resource.Resource{
+	if err := res.Resources.Create(context.Background(), resource.Resource{
 		URI:       uri,
 		Namespace: "demo",
 		Path:      "policies/refunds",
 		SourceConfig: source.Config{
 			Kind:       source.KindFilesystem,
-			Filesystem: &source.FilesystemConfig{Path: filePath},
+			Filesystem: &source.FilesystemConfig{Path: fixturePath},
 		},
-		Policy: policy.Policy{Strategy: policy.StrategyRequireFresh},
+		Policy: policy.Policy{Strategy: strategy},
 	}); err != nil {
 		t.Fatalf("create resource: %v", err)
 	}
+	return res, uri, fixturePath
+}
 
-	if _, err := res.Resolve(ctx, uri); err != nil {
+func TestResolveEmitsExpectedSpans(t *testing.T) {
+	collect := recordSpans(t)
+	res, uri, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
+
+	if _, err := res.Resolve(context.Background(), uri); err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
-	if err := tp.ForceFlush(ctx); err != nil {
-		t.Fatalf("flush: %v", err)
-	}
-
-	spans := exporter.GetSpans()
-	names := make(map[string]int)
-	for _, s := range spans {
-		names[s.Name]++
-	}
+	spans := collect()
 
 	for _, want := range []string{
 		"ctx.resolve", "ctx.resource.lookup", "ctx.policy.evaluate",
 		"ctx.source.fetch", "ctx.snapshot.create", "ctx.materialize",
 	} {
-		if names[want] == 0 {
-			t.Errorf("expected a %q span, spans seen: %v", want, names)
+		if !hasSpan(spans, want) {
+			t.Errorf("expected a %q span, spans seen: %v", want, spanNames(spans))
 		}
 	}
 
 	// The root ctx.resolve span must be the parent of every child span
 	// (proving pipeline stages are correctly nested, not siblings of
 	// whatever the caller's ambient span happened to be).
-	var root tracetest.SpanStub
-	for _, s := range spans {
-		if s.Name == "ctx.resolve" {
-			root = s
-		}
-	}
-	if root.Name == "" {
-		t.Fatalf("no ctx.resolve root span found")
-	}
+	root := findSpan(t, spans, "ctx.resolve")
 	for _, s := range spans {
 		if s.Name == "ctx.resolve" {
 			continue
@@ -94,78 +172,181 @@ func TestResolveEmitsExpectedSpans(t *testing.T) {
 	}
 }
 
-func TestResolveCacheHitEmitsCacheLookupSpan(t *testing.T) {
-	exporter := tracetest.NewInMemoryExporter()
-	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
-	original := telemetry.Tracer
-	telemetry.Tracer = tp.Tracer("test")
-	t.Cleanup(func() { telemetry.Tracer = original })
+// TestResolveSpanCarriesResultAttributes pins the ctx.resolve attribute set
+// an observability backend correlates on — identity of the bytes, never the
+// bytes — including the GenAI semconv data-source mapping.
+func TestResolveSpanCarriesResultAttributes(t *testing.T) {
+	collect := recordSpans(t)
+	res, uri, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
 
-	dir := t.TempDir()
-	db, err := sqlite.Open(filepath.Join(dir, "ctx.db"))
+	result, err := res.Resolve(context.Background(), uri)
 	if err != nil {
-		t.Fatalf("open db: %v", err)
+		t.Fatalf("resolve: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
-	if err := sqlite.Migrate(db); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	blobStore := blob.NewLocalStore(filepath.Join(dir, "blobs"))
-	sources := source.NewRegistry()
-	sources.Register(source.KindFilesystem, fsSource.New())
-	res := &resolver.Resolver{
-		Resources:        sqlite.NewResourceStore(db),
-		Snapshots:        sqlite.NewSnapshotStore(db),
-		Materializations: sqlite.NewMaterializationStore(db),
-		Blobs:            blobStore,
-		Sources:          sources,
-		Materializer:     materialization.RawMaterializer{},
+	span := findSpan(t, collect(), "ctx.resolve")
+
+	if result.Snapshot.SourceRevision == "" {
+		t.Fatal("fixture produced an empty source revision; the assertion below would be vacuous")
 	}
 
-	fixtureDir := t.TempDir()
-	filePath := filepath.Join(fixtureDir, "refunds.md")
-	if err := os.WriteFile(filePath, []byte("Products can be refunded within 30 days.\n"), 0o644); err != nil {
-		t.Fatalf("write fixture: %v", err)
-	}
+	wantString(t, span, "ctx.resource.uri", uri)
+	wantString(t, span, "ctx.snapshot.id", result.Snapshot.SnapshotID)
+	wantString(t, span, "ctx.snapshot.content_hash", result.Snapshot.ContentHash)
+	wantString(t, span, "ctx.snapshot.source_revision", result.Snapshot.SourceRevision)
+	wantString(t, span, "ctx.materialization.id", result.Materialization.MaterializationID)
+	wantString(t, span, "ctx.source.type", string(source.KindFilesystem))
+	wantString(t, span, "ctx.policy.strategy", string(policy.StrategyRequireFresh))
+	wantString(t, span, "ctx.policy.decision", "fetch")
+	// Kept alongside decision for the dashboards v0.1 documented.
+	wantString(t, span, "ctx.freshness.status", "fetch")
+	wantString(t, span, "gen_ai.data_source.id", "ctx://demo")
 
+	a := attrs(span)
+	if _, ok := a["ctx.resource.ref"]; ok {
+		t.Error("a plain (untagged) resolve must not set ctx.resource.ref")
+	}
+	if got, want := a["ctx.materialization.bytes"].AsInt64(), result.Materialization.Bytes; got != want {
+		t.Errorf("ctx.materialization.bytes = %d, want %d", got, want)
+	}
+	if got, want := a["ctx.materialization.bytes"].AsInt64(), int64(len(fixtureContent)); got != want {
+		t.Errorf("ctx.materialization.bytes = %d, want %d (the fixture's length)", got, want)
+	}
+	observedAt, ok := a["ctx.snapshot.observed_at"]
+	if !ok {
+		t.Fatal("ctx.resolve is missing ctx.snapshot.observed_at")
+	}
+	parsed, err := time.Parse(time.RFC3339, observedAt.AsString())
+	if err != nil {
+		t.Fatalf("ctx.snapshot.observed_at %q is not RFC3339: %v", observedAt.AsString(), err)
+	}
+	if !parsed.Equal(result.Snapshot.ObservedAt.Truncate(time.Second)) {
+		t.Errorf("ctx.snapshot.observed_at = %s, want %s", parsed, result.Snapshot.ObservedAt)
+	}
+}
+
+// A tag resolve names one exact snapshot: policy is never consulted, so
+// there must be no ctx.policy.evaluate span and the decision is use_tag.
+func TestTagResolveSpanAttributes(t *testing.T) {
+	res, uri, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
 	ctx := context.Background()
-	uri := "ctx://demo/policies/refunds"
-	if err := res.Resources.Create(ctx, resource.Resource{
-		URI:       uri,
-		Namespace: "demo",
-		Path:      "policies/refunds",
-		SourceConfig: source.Config{
-			Kind:       source.KindFilesystem,
-			Filesystem: &source.FilesystemConfig{Path: filePath},
-		},
-		Policy: policy.Policy{Strategy: policy.StrategyAllowStale, MaxAge: 0}, // no TTL -> always reuse once cached
-	}); err != nil {
-		t.Fatalf("create resource: %v", err)
+
+	seed, err := res.Resolve(ctx, uri)
+	if err != nil {
+		t.Fatalf("seed resolve: %v", err)
 	}
+	if err := res.Tags.Set(ctx, tag.Tag{ResourceURI: uri, Name: "prod", SnapshotID: seed.Snapshot.SnapshotID}); err != nil {
+		t.Fatalf("set tag: %v", err)
+	}
+
+	collect := recordSpans(t)
+	result, err := res.Resolve(ctx, uri+"@prod")
+	if err != nil {
+		t.Fatalf("tagged resolve: %v", err)
+	}
+	spans := collect()
+	span := findSpan(t, spans, "ctx.resolve")
+
+	wantString(t, span, "ctx.resource.uri", uri)
+	wantString(t, span, "ctx.resource.ref", "prod")
+	wantString(t, span, "ctx.policy.decision", "use_tag")
+	wantString(t, span, "ctx.freshness.status", "use_tag")
+	wantString(t, span, "ctx.snapshot.id", seed.Snapshot.SnapshotID)
+	wantString(t, span, "ctx.snapshot.content_hash", result.Snapshot.ContentHash)
+	wantString(t, span, "gen_ai.data_source.id", "ctx://demo")
+
+	if hasSpan(spans, "ctx.policy.evaluate") {
+		t.Error("a tag resolve must not evaluate policy")
+	}
+	if hasSpan(spans, "ctx.source.fetch") {
+		t.Error("a tag resolve must never contact the source")
+	}
+	if !hasSpan(spans, "ctx.tag.lookup") {
+		t.Errorf("expected a ctx.tag.lookup span, spans seen: %v", spanNames(spans))
+	}
+	tagSpan := findSpan(t, spans, "ctx.tag.lookup")
+	wantString(t, tagSpan, "ctx.resource.ref", "prod")
+}
+
+func TestResolveCacheHitEmitsCacheLookupSpan(t *testing.T) {
+	res, uri, _ := newFixtureResolver(t, policy.StrategyAllowStale) // no TTL -> always reuse once cached
+	ctx := context.Background()
 
 	if _, err := res.Resolve(ctx, uri); err != nil {
 		t.Fatalf("resolve 1: %v", err)
 	}
-	exporter.Reset()
 
+	collect := recordSpans(t)
 	if _, err := res.Resolve(ctx, uri); err != nil {
 		t.Fatalf("resolve 2: %v", err)
 	}
-	if err := tp.ForceFlush(ctx); err != nil {
-		t.Fatalf("flush: %v", err)
-	}
+	spans := collect()
 
-	spans := exporter.GetSpans()
-	found := false
-	for _, s := range spans {
-		if s.Name == "ctx.cache.lookup" {
-			found = true
-		}
-		if s.Name == "ctx.source.fetch" {
-			t.Errorf("did not expect a ctx.source.fetch span on a cache hit")
+	if !hasSpan(spans, "ctx.cache.lookup") {
+		t.Error("expected a ctx.cache.lookup span on the second (cached) resolve")
+	}
+	if hasSpan(spans, "ctx.source.fetch") {
+		t.Error("did not expect a ctx.source.fetch span on a cache hit")
+	}
+	wantString(t, findSpan(t, spans, "ctx.resolve"), "ctx.policy.decision", "use_current")
+}
+
+// A failed resolve must still be a legible span: the error is recorded and
+// the status is Error, so a trace shows the failure rather than a stub.
+func TestResolveRecordsErrorOnSpan(t *testing.T) {
+	collect := recordSpans(t)
+	res, _, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
+
+	if _, err := res.Resolve(context.Background(), "ctx://demo/does/not/exist"); err == nil {
+		t.Fatal("expected an error resolving an unregistered uri")
+	}
+	span := findSpan(t, collect(), "ctx.resolve")
+
+	if span.Status.Code.String() != "Error" {
+		t.Errorf("ctx.resolve status = %s, want Error", span.Status.Code)
+	}
+	if len(span.Events) == 0 {
+		t.Error("expected the error to be recorded as a span event")
+	}
+	if _, ok := attrs(span)["ctx.snapshot.id"]; ok {
+		t.Error("a failed resolve must not claim a snapshot id")
+	}
+}
+
+// Content is what Ctx stores, never what it exports: no span attribute or
+// event may carry resolved bytes, however convenient that would be.
+func TestSpansNeverCarryContent(t *testing.T) {
+	collect := recordSpans(t)
+	res, uri, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
+
+	if _, err := res.Resolve(context.Background(), uri); err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	assertNoContent(t, collect(), fixtureContent)
+}
+
+// assertNoContent scans every attribute value and event (including event
+// attributes) of every span for a fragment of the resolved bytes.
+func assertNoContent(t *testing.T, spans tracetest.SpanStubs, content string) {
+	t.Helper()
+	needle := strings.TrimSpace(content)
+	if needle == "" {
+		t.Fatal("empty needle: the scan below would be vacuous")
+	}
+	check := func(span, where, value string) {
+		if strings.Contains(value, needle) {
+			t.Errorf("span %q leaked resolved content in %s: %q", span, where, value)
 		}
 	}
-	if !found {
-		t.Errorf("expected a ctx.cache.lookup span on the second (cached) resolve")
+	for _, s := range spans {
+		for _, kv := range s.Attributes {
+			check(s.Name, "attribute "+string(kv.Key), kv.Value.Emit())
+		}
+		for _, e := range s.Events {
+			check(s.Name, "event "+e.Name, e.Name)
+			for _, kv := range e.Attributes {
+				check(s.Name, "event "+e.Name+" attribute "+string(kv.Key), kv.Value.Emit())
+			}
+		}
+		check(s.Name, "status description", s.Status.Description)
 	}
 }
