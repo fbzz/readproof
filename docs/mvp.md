@@ -38,19 +38,19 @@ the rename, LICENSE choice (owner decision).
 
 ## WP-B — MCP server  (`ctx mcp`)
 
-- [ ] `ctx mcp` subcommand: stdio MCP server via the official Go SDK
+- [x] `ctx mcp` subcommand: stdio MCP server via the official Go SDK
   (`github.com/modelcontextprotocol/go-sdk`), built on `client.Client` so it
   works embedded (`--data-dir`) or against `ctxd` (`--server`).
-- [ ] Resources: `resources/list` = registered resources as `ctx://` URIs
+- [x] Resources: `resources/list` = registered resources as `ctx://` URIs
   (+ resource template `ctx://{namespace}/{path}`); `resources/read` =
   resolve (policy + `@tag` honored), text or base64 blob, with `_meta`
   `{snapshot_id, content_hash, source_revision, observed_at, decision}`.
-- [ ] Tools: `ctx_resolve`, `ctx_run_start`, `ctx_run_mount`,
+- [x] Tools: `ctx_resolve`, `ctx_run_start`, `ctx_run_mount`,
   `ctx_run_commit`, `ctx_manifest`, `ctx_diff`, `ctx_replay`, `ctx_history`,
   `ctx_resources_list`, `ctx_evidence_export` — JSON-schema'd inputs, JSON results.
-- [ ] Tests: in-process SDK client over in-memory transport: list → read →
+- [x] Tests: in-process SDK client over in-memory transport: list → read →
   run start/mount/commit → manifest → replay.
-- [ ] Docs: `docs/mcp.md` with Claude Code (`claude mcp add …`), Claude
+- [x] Docs: `docs/mcp.md` with Claude Code (`claude mcp add …`), Claude
   Desktop, and Cursor config snippets; README section.
 
 ## WP-C — OpenTelemetry GenAI attributes
