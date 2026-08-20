@@ -26,6 +26,18 @@ import (
 // Tracer is used throughout the codebase for all ctx.* spans.
 var Tracer trace.Tracer = otel.Tracer("ctx")
 
+// SetTracerProvider points Tracer at tp and returns a function restoring
+// the previous Tracer. It is the supported way for a test to capture ctx.*
+// spans with an in-memory exporter without going through Init (which
+// requires an OTLP endpoint and would export off-box). Init is unaffected:
+// production wiring still runs through it, and the no-op default stands
+// until one of the two is called.
+func SetTracerProvider(tp trace.TracerProvider) (restore func()) {
+	previous := Tracer
+	Tracer = tp.Tracer("ctx")
+	return func() { Tracer = previous }
+}
+
 // Shutdown flushes and closes any configured exporters. Safe to call even
 // when Init ran in no-op mode.
 type Shutdown func(context.Context) error

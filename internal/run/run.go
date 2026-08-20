@@ -12,6 +12,7 @@ import (
 
 	"ctx/internal/ids"
 	"ctx/internal/manifest"
+	"ctx/internal/merkle"
 	"ctx/internal/resolver"
 	"ctx/internal/resource"
 	"ctx/internal/telemetry"
@@ -73,26 +74,63 @@ func (b *Builder) now() time.Time {
 	return time.Now().UTC()
 }
 
+// Start opens a run. ctx.run.id is on this span and on every later
+// ctx.run.mount/ctx.run.commit because a run legitimately spans processes
+// (`ctx run start`, then `ctx run mount` from a worker, then `ctx run
+// commit`): with no ambient span to share, that attribute is the only thing
+// joining them.
 func (b *Builder) Start(ctx context.Context, runID string) error {
-	return b.Runs.StartRun(ctx, runID)
+	sctx, span := telemetry.Tracer.Start(ctx, "ctx.run.start", trace.WithAttributes(
+		attribute.String("ctx.run.id", runID),
+	))
+	defer span.End()
+	err := b.Runs.StartRun(sctx, runID)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return err
 }
 
 // Mount resolves rawURI via the same pipeline `ctx get` uses — including a
 // trailing "@<tag>" — then stages it as the next entry in the run. The
 // entry records the bare URI and the ref separately, so what the run
 // mounted stays readable without re-parsing the combined string.
-func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (resolver.ResolveResult, error) {
+//
+// The whole mount is one ctx.run.mount span, so the ctx.resolve tree and
+// the ctx.manifest.append that records it hang off the same parent: a
+// reader of the trace sees "this run mounted this URI, and here is
+// everything that took" rather than two unrelated subtrees.
+func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (result resolver.ResolveResult, err error) {
 	uri, ref, err := resource.SplitRef(rawURI)
 	if err != nil {
 		return resolver.ResolveResult{}, err
 	}
-	result, err := b.Resolver.ResolveRef(ctx, uri, ref)
+
+	mountAttrs := []attribute.KeyValue{
+		attribute.String("ctx.run.id", runID),
+		attribute.String("ctx.resource.uri", uri),
+	}
+	if ref != "" {
+		mountAttrs = append(mountAttrs, attribute.String("ctx.resource.ref", ref))
+	}
+	ctx, span := telemetry.Tracer.Start(ctx, "ctx.run.mount", trace.WithAttributes(mountAttrs...))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
+	result, err = b.Resolver.ResolveRef(ctx, uri, ref)
 	if err != nil {
 		return resolver.ResolveResult{}, err
 	}
 	mounts, err := b.Runs.ListMounts(ctx, runID)
 	if err != nil {
-		return resolver.ResolveResult{}, fmt.Errorf("run: list mounts: %w", err)
+		err = fmt.Errorf("run: list mounts: %w", err)
+		return resolver.ResolveResult{}, err
 	}
 	entry := MountEntry{
 		Position:          len(mounts),
@@ -102,7 +140,9 @@ func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (resolver.Res
 		MaterializationID: result.Materialization.MaterializationID,
 		ContentHash:       result.Materialization.ContentHash,
 	}
-	appendErr := func() error {
+	span.SetAttributes(attribute.Int("ctx.manifest.position", entry.Position))
+
+	err = func() error {
 		actx, aspan := telemetry.Tracer.Start(ctx, "ctx.manifest.append", trace.WithAttributes(
 			attribute.String("ctx.resource.uri", uri),
 			attribute.String("ctx.snapshot.id", entry.SnapshotID),
@@ -116,18 +156,37 @@ func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (resolver.Res
 		}
 		return e
 	}()
-	if appendErr != nil {
-		return resolver.ResolveResult{}, fmt.Errorf("run: append mount: %w", appendErr)
+	if err != nil {
+		err = fmt.Errorf("run: append mount: %w", err)
+		return resolver.ResolveResult{}, err
 	}
 	return result, nil
 }
 
 // Commit builds and persists the immutable Manifest from all staged mounts,
 // preserving entry order by construction.
-func (b *Builder) Commit(ctx context.Context, runID string) (manifest.Manifest, error) {
+//
+// The ctx.run.commit span carries the Merkle root of the committed entries
+// — the same value `ctx evidence export` puts in the bundle's in-toto
+// subject digest (see internal/merkle). That makes the trace and the
+// evidence bundle joinable on a single field: given a trace, an auditor can
+// tell whether a bundle they were handed describes that exact run.
+func (b *Builder) Commit(ctx context.Context, runID string) (man manifest.Manifest, err error) {
+	ctx, span := telemetry.Tracer.Start(ctx, "ctx.run.commit", trace.WithAttributes(
+		attribute.String("ctx.run.id", runID),
+	))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
 	mounts, err := b.Runs.ListMounts(ctx, runID)
 	if err != nil {
-		return manifest.Manifest{}, fmt.Errorf("run: list mounts: %w", err)
+		err = fmt.Errorf("run: list mounts: %w", err)
+		return manifest.Manifest{}, err
 	}
 	entries := make([]manifest.Entry, len(mounts))
 	for i, m := range mounts {
@@ -140,20 +199,38 @@ func (b *Builder) Commit(ctx context.Context, runID string) (manifest.Manifest, 
 			ContentHash:       m.ContentHash,
 		}
 	}
-	man := manifest.Manifest{
+	man = manifest.Manifest{
 		ManifestID: ids.New("manifest"),
 		RunID:      runID,
 		CreatedAt:  b.now(),
 		Entries:    entries,
 	}
-	if err := b.Manifests.Create(ctx, man); err != nil {
-		return manifest.Manifest{}, fmt.Errorf("run: create manifest: %w", err)
+	if err = b.Manifests.Create(ctx, man); err != nil {
+		err = fmt.Errorf("run: create manifest: %w", err)
+		return manifest.Manifest{}, err
 	}
 	telemetry.RecordManifestCreated(ctx)
-	if err := b.Runs.MarkCommitted(ctx, runID, man.ManifestID); err != nil {
-		return manifest.Manifest{}, fmt.Errorf("run: mark committed: %w", err)
+	if err = b.Runs.MarkCommitted(ctx, runID, man.ManifestID); err != nil {
+		err = fmt.Errorf("run: mark committed: %w", err)
+		return manifest.Manifest{}, err
 	}
+	telemetry.RecordRunCommitted(ctx)
+	span.SetAttributes(
+		attribute.String("ctx.manifest.id", man.ManifestID),
+		attribute.Int("ctx.manifest.entries", len(man.Entries)),
+		attribute.String("ctx.manifest.merkle_root", merkleRoot(man.Entries)),
+	)
 	return man, nil
+}
+
+// merkleRoot commits to the entries a manifest was created with, using the
+// same leaf/root rule as the evidence bundle.
+func merkleRoot(entries []manifest.Entry) string {
+	leaves := make([]string, len(entries))
+	for i, e := range entries {
+		leaves[i] = merkle.Leaf(e.Position, e.URI, e.ContentHash)
+	}
+	return merkle.Root(leaves)
 }
 
 // Run is the single-shot convenience wrapper: Start -> Mount* -> Commit.
