@@ -55,14 +55,14 @@ the rename, LICENSE choice (owner decision).
 
 ## WP-C — OpenTelemetry GenAI attributes
 
-- [ ] `ctx.resolve` span: `ctx.resource.uri`, `ctx.resource.ref`,
+- [x] `ctx.resolve` span: `ctx.resource.uri`, `ctx.resource.ref`,
   `ctx.policy.strategy`, `ctx.policy.decision`, `ctx.snapshot.id`,
   `ctx.snapshot.content_hash`, `ctx.snapshot.source_revision`,
-  `ctx.source.kind`, `gen_ai.data_source.id` (= `ctx://<namespace>`).
-- [ ] Run spans: `ctx.run.mount` (`ctx.run.id`, position) and
+  `ctx.source.type`, `gen_ai.data_source.id` (= `ctx://<namespace>`).
+- [x] Run spans: `ctx.run.mount` (`ctx.run.id`, position) and
   `ctx.run.commit` (`ctx.run.id`, `ctx.manifest.id`, entry count, Merkle root).
-- [ ] Never attach content. Tests assert attributes via an in-memory exporter.
-- [ ] `docs/observability.md`: attribute table + the proposal to carry
+- [x] Never attach content. Tests assert attributes via an in-memory exporter.
+- [x] `docs/observability.md`: attribute table + the proposal to carry
   `hash/version/uri` on `gen_ai.retrieval.documents` / OpenInference
   `document.metadata`.
 
