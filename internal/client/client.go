@@ -15,6 +15,7 @@ import (
 	"ctx/internal/resolver"
 	"ctx/internal/resource"
 	"ctx/internal/snapshot"
+	"ctx/internal/tag"
 )
 
 type Client interface {
@@ -26,11 +27,22 @@ type Client interface {
 	GetSnapshot(ctx context.Context, id string) (snapshot.Snapshot, error)
 	History(ctx context.Context, uri string) ([]snapshot.Snapshot, error)
 
+	// SetTag points (uri, name) at snapshotID, creating or moving the tag,
+	// and returns the stored tag. The snapshot must belong to uri.
+	SetTag(ctx context.Context, uri, name, snapshotID string) (tag.Tag, error)
+	// ListTags returns a resource's tags, sorted by name.
+	ListTags(ctx context.Context, uri string) ([]tag.Tag, error)
+	DeleteTag(ctx context.Context, uri, name string) error
+
+	// Resolve accepts either a bare "ctx://ns/path" or a tagged
+	// "ctx://ns/path@<tag>". A tagged reference resolves to exactly that
+	// snapshot: no source fetch, and the resource's policy is not consulted.
 	Resolve(ctx context.Context, uri string) (resolver.ResolveResult, error)
 
 	RunStart(ctx context.Context, runID string) error
 	// RunMount returns the resolve result and the position this mount was
-	// assigned within the run.
+	// assigned within the run. Like Resolve, uri may carry "@<tag>"; the
+	// manifest records the bare URI plus the ref.
 	RunMount(ctx context.Context, runID, uri string) (result resolver.ResolveResult, position int, err error)
 	RunCommit(ctx context.Context, runID string) (manifest.Manifest, error)
 

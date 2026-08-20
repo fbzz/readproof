@@ -39,6 +39,7 @@ func newTestResolver(t *testing.T) (*resolver.Resolver, string) {
 		Resources:        sqlite.NewResourceStore(db),
 		Snapshots:        sqlite.NewSnapshotStore(db),
 		Materializations: sqlite.NewMaterializationStore(db),
+		Tags:             sqlite.NewTagStore(db),
 		Blobs:            blobStore,
 		Sources:          sources,
 		Materializer:     materialization.RawMaterializer{},

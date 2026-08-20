@@ -29,7 +29,11 @@ export class Run {
     return this.started;
   }
 
-  /** Resolves uri and stages it as the next entry in this run. */
+  /**
+   * Resolves uri and stages it as the next entry in this run. Like
+   * `Ctx.resolve`, uri may carry a trailing `@<tag>`; the manifest entry
+   * records the bare URI plus that ref.
+   */
   async mount(uri: string): Promise<ResolveResult> {
     await this.start();
     const { resolve } = await this.ctx._mountRun(this.id, uri);

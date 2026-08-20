@@ -90,6 +90,42 @@ Snapshot history, newest first. **Response** `200`:
 One snapshot (same shape as an entry of the history array above). `404`
 if it doesn't exist.
 
+## `PUT /v1/tags`
+
+Point a tag at a snapshot — an upsert, so setting an existing tag moves it.
+A tag is a named, movable pointer `(resource_uri, tag) -> snapshot_id`;
+the snapshot must belong to that resource. Tag names must match
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
+
+**Request**
+```json
+{ "uri": "ctx://acme/policies/refunds", "tag": "prod", "snapshot_id": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3" }
+```
+
+**Response** `200` — the stored tag:
+```json
+{
+  "uri": "ctx://acme/policies/refunds",
+  "tag": "prod",
+  "snapshot_id": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3",
+  "updated_at": "2026-08-20T09:00:00Z"
+}
+```
+`400` for a malformed tag name or a snapshot belonging to a different
+resource; `404` if the snapshot doesn't exist.
+
+## `GET /v1/tags?uri=<uri>`
+
+A resource's tags, sorted by name. **Response** `200`:
+```json
+{ "tags": [ { "uri": "ctx://acme/policies/refunds", "tag": "prod", "snapshot_id": "snap_...", "updated_at": "2026-08-20T09:00:00Z" } ] }
+```
+
+## `DELETE /v1/tags?uri=<uri>&tag=<tag>`
+
+Delete a tag; the snapshot it pointed at is untouched. **Response** `204`,
+no body. `404` if the tag doesn't exist.
+
 ## `POST /v1/resolve`
 
 Resolve a resource — the primary operation.
@@ -98,6 +134,13 @@ Resolve a resource — the primary operation.
 ```json
 { "uri": "ctx://acme/policies/refunds" }
 ```
+
+`uri` may carry a trailing `@<tag>`
+(`"ctx://acme/policies/refunds@prod"`), which resolves to exactly that
+tagged snapshot: **no source fetch, and the resource's freshness policy is
+not consulted**. The response then reports `freshness.status: "use_tag"`
+and echoes the tag as `resource.ref`. An unknown tag is a `404` naming
+both the URI and the tag.
 
 **Response** `200`:
 ```json
@@ -120,8 +163,9 @@ Resolve a resource — the primary operation.
 }
 ```
 `freshness.status` is `"fetch"` (freshly resolved from the source),
-`"use_current"` (served from the cached snapshot), or `"use_pinned"`
-(policy `pinned`).
+`"use_current"` (served from the cached snapshot), `"use_pinned"` (policy
+`pinned`), or `"use_tag"` (resolved via `@<tag>`). `resource.ref` is
+present only for `"use_tag"`.
 
 ## `POST /v1/runs`
 
@@ -130,11 +174,14 @@ body.
 
 ## `POST /v1/runs/mount`
 
-Resolve a URI and stage it as the next entry in a run (auto-starts the
-run if `/v1/runs` wasn't called first — the CLI's `ctx run mount` and the
-TS SDK's `Run.mount()` both rely on this).
+Resolve a URI and stage it as the next entry in a run. Start the run with
+`/v1/runs` first (the CLI's `ctx run mount` and the TS SDK's `Run.mount()`
+both do).
 
 **Request** `{ "run_id": "run-a", "uri": "ctx://acme/policies/refunds" }`
+
+`uri` may carry a trailing `@<tag>`, exactly as in `/v1/resolve`; the
+manifest entry then records the bare URI plus that tag as `ref`.
 
 **Response** `200`:
 ```json
@@ -154,10 +201,15 @@ preserved. **Request** `{ "run_id": "run-a" }`. **Response** `200`:
   "run_id": "run-a",
   "created_at": "2026-08-19T16:05:30Z",
   "entries": [
-    { "position": 0, "uri": "ctx://acme/policies/refunds", "snapshot_id": "snap_...", "materialization_id": "mat_...", "content_hash": "sha256:..." }
+    { "position": 0, "uri": "ctx://acme/policies/refunds", "ref": "prod", "snapshot_id": "snap_...", "materialization_id": "mat_...", "content_hash": "sha256:..." }
   ]
 }
 ```
+`uri` is always the bare `ctx://<namespace>/<path>`; `ref` is the `@<tag>`
+that entry was mounted by and is omitted for a plain URI. `ref` is
+informational — replay and diff key off `snapshot_id`/`content_hash`, so
+moving a tag afterwards can never change what a committed manifest
+replays.
 
 ## `GET /v1/manifests?target=<manifest-id-or-run-id>`
 
@@ -179,13 +231,22 @@ Diff two manifests (each identified by manifest ID or run ID).
       "status": "changed",
       "snapshot_id_a": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3",
       "snapshot_id_b": "snap_01M0DCARRQ91XA135AHG6W64H0",
+      "source_revision_a": "8af92d1",
+      "source_revision_b": "c31be07",
+      "observed_at_a": "2026-08-19T16:05:30Z",
+      "observed_at_b": "2026-08-20T09:00:00Z",
+      "ref_b": "prod",
       "unified_diff": "--- a/ctx://acme/policies/refunds\n+++ b/ctx://acme/policies/refunds\n@@ -1,2 +1,2 @@\n-Products can be refunded within 30 days.\n+Products can be refunded within 14 days.\n \n"
     }
   ]
 }
 ```
 `status` is `"changed"`, `"added"`, `"removed"`, or `"unchanged"`;
-`unified_diff` is only present for `"changed"`.
+`unified_diff` is only present for `"changed"`. The `*_a`/`*_b` fields
+carry each side's provenance — the source's own revision marker, when Ctx
+observed it, and the `@<tag>` it was mounted by — and are present only for
+a side whose manifest actually contains that URI. This is what `ctx diff`
+prints as its per-entry `why:` line.
 
 ## `GET /v1/replay?target=<manifest-id-or-run-id>`
 
@@ -213,3 +274,7 @@ the live source.
 (recomputed from the actually-retrieved bytes) iff `match` is `true` —
 this is the product's core invariant:
 `SHA256(original) == SHA256(replay)`.
+
+Replay is strict everywhere it surfaces: a missing blob or materialization
+is an error response here, and `ctx replay` exits non-zero on any
+`"match": false` entry rather than reporting it and continuing.

@@ -38,9 +38,9 @@ func (s *ManifestStore) Create(ctx context.Context, m manifest.Manifest) error {
 
 	for _, e := range m.Entries {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO manifest_entries (manifest_id, position, uri, snapshot_id, materialization_id, content_hash)
-			 VALUES (?, ?, ?, ?, ?, ?)`,
-			m.ManifestID, e.Position, e.URI, e.SnapshotID, e.MaterializationID, e.ContentHash,
+			`INSERT INTO manifest_entries (manifest_id, position, uri, ref, snapshot_id, materialization_id, content_hash)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			m.ManifestID, e.Position, e.URI, e.Ref, e.SnapshotID, e.MaterializationID, e.ContentHash,
 		); err != nil {
 			return fmt.Errorf("sqlite: insert manifest entry: %w", err)
 		}
@@ -80,7 +80,7 @@ func (s *ManifestStore) loadFromRow(ctx context.Context, row *sql.Row) (manifest
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT position, uri, snapshot_id, materialization_id, content_hash
+		SELECT position, uri, ref, snapshot_id, materialization_id, content_hash
 		FROM manifest_entries WHERE manifest_id = ? ORDER BY position ASC`, m.ManifestID)
 	if err != nil {
 		return manifest.Manifest{}, fmt.Errorf("sqlite: list manifest entries: %w", err)
@@ -88,7 +88,7 @@ func (s *ManifestStore) loadFromRow(ctx context.Context, row *sql.Row) (manifest
 	defer rows.Close()
 	for rows.Next() {
 		var e manifest.Entry
-		if err := rows.Scan(&e.Position, &e.URI, &e.SnapshotID, &e.MaterializationID, &e.ContentHash); err != nil {
+		if err := rows.Scan(&e.Position, &e.URI, &e.Ref, &e.SnapshotID, &e.MaterializationID, &e.ContentHash); err != nil {
 			return manifest.Manifest{}, fmt.Errorf("sqlite: scan manifest entry: %w", err)
 		}
 		m.Entries = append(m.Entries, e)

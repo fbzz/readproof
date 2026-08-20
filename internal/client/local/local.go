@@ -14,6 +14,7 @@ import (
 	"ctx/internal/resolver"
 	"ctx/internal/resource"
 	"ctx/internal/snapshot"
+	"ctx/internal/tag"
 )
 
 type Client struct {
@@ -46,6 +47,23 @@ func (c *Client) GetSnapshot(ctx context.Context, id string) (snapshot.Snapshot,
 
 func (c *Client) History(ctx context.Context, uri string) ([]snapshot.Snapshot, error) {
 	return c.App.Snapshots.ListByResource(ctx, uri)
+}
+
+func (c *Client) SetTag(ctx context.Context, uri, name, snapshotID string) (tag.Tag, error) {
+	if err := c.App.Tags.Set(ctx, tag.Tag{ResourceURI: uri, Name: name, SnapshotID: snapshotID}); err != nil {
+		return tag.Tag{}, err
+	}
+	// Read back so callers see the stored UpdatedAt, exactly as the remote
+	// client does with PUT /v1/tags' response body.
+	return c.App.Tags.Get(ctx, uri, name)
+}
+
+func (c *Client) ListTags(ctx context.Context, uri string) ([]tag.Tag, error) {
+	return c.App.Tags.List(ctx, uri)
+}
+
+func (c *Client) DeleteTag(ctx context.Context, uri, name string) error {
+	return c.App.Tags.Delete(ctx, uri, name)
 }
 
 func (c *Client) Resolve(ctx context.Context, uri string) (resolver.ResolveResult, error) {
@@ -87,7 +105,7 @@ func (c *Client) Diff(ctx context.Context, targetA, targetB string) (diff.Result
 	if err != nil {
 		return diff.Result{}, err
 	}
-	return diff.Compute(manA, manB, c.App.Blobs)
+	return diff.Compute(ctx, manA, manB, c.App.Blobs, c.App.Snapshots)
 }
 
 func (c *Client) Replay(ctx context.Context, idOrRun string) (replay.Result, error) {

@@ -11,10 +11,12 @@ import (
 	"testing"
 
 	"ctx/internal/app"
+	"ctx/internal/diff"
 	"ctx/internal/ids"
 	"ctx/internal/policy"
 	"ctx/internal/resource"
 	"ctx/internal/source"
+	"ctx/internal/tag"
 )
 
 func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {
@@ -58,6 +60,7 @@ func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {
 	uri := "ctx://demo-" + suffix + "/policies/refunds"
 	runAID := "run-a-" + suffix
 	runBID := "run-b-" + suffix
+	runCID := "run-c-" + suffix
 
 	err = a.Resources.Create(ctx, resource.Resource{
 		URI:       uri,
@@ -85,6 +88,10 @@ func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {
 		t.Fatalf("expected 1 manifest entry for run-a, got %d", len(manA.Entries))
 	}
 
+	if err := a.Tags.Set(ctx, tag.Tag{ResourceURI: uri, Name: "prod", SnapshotID: manA.Entries[0].SnapshotID}); err != nil {
+		t.Fatalf("tag set: %v", err)
+	}
+
 	if err := os.WriteFile(fixturePath, []byte(updatedContent), 0o644); err != nil {
 		t.Fatalf("edit fixture: %v", err)
 	}
@@ -96,6 +103,37 @@ func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {
 
 	if manA.Entries[0].ContentHash == manB.Entries[0].ContentHash {
 		t.Fatalf("expected manifest content hashes to differ after the source changed")
+	}
+
+	manC, err := a.RunBuilder.Run(ctx, runCID, []string{uri + "@prod"})
+	if err != nil {
+		t.Fatalf("run-c: %v", err)
+	}
+	if manC.Entries[0].URI != uri || manC.Entries[0].Ref != "prod" {
+		t.Fatalf("run-c manifest entry did not record uri+ref: %+v", manC.Entries[0])
+	}
+	if manC.Entries[0].ContentHash != manA.Entries[0].ContentHash {
+		t.Fatalf("run-c mounted by @prod must match run-a's content hash, got %s vs %s",
+			manC.Entries[0].ContentHash, manA.Entries[0].ContentHash)
+	}
+	replayC, err := a.Replayer.Replay(ctx, runCID)
+	if err != nil {
+		t.Fatalf("replay run-c: %v", err)
+	}
+	if !replayC.AllMatch() || string(replayC.Entries[0].Content) != originalContent {
+		t.Fatalf("replay of the tagged run failed: %+v", replayC.Entries)
+	}
+
+	diffResult, err := diff.Compute(ctx, manA, manB, a.Blobs, a.Snapshots)
+	if err != nil {
+		t.Fatalf("diff: %v", err)
+	}
+	changed := diffResult.Entries[0]
+	if changed.Status != diff.StatusChanged {
+		t.Fatalf("expected a changed entry, got %+v", changed)
+	}
+	if changed.SourceRevisionA == "" || changed.SourceRevisionB == "" || changed.ObservedAtA.IsZero() || changed.ObservedAtB.IsZero() {
+		t.Fatalf("diff provenance not hydrated from postgres: %+v", changed)
 	}
 
 	replayResult, err := a.Replayer.Replay(ctx, runAID)

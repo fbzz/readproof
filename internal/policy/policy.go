@@ -28,6 +28,11 @@ const (
 	DecisionFetch Decision = iota
 	DecisionUseCurrent
 	DecisionUsePinned
+	// DecisionUseTag is the outcome of resolving ctx://ns/path@<tag>. It is
+	// never produced by Evaluate: a tag ref bypasses policy entirely (the
+	// caller asked for one exact snapshot), so the resolver sets it
+	// directly.
+	DecisionUseTag
 )
 
 func (d Decision) String() string {
@@ -38,6 +43,8 @@ func (d Decision) String() string {
 		return "use_current"
 	case DecisionUsePinned:
 		return "use_pinned"
+	case DecisionUseTag:
+		return "use_tag"
 	default:
 		return "unknown"
 	}

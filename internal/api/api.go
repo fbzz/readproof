@@ -17,6 +17,7 @@ import (
 	"ctx/internal/resource"
 	"ctx/internal/run"
 	"ctx/internal/snapshot"
+	"ctx/internal/tag"
 	"ctx/internal/wire"
 )
 
@@ -38,6 +39,9 @@ func NewHandler(a *app.App, opts Options) http.Handler {
 	mux.HandleFunc("GET /v1/resources/get", handleGetResource(a))
 	mux.HandleFunc("GET /v1/resources/history", handleHistory(a))
 	mux.HandleFunc("GET /v1/snapshots", handleGetSnapshot(a))
+	mux.HandleFunc("PUT /v1/tags", handleSetTag(a))
+	mux.HandleFunc("GET /v1/tags", handleListTags(a))
+	mux.HandleFunc("DELETE /v1/tags", handleDeleteTag(a))
 	mux.HandleFunc("POST /v1/resolve", handleResolve(a))
 	mux.HandleFunc("POST /v1/runs", handleRunStart(a))
 	mux.HandleFunc("POST /v1/runs/mount", handleRunMount(a))
@@ -179,6 +183,65 @@ func handleGetSnapshot(a *app.App) http.HandlerFunc {
 	}
 }
 
+func handleSetTag(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req wire.SetTagRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		if req.URI == "" || req.Tag == "" || req.SnapshotID == "" {
+			writeError(w, http.StatusBadRequest, errors.New("uri, tag, and snapshot_id are all required"))
+			return
+		}
+		if err := a.Tags.Set(r.Context(), tag.Tag{ResourceURI: req.URI, Name: req.Tag, SnapshotID: req.SnapshotID}); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		t, err := a.Tags.Get(r.Context(), req.URI, req.Tag)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, wire.TagToWire(t))
+	}
+}
+
+func handleListTags(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uri := r.URL.Query().Get("uri")
+		if uri == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameter: uri"))
+			return
+		}
+		tags, err := a.Tags.List(r.Context(), uri)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		out := make([]wire.TagWire, len(tags))
+		for i, t := range tags {
+			out[i] = wire.TagToWire(t)
+		}
+		writeJSON(w, http.StatusOK, wire.TagListResponse{Tags: out})
+	}
+}
+
+func handleDeleteTag(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uri := r.URL.Query().Get("uri")
+		name := r.URL.Query().Get("tag")
+		if uri == "" || name == "" {
+			writeError(w, http.StatusBadRequest, errors.New("missing required query parameters: uri, tag"))
+			return
+		}
+		if err := a.Tags.Delete(r.Context(), uri, name); err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func handleResolve(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req wire.ResolveRequest
@@ -282,7 +345,7 @@ func handleDiff(a *app.App) http.HandlerFunc {
 			writeDomainError(w, err)
 			return
 		}
-		result, err := diff.Compute(manA, manB, a.Blobs)
+		result, err := diff.Compute(r.Context(), manA, manB, a.Blobs, a.Snapshots)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
@@ -310,14 +373,21 @@ func handleReplay(a *app.App) http.HandlerFunc {
 // writeDomainError maps well-known domain sentinel errors to their proper
 // HTTP status; everything else is a 500.
 func writeDomainError(w http.ResponseWriter, err error) {
-	if errors.Is(err, resource.ErrNotFound) ||
-		errors.Is(err, snapshot.ErrNotFound) ||
-		errors.Is(err, manifest.ErrNotFound) ||
-		errors.Is(err, run.ErrNotFound) {
+	switch {
+	case errors.Is(err, resource.ErrNotFound),
+		errors.Is(err, snapshot.ErrNotFound),
+		errors.Is(err, manifest.ErrNotFound),
+		errors.Is(err, run.ErrNotFound),
+		errors.Is(err, tag.ErrNotFound):
 		writeError(w, http.StatusNotFound, err)
-		return
+	case errors.Is(err, tag.ErrInvalidName), errors.Is(err, tag.ErrSnapshotMismatch):
+		// The caller sent a well-formed request naming something that can
+		// never be valid — a bad tag name, or a snapshot of another
+		// resource — so this is a 400, not a 500.
+		writeError(w, http.StatusBadRequest, err)
+	default:
+		writeError(w, http.StatusInternalServerError, err)
 	}
-	writeError(w, http.StatusInternalServerError, err)
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {

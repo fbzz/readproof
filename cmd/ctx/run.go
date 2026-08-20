@@ -12,6 +12,9 @@ func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [uris...]",
 		Short: "Start, mount, and commit a context run in one shot (requires --id)",
+		Long: "Start, mount, and commit a context run in one shot (requires --id).\n\n" +
+			"Each <uri> may carry a trailing @<tag> (ctx://ns/path@prod) to mount\n" +
+			"exactly that tagged snapshot instead of resolving through the policy.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runID == "" {
 				return fmt.Errorf("--id is required")
@@ -75,7 +78,7 @@ func newRunStartCmd() *cobra.Command {
 
 func newRunMountCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "mount <run-id> <uri>",
+		Use:   "mount <run-id> <uri>[@<tag>]",
 		Short: "Resolve a resource and mount it into an open run",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

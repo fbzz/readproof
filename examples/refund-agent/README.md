@@ -36,6 +36,13 @@ go build -o ctx ./cmd/ctx
 #   ./ctx history ctx://demo/policies/refunds
 # to see two snapshot rows sharing one content hash.
 
+# 3b. Freeze what run-a saw behind a movable `prod` tag. Copy the snapshot
+#     id from `ctx manifest run-a` (the SNAPSHOT column):
+./ctx manifest run-a
+./ctx tag set ctx://demo/policies/refunds prod <snapshot-id-from-run-a>
+./ctx tag list ctx://demo/policies/refunds
+# `ctx history` now shows that snapshot carrying the `prod` tag.
+
 # 4. Edit the source
 printf 'Products can be refunded within 14 days.\n' > examples/refund-agent/policies/refunds.md
 
@@ -44,13 +51,25 @@ printf 'Products can be refunded within 14 days.\n' > examples/refund-agent/poli
 
 # 6. Diff the two manifests
 ./ctx diff run-a run-b
-# -> shows the "30 days" -> "14 days" unified diff
+# -> a "why:" line (source revision + observed timestamps per side),
+#    then the "30 days" -> "14 days" unified diff
+
+# 6b. A run pinned to the tag still gets the OLD bytes — no fetch, and the
+#     require_fresh policy is not consulted
+./ctx get ctx://demo/policies/refunds@prod
+# -> "Products can be refunded within 30 days."  (freshness: tagged)
+./ctx run --id run-c ctx://demo/policies/refunds@prod
+./ctx manifest run-c
+# -> the entry records the bare uri plus REF=prod
+./ctx replay run-c
+# -> "Replay verified: SHA256 match for 1/1 entries."
 
 # 7. Replay run-a and verify the SHA256 invariant, without touching the
 #    (now-changed) live source file at all
 ./ctx replay run-a
 # -> "Products can be refunded within 30 days."
 # -> "Replay verified: SHA256 match for 1/1 entries."
+#    (replay is strict: any hash mismatch or missing blob exits non-zero)
 ```
 
 To restore the fixture after running the walkthrough:

@@ -10,9 +10,11 @@ import (
 	"testing"
 
 	"ctx/internal/app"
+	"ctx/internal/diff"
 	"ctx/internal/policy"
 	"ctx/internal/resource"
 	"ctx/internal/source"
+	"ctx/internal/tag"
 )
 
 func TestRefundAgentDemoReplayInvariant(t *testing.T) {
@@ -64,6 +66,11 @@ func TestRefundAgentDemoReplayInvariant(t *testing.T) {
 		t.Fatalf("expected 1 manifest entry for run-a, got %d", len(manA.Entries))
 	}
 
+	// Step 3b: freeze what run-a saw behind a `prod` tag.
+	if err := a.Tags.Set(ctx, tag.Tag{ResourceURI: uri, Name: "prod", SnapshotID: manA.Entries[0].SnapshotID}); err != nil {
+		t.Fatalf("tag set: %v", err)
+	}
+
 	// Step 4: the policy document changes.
 	if err := os.WriteFile(fixturePath, []byte(updatedContent), 0o644); err != nil {
 		t.Fatalf("edit fixture: %v", err)
@@ -78,6 +85,60 @@ func TestRefundAgentDemoReplayInvariant(t *testing.T) {
 	// Step 6 (implicit): manifests must actually differ.
 	if manA.Entries[0].ContentHash == manB.Entries[0].ContentHash {
 		t.Fatalf("expected manifest content hashes to differ after the source changed")
+	}
+
+	// Step 6b: a run that mounts @prod gets the OLD bytes, even though the
+	// resource's require_fresh policy would otherwise re-fetch.
+	manC, err := a.RunBuilder.Run(ctx, "run-c", []string{uri + "@prod"})
+	if err != nil {
+		t.Fatalf("run-c: %v", err)
+	}
+	if manC.Entries[0].URI != uri || manC.Entries[0].Ref != "prod" {
+		t.Fatalf("run-c manifest entry did not record uri+ref: %+v", manC.Entries[0])
+	}
+	if manC.Entries[0].ContentHash != manA.Entries[0].ContentHash {
+		t.Fatalf("run-c mounted by @prod must match run-a's content hash, got %s vs %s",
+			manC.Entries[0].ContentHash, manA.Entries[0].ContentHash)
+	}
+
+	replayC, err := a.Replayer.Replay(ctx, "run-c")
+	if err != nil {
+		t.Fatalf("replay run-c: %v", err)
+	}
+	if !replayC.AllMatch() {
+		t.Fatalf("replay of the tagged run failed verification: %+v", replayC.Entries)
+	}
+	if string(replayC.Entries[0].Content) != originalContent {
+		t.Fatalf("replayed tagged content = %q, want %q", string(replayC.Entries[0].Content), originalContent)
+	}
+
+	// Step 6c: the diff carries the provenance behind the change — what
+	// `ctx diff`'s "why" line prints.
+	diffResult, err := diff.Compute(ctx, manA, manB, a.Blobs, a.Snapshots)
+	if err != nil {
+		t.Fatalf("diff run-a run-b: %v", err)
+	}
+	if len(diffResult.Entries) != 1 || diffResult.Entries[0].Status != diff.StatusChanged {
+		t.Fatalf("expected exactly one changed entry, got %+v", diffResult.Entries)
+	}
+	changed := diffResult.Entries[0]
+	if changed.SourceRevisionA == "" || changed.SourceRevisionB == "" || changed.SourceRevisionA == changed.SourceRevisionB {
+		t.Fatalf("expected distinct, non-empty source revisions per side: %q vs %q", changed.SourceRevisionA, changed.SourceRevisionB)
+	}
+	if changed.ObservedAtA.IsZero() || changed.ObservedAtB.IsZero() {
+		t.Fatalf("expected observed_at on both sides: %+v", changed)
+	}
+	if changed.RefA != "" || changed.RefB != "" {
+		t.Fatalf("neither run-a nor run-b mounted by tag, but refs are set: %+v", changed)
+	}
+
+	// A diff against the tagged run reports the ref that produced it.
+	taggedDiff, err := diff.Compute(ctx, manB, manC, a.Blobs, a.Snapshots)
+	if err != nil {
+		t.Fatalf("diff run-b run-c: %v", err)
+	}
+	if taggedDiff.Entries[0].RefB != "prod" {
+		t.Fatalf("expected ref_b = prod for the tagged run, got %q", taggedDiff.Entries[0].RefB)
 	}
 
 	// Step 7: replay manifest_A and verify the SHA256 invariant, without

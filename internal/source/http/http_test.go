@@ -51,6 +51,52 @@ func TestFetch(t *testing.T) {
 	}
 }
 
+// Snapshot provenance is what `ctx diff`'s "why" line and evidence exports
+// read, so ETag/Last-Modified must land in Metadata verbatim whenever the
+// server sends them — and must be absent, not empty, when it doesn't.
+func TestFetchRecordsETagAndLastModifiedProvenance(t *testing.T) {
+	const lastModified = "Wed, 19 Aug 2026 16:05:30 GMT"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("ETag", `W/"v3"`)
+		w.Header().Set("Last-Modified", lastModified)
+		w.Write([]byte("body"))
+	}))
+	defer server.Close()
+
+	f := New()
+	result, err := f.Fetch(context.Background(), source.FetchRequest{
+		Config: source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{URL: server.URL}},
+	})
+	if err != nil {
+		t.Fatalf("fetch: %v", err)
+	}
+	if got := result.Metadata["etag"]; got != `W/"v3"` {
+		t.Fatalf("provenance etag = %q, want %q", got, `W/"v3"`)
+	}
+	if got := result.Metadata["last_modified"]; got != lastModified {
+		t.Fatalf("provenance last_modified = %q, want %q", got, lastModified)
+	}
+
+	bare := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("body"))
+	}))
+	defer bare.Close()
+
+	result, err = f.Fetch(context.Background(), source.FetchRequest{
+		Config: source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{URL: bare.URL}},
+	})
+	if err != nil {
+		t.Fatalf("fetch (no revision headers): %v", err)
+	}
+	if _, ok := result.Metadata["etag"]; ok {
+		t.Fatalf("etag recorded when the server sent none: %+v", result.Metadata)
+	}
+	if _, ok := result.Metadata["last_modified"]; ok {
+		t.Fatalf("last_modified recorded when the server sent none: %+v", result.Metadata)
+	}
+}
+
 func TestFetchFallsBackToContentFingerprintWithoutETag(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("no revision headers here"))

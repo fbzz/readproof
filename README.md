@@ -88,6 +88,15 @@ Six domain primitives, one composition root:
 - **Materialization** — the representation delivered to a consumer; raw/deterministic only in v0.1 (`internal/materialization`).
 - **Manifest** — the ordered, immutable record of everything resolved during a run (`internal/manifest`).
 
+One mutable thing sits beside them: a **Tag** (`internal/tag`) — a named
+pointer `(resource_uri, tag) → snapshot_id` that can be re-pointed at any
+time, resolvable as `ctx://<ns>/<path>@<tag>` (`internal/resource`'s
+`SplitRef` is the single place a `@ref` is split off a reference). Manifest
+and run-mount entries record the bare URI plus the `ref` they were mounted
+by, so a manifest shows *how* a snapshot was chosen while still replaying
+by snapshot and content hash — moving a tag afterwards can never change
+what a committed manifest replays.
+
 `internal/resolver` is the resolution pipeline; `internal/run` is the
 run/mount/commit orchestrator standing in for the future SDK's
 `ctx.run({id}).mount(uri)...commit()`; `internal/replay` reconstructs a
@@ -112,10 +121,11 @@ defines the JSON contract shared by `internal/api` (the server) and
 ```
 ctx resource add <uri> --source-type <filesystem|github|http> [flags] --policy <strategy>
 ctx resource list
-ctx get <uri>
-ctx inspect <uri>
+ctx get <uri>[@<tag>]
+ctx inspect <uri>[@<tag>]
 ctx history <uri>
-ctx run start <run-id> / ctx run mount <run-id> <uri> / ctx run commit <run-id>
+ctx tag set <uri> <tag> <snapshot-id> / ctx tag list <uri> / ctx tag rm <uri> <tag>
+ctx run start <run-id> / ctx run mount <run-id> <uri>[@<tag>] / ctx run commit <run-id>
 ctx run --id <run-id> <uri1> <uri2> ...   # single-shot start+mount+commit
 ctx manifest <manifest-or-run>
 ctx diff <target-a> <target-b>
@@ -124,6 +134,37 @@ ctx replay <manifest-or-run>
 
 Global flags: `--data-dir <path>` (embedded mode data directory) and
 `--server <url>` / `$CTX_SERVER_URL` (talk to a `ctxd` instead).
+
+**Tags and `@ref`.** A tag is a named, movable pointer from a resource to
+one of its snapshots — `(resource_uri, tag) → snapshot_id`, names matching
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. Any command that takes a URI also
+takes `ctx://<ns>/<path>@<tag>`, which delivers exactly that snapshot:
+**no source fetch, and the resource's freshness policy is not consulted**
+(the resolve decision is `use_tag`). An unknown tag is an error naming
+both the URI and the tag.
+
+```bash
+./ctx tag set ctx://demo/policies/refunds prod snap_01M0DCAH6EBHMGYD09ATZ2GEF3
+./ctx get ctx://demo/policies/refunds@prod        # the tagged bytes, always
+./ctx run --id run-c ctx://demo/policies/refunds@prod
+```
+
+`ctx history` marks which snapshots carry tags; `ctx manifest` shows a
+`REF` column when a run mounted anything by tag.
+
+**Diff explains itself.** For every changed entry, `ctx diff` prints one
+provenance line before the unified diff:
+
+```
+~ ctx://demo/policies/refunds  (snap_01M0DC… -> snap_01M0DE…)
+  why: source revision 8af92d1 → c31be07; observed 2026-08-19T16:05:30Z → 2026-08-20T09:00:00Z
+```
+
+(plus `; ref <a> → <b>` when either side was mounted by tag).
+
+**Replay is strict.** `ctx replay` exits non-zero if any entry's bytes
+fail to reproduce their recorded SHA256, or if a blob is missing — there
+is no lenient mode.
 
 ## HTTP API (`ctxd`)
 
@@ -135,9 +176,12 @@ GET  /v1/resources               list resources
 GET  /v1/resources/get?uri=      get one resource
 GET  /v1/resources/history?uri=  snapshot history
 GET  /v1/snapshots?id=           get one snapshot
-POST /v1/resolve                 resolve a uri
+PUT  /v1/tags                    set (or move) a tag
+GET  /v1/tags?uri=               list a resource's tags
+DELETE /v1/tags?uri=&tag=        delete a tag
+POST /v1/resolve                 resolve a uri (accepts uri@tag)
 POST /v1/runs                    start a run
-POST /v1/runs/mount               mount a uri into a run
+POST /v1/runs/mount               mount a uri (or uri@tag) into a run
 POST /v1/runs/commit               commit a run into a manifest
 GET  /v1/manifests?target=          get a manifest (by manifest id or run id)
 GET  /v1/diff?a=&b=                  diff two manifests/runs
