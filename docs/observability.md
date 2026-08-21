@@ -1,21 +1,21 @@
 # Observability
 
-Ctx is instrumented with [OpenTelemetry](https://opentelemetry.io) so that
-the question an agent trace usually cannot answer — **which bytes did the
-model actually get, and where did they come from?** — is answerable from
-the trace alone, without opening the store.
+Readproof is instrumented with [OpenTelemetry](https://opentelemetry.io)
+so that the question an agent trace usually cannot answer — **which bytes
+did the model actually get, and where did they come from?** — is
+answerable from the trace alone, without opening the store.
 
 Two rules shape everything below:
 
 1. **Spans carry the identity of content, never the content.** Hashes,
    snapshot ids, source revisions, byte counts, observation times: yes.
    Resolved bytes: never, in any attribute, event, or status. Traces get
-   copied into third-party backends; the bytes stay in Ctx.
+   copied into third-party backends; the bytes stay in Readproof.
    ([`internal/run/run_telemetry_test.go`](../internal/run/run_telemetry_test.go)
    and
    [`internal/resolver/resolver_telemetry_test.go`](../internal/resolver/resolver_telemetry_test.go)
-   scan every recorded attribute and event for the fixture's bytes and fail
-   if they appear.)
+   scan every recorded attribute and event for the fixture's bytes and
+   fail if they appear.)
 2. **No collector, no cost.** With `OTEL_EXPORTER_OTLP_ENDPOINT` unset,
    `telemetry.Init` is a no-op and every instrumentation call in the
    codebase resolves to a no-op implementation. Instrumentation never
@@ -33,20 +33,20 @@ parse them directly):
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-ctx run --id r ctx://demo/policies/refunds@prod
+readproof run --id r readproof://demo/policies/refunds@prod
 ```
 
-`service.name` is `ctx` for the CLI and `ctxd` for the daemon.
+`service.name` is `readproof` for the CLI and `readproofd` for the daemon.
 
 `docker compose up -d` already runs a collector (`otel-collector`, OTLP on
-`4317`/`4318`) and points `ctxd` at it. Its `debug` exporter prints
+`4317`/`4318`) and points `readproofd` at it. Its `debug` exporter prints
 everything it receives, which is enough to eyeball a trace:
 
 ```bash
 docker compose up -d
-docker compose logs -f otel-collector          # ctxd's spans and metrics
+docker compose logs -f otel-collector          # readproofd's spans and metrics
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
-  ctx run --id r ctx://demo/policies/refunds   # the CLI's, via the mapped port
+  readproof run --id r readproof://demo/policies/refunds   # the CLI's, via the mapped port
 ```
 
 To send to a real backend instead, point
@@ -58,47 +58,47 @@ backend's OTLP endpoint.
 
 | Span | When | Attributes |
 | --- | --- | --- |
-| `ctx.resolve` | Every resolve (`ctx get`, a run mount, the API). Root of the resolve tree. | `ctx.resource.uri`, `ctx.resource.ref` (tagged resolves only) at start; on success `ctx.snapshot.id`, `ctx.snapshot.content_hash`, `ctx.snapshot.source_revision`, `ctx.snapshot.observed_at`, `ctx.materialization.id`, `ctx.materialization.bytes`, `ctx.source.type`, `ctx.policy.strategy`, `ctx.policy.decision`, `ctx.freshness.status`, `gen_ai.data_source.id` |
-| `ctx.resource.lookup` | Loading the resource definition. | — |
-| `ctx.policy.evaluate` | Freshness evaluation. **Absent for tag resolves** — a tag names one exact snapshot, so policy is never consulted. | `ctx.policy.strategy`, `ctx.freshness.status` |
-| `ctx.cache.lookup` | Serving stored bytes (pinned, current, or tagged snapshot). | `ctx.cache.hit` (always `true`: the span is only started on a hit; a miss appears as a `ctx.source.fetch`) |
-| `ctx.source.fetch` | Contacting the source. Only on `decision=fetch`. | `ctx.source.type` |
-| `ctx.snapshot.create` | Storing the blob and the new snapshot row. | `ctx.snapshot.id` |
-| `ctx.materialize` | Get-or-create of the raw materialization. | `ctx.materialization.cached`; `ctx.materialization.id` only when a new one is created (on a cache hit the id is on `ctx.resolve`) |
-| `ctx.tag.lookup` | Resolving `@<tag>` to a snapshot id. | `ctx.resource.uri`, `ctx.resource.ref` |
-| `ctx.manifest.append` | Staging a resolved entry into an open run. | `ctx.resource.uri`, `ctx.snapshot.id`, `ctx.manifest.position` |
-| `ctx.run.start` | `run.Builder.Start`. | `ctx.run.id` |
-| `ctx.run.mount` | `run.Builder.Mount`. Parents that mount's `ctx.resolve` and `ctx.manifest.append`. | `ctx.run.id`, `ctx.resource.uri`, `ctx.resource.ref` (tagged mounts only), `ctx.manifest.position` |
-| `ctx.run.commit` | `run.Builder.Commit`. | `ctx.run.id`, `ctx.manifest.id`, `ctx.manifest.entries`, `ctx.manifest.merkle_root` |
+| `readproof.resolve` | Every resolve (`readproof get`, a run mount, the API). Root of the resolve tree. | `readproof.resource.uri`, `readproof.resource.ref` (tagged resolves only) at start; on success `readproof.snapshot.id`, `readproof.snapshot.content_hash`, `readproof.snapshot.source_revision`, `readproof.snapshot.observed_at`, `readproof.materialization.id`, `readproof.materialization.bytes`, `readproof.source.type`, `readproof.policy.strategy`, `readproof.policy.decision`, `readproof.freshness.status`, `gen_ai.data_source.id` |
+| `readproof.resource.lookup` | Loading the resource definition. | — |
+| `readproof.policy.evaluate` | Freshness evaluation. **Absent for tag resolves** — a tag names one exact snapshot, so policy is never consulted. | `readproof.policy.strategy`, `readproof.freshness.status` |
+| `readproof.cache.lookup` | Serving stored bytes (pinned, current, or tagged snapshot). | `readproof.cache.hit` (always `true`: the span is only started on a hit; a miss appears as a `readproof.source.fetch`) |
+| `readproof.source.fetch` | Contacting the source. Only on `decision=fetch`. | `readproof.source.type` |
+| `readproof.snapshot.create` | Storing the blob and the new snapshot row. | `readproof.snapshot.id` |
+| `readproof.materialize` | Get-or-create of the raw materialization. | `readproof.materialization.cached`; `readproof.materialization.id` only when a new one is created (on a cache hit the id is on `readproof.resolve`) |
+| `readproof.tag.lookup` | Resolving `@<tag>` to a snapshot id. | `readproof.resource.uri`, `readproof.resource.ref` |
+| `readproof.manifest.append` | Staging a resolved entry into an open run. | `readproof.resource.uri`, `readproof.snapshot.id`, `readproof.manifest.position` |
+| `readproof.run.start` | `run.Builder.Start`. | `readproof.run.id` |
+| `readproof.run.mount` | `run.Builder.Mount`. Parents that mount's `readproof.resolve` and `readproof.manifest.append`. | `readproof.run.id`, `readproof.resource.uri`, `readproof.resource.ref` (tagged mounts only), `readproof.manifest.position` |
+| `readproof.run.commit` | `run.Builder.Commit`. | `readproof.run.id`, `readproof.manifest.id`, `readproof.manifest.entries`, `readproof.manifest.merkle_root` |
 
 Every span records failures the same way: `RecordError` (an `exception`
-event) plus status `Error`. A failed `ctx.resolve` sets none of the result
-attributes — a span never claims a snapshot it did not produce.
+event) plus status `Error`. A failed `readproof.resolve` sets none of the
+result attributes — a span never claims a snapshot it did not produce.
 
 ## Attributes
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
-| `ctx.resource.uri` | string | The bare `ctx://<namespace>/<path>`, never the combined `uri@ref` form. |
-| `ctx.resource.ref` | string | The tag the reference was pinned to. Set only when one was given, so its presence alone distinguishes a tagged resolve. |
-| `ctx.snapshot.id` | string | Identity of the observation that was served. |
-| `ctx.snapshot.content_hash` | string | `sha256:<hex>` of the resolved bytes — the join key between a trace, a manifest entry, and an evidence bundle. |
-| `ctx.snapshot.source_revision` | string | Whatever the source called its version (a git sha, an ETag, a content digest for filesystem sources). |
-| `ctx.snapshot.observed_at` | string | RFC 3339 UTC. When Ctx *observed* the content, which is not when the span ran — a cached or tagged resolve can serve bytes observed weeks earlier, and that gap is the point. |
-| `ctx.materialization.id` | string | Identity of the exact byte form handed to the caller. |
-| `ctx.materialization.bytes` | int64 | Size of that byte form. A count, not the content. |
-| `ctx.source.type` | string | `filesystem`, `github`, `http`. On `ctx.resolve` this is the resource's configured source even when nothing was fetched. |
-| `ctx.policy.strategy` | string | `require_fresh`, `allow_stale`, `pinned` — what the resource *declares*. On a tag resolve it was not consulted; `ctx.policy.decision=use_tag` says so. |
-| `ctx.policy.decision` | string | `fetch`, `use_current`, `use_pinned`, `use_tag`. **Canonical name going forward.** |
-| `ctx.freshness.status` | string | Identical value to `ctx.policy.decision`, kept because v0.1 documented it and dashboards may query it. It will not change meaning; prefer `ctx.policy.decision` in new queries. |
-| `ctx.cache.hit` | bool | Bytes came from storage rather than the source. |
-| `ctx.materialization.cached` | bool | An existing materialization was reused rather than recomputed. |
-| `ctx.run.id` | string | Caller-supplied run id. The only handle that joins `ctx.run.start` / `ctx.run.mount` / `ctx.run.commit` when they arrive in separate traces (see below). |
-| `ctx.manifest.id` | string | The committed manifest. What `ctx replay`, `ctx diff`, and `ctx evidence export` take as their argument. |
-| `ctx.manifest.position` | int | 0-based mount order. Order is a hard Ctx invariant — it changes effective model input — so it is committed to, not sorted away. |
-| `ctx.manifest.entries` | int | Number of entries in the committed manifest. |
-| `ctx.manifest.merkle_root` | string | Hex Merkle root over the committed entries; see [Correlating a trace with an evidence bundle](#correlating-a-trace-with-an-evidence-bundle). |
-| `gen_ai.data_source.id` | string | OTel GenAI semantic convention. Ctx emits `ctx://<namespace>`; see [GenAI mapping](#genai-mapping). |
+| `readproof.resource.uri` | string | The bare `readproof://<namespace>/<path>`, never the combined `uri@ref` form. |
+| `readproof.resource.ref` | string | The tag the reference was pinned to. Set only when one was given, so its presence alone distinguishes a tagged resolve. |
+| `readproof.snapshot.id` | string | Identity of the observation that was served. |
+| `readproof.snapshot.content_hash` | string | `sha256:<hex>` of the resolved bytes — the join key between a trace, a manifest entry, and an evidence bundle. |
+| `readproof.snapshot.source_revision` | string | Whatever the source called its version (a git sha, an ETag, a content digest for filesystem sources). |
+| `readproof.snapshot.observed_at` | string | RFC 3339 UTC. When Readproof *observed* the content, which is not when the span ran — a cached or tagged resolve can serve bytes observed weeks earlier, and that gap is the point. |
+| `readproof.materialization.id` | string | Identity of the exact byte form handed to the caller. |
+| `readproof.materialization.bytes` | int64 | Size of that byte form. A count, not the content. |
+| `readproof.source.type` | string | `filesystem`, `github`, `http`. On `readproof.resolve` this is the resource's configured source even when nothing was fetched. |
+| `readproof.policy.strategy` | string | `require_fresh`, `allow_stale`, `pinned` — what the resource *declares*. On a tag resolve it was not consulted; `readproof.policy.decision=use_tag` says so. |
+| `readproof.policy.decision` | string | `fetch`, `use_current`, `use_pinned`, `use_tag`. **Canonical name going forward.** |
+| `readproof.freshness.status` | string | Identical value to `readproof.policy.decision`, kept because v0.1 documented it and dashboards may query it. It will not change meaning; prefer `readproof.policy.decision` in new queries. |
+| `readproof.cache.hit` | bool | Bytes came from storage rather than the source. |
+| `readproof.materialization.cached` | bool | An existing materialization was reused rather than recomputed. |
+| `readproof.run.id` | string | Caller-supplied run id. The only handle that joins `readproof.run.start` / `readproof.run.mount` / `readproof.run.commit` when they arrive in separate traces (see below). |
+| `readproof.manifest.id` | string | The committed manifest. What `readproof replay`, `readproof diff`, and `readproof evidence export` take as their argument. |
+| `readproof.manifest.position` | int | 0-based mount order. Order is a hard Readproof invariant — it changes effective model input — so it is committed to, not sorted away. |
+| `readproof.manifest.entries` | int | Number of entries in the committed manifest. |
+| `readproof.manifest.merkle_root` | string | Hex Merkle root over the committed entries; see [Correlating a trace with an evidence bundle](#correlating-a-trace-with-an-evidence-bundle). |
+| `gen_ai.data_source.id` | string | OTel GenAI semantic convention. Readproof emits `readproof://<namespace>`; see [GenAI mapping](#genai-mapping). |
 
 ## Metrics
 
@@ -109,93 +109,96 @@ cost.
 
 | Metric | Kind | Labels | Meaning |
 | --- | --- | --- | --- |
-| `ctx_resolve_total` | counter | `ctx.resource.uri` | Resolve calls. |
-| `ctx_resolve_duration_seconds` | histogram | `ctx.resource.uri` | End-to-end resolve latency. |
-| `ctx_resolve_errors_total` | counter | `ctx.resource.uri` | Resolves that returned an error. |
-| `ctx_cache_hit_total` | counter | — | Resolves served from a stored snapshot. |
-| `ctx_cache_miss_total` | counter | — | Resolves that required a source fetch. |
-| `ctx_source_fetch_total` | counter | `ctx.source.type` | Source fetch attempts. |
-| `ctx_source_fetch_duration_seconds` | histogram | `ctx.source.type` | Source fetch latency. |
-| `ctx_source_fetch_errors_total` | counter | `ctx.source.type` | Failed source fetches. |
-| `ctx_snapshot_created_total` | counter | — | Snapshot rows created. |
-| `ctx_materialization_created_total` | counter | — | Materialization rows created. |
-| `ctx_manifest_created_total` | counter | — | Manifests created. |
-| `ctx_run_committed_total` | counter | — | Runs that reached a committed manifest. |
-| `ctx_tag_resolve_total` | counter | — | Resolves served from a tag ref. |
+| `readproof_resolve_total` | counter | `readproof.resource.uri` | Resolve calls. |
+| `readproof_resolve_duration_seconds` | histogram | `readproof.resource.uri` | End-to-end resolve latency. |
+| `readproof_resolve_errors_total` | counter | `readproof.resource.uri` | Resolves that returned an error. |
+| `readproof_cache_hit_total` | counter | — | Resolves served from a stored snapshot. |
+| `readproof_cache_miss_total` | counter | — | Resolves that required a source fetch. |
+| `readproof_source_fetch_total` | counter | `readproof.source.type` | Source fetch attempts. |
+| `readproof_source_fetch_duration_seconds` | histogram | `readproof.source.type` | Source fetch latency. |
+| `readproof_source_fetch_errors_total` | counter | `readproof.source.type` | Failed source fetches. |
+| `readproof_snapshot_created_total` | counter | — | Snapshot rows created. |
+| `readproof_materialization_created_total` | counter | — | Materialization rows created. |
+| `readproof_manifest_created_total` | counter | — | Manifests created. |
+| `readproof_run_committed_total` | counter | — | Runs that reached a committed manifest. |
+| `readproof_tag_resolve_total` | counter | — | Resolves served from a tag ref. |
 
-`ctx_manifest_created_total` and `ctx_run_committed_total` move together in
-normal operation; a gap between them means manifests were created by a path
-that never marked its run committed, which is worth an alert.
+`readproof_manifest_created_total` and `readproof_run_committed_total`
+move together in normal operation; a gap between them means manifests were
+created by a path that never marked its run committed, which is worth an
+alert.
 
 ## A worked trace
 
 ```bash
-ctx run --id r ctx://demo/policies/refunds@prod
+readproof run --id r readproof://demo/policies/refunds@prod
 ```
 
 ```
-ctx.run.start
-  ctx.run.id=r
+readproof.run.start
+  readproof.run.id=r
 
-ctx.run.mount
-  ctx.run.id=r  ctx.resource.uri=ctx://demo/policies/refunds
-  ctx.resource.ref=prod  ctx.manifest.position=0
-  ├── ctx.resolve
-  │     ctx.resource.uri=ctx://demo/policies/refunds  ctx.resource.ref=prod
-  │     ctx.policy.decision=use_tag   ctx.freshness.status=use_tag
-  │     ctx.policy.strategy=require_fresh          (declared, not consulted)
-  │     ctx.source.type=filesystem
-  │     ctx.snapshot.id=snap_01J...  ctx.snapshot.content_hash=sha256:9f2c…
-  │     ctx.snapshot.source_revision=sha256:4b1e0a7c9d33
-  │     ctx.snapshot.observed_at=2026-08-14T09:12:44Z
-  │     ctx.materialization.id=mat_01J...  ctx.materialization.bytes=41
-  │     gen_ai.data_source.id=ctx://demo
-  │     ├── ctx.resource.lookup
-  │     ├── ctx.tag.lookup       ctx.resource.uri=…  ctx.resource.ref=prod
-  │     ├── ctx.cache.lookup     ctx.cache.hit=true
-  │     └── ctx.materialize      ctx.materialization.cached=true
-  └── ctx.manifest.append
-        ctx.resource.uri=…  ctx.snapshot.id=snap_01J…  ctx.manifest.position=0
+readproof.run.mount
+  readproof.run.id=r  readproof.resource.uri=readproof://demo/policies/refunds
+  readproof.resource.ref=prod  readproof.manifest.position=0
+  ├── readproof.resolve
+  │     readproof.resource.uri=readproof://demo/policies/refunds  readproof.resource.ref=prod
+  │     readproof.policy.decision=use_tag   readproof.freshness.status=use_tag
+  │     readproof.policy.strategy=require_fresh          (declared, not consulted)
+  │     readproof.source.type=filesystem
+  │     readproof.snapshot.id=snap_01J...  readproof.snapshot.content_hash=sha256:9f2c…
+  │     readproof.snapshot.source_revision=sha256:4b1e0a7c9d33
+  │     readproof.snapshot.observed_at=2026-08-14T09:12:44Z
+  │     readproof.materialization.id=mat_01J...  readproof.materialization.bytes=41
+  │     gen_ai.data_source.id=readproof://demo
+  │     ├── readproof.resource.lookup
+  │     ├── readproof.tag.lookup       readproof.resource.uri=…  readproof.resource.ref=prod
+  │     ├── readproof.cache.lookup     readproof.cache.hit=true
+  │     └── readproof.materialize      readproof.materialization.cached=true
+  └── readproof.manifest.append
+        readproof.resource.uri=…  readproof.snapshot.id=snap_01J…  readproof.manifest.position=0
 
-ctx.run.commit
-  ctx.run.id=r  ctx.manifest.id=manifest_01J...
-  ctx.manifest.entries=1
-  ctx.manifest.merkle_root=518f2505…a92c
+readproof.run.commit
+  readproof.run.id=r  readproof.manifest.id=manifest_01J...
+  readproof.manifest.entries=1
+  readproof.manifest.merkle_root=518f2505…a92c
 ```
 
-Read across it: the run mounted one resource, by the `prod` tag; policy was
-bypassed (`use_tag`) so the source was never contacted (no
-`ctx.source.fetch`); the bytes it got were observed on 14 August even
-though the run happened later; and the committed manifest digests to
+Read across it: the run mounted one resource, by the `prod` tag; policy
+was bypassed (`use_tag`) so the source was never contacted (no
+`readproof.source.fetch`); the bytes it got were observed on 14 August
+even though the run happened later; and the committed manifest digests to
 `518f2505…a92c`.
 
 The same run without the tag replaces the tag/cache pair with the fetch
-path — `ctx.policy.evaluate` (`ctx.freshness.status=fetch`) →
-`ctx.source.fetch` → `ctx.snapshot.create` → `ctx.materialize` — and
-`ctx.policy.decision` on `ctx.resolve` becomes `fetch`.
+path — `readproof.policy.evaluate` (`readproof.freshness.status=fetch`) →
+`readproof.source.fetch` → `readproof.snapshot.create` →
+`readproof.materialize` — and `readproof.policy.decision` on
+`readproof.resolve` becomes `fetch`.
 
-**`ctx.run.start`, `ctx.run.mount` and `ctx.run.commit` are three separate
-traces here**, joined by `ctx.run.id`. That is not an accident of the CLI:
-a run legitimately spans processes and machines (start it in one step,
-mount from a worker, commit hours later), so no ambient parent span exists
-to hang them off. Callers that *do* have one — the embedded API, an SDK
-inside an agent framework — pass a `context.Context` carrying their span and
-get the whole run nested under it. Query by `ctx.run.id` rather than
-assuming one trace per run.
+**`readproof.run.start`, `readproof.run.mount` and `readproof.run.commit`
+are three separate traces here**, joined by `readproof.run.id`. That is
+not an accident of the CLI: a run legitimately spans processes and
+machines (start it in one step, mount from a worker, commit hours later),
+so no ambient parent span exists to hang them off. Callers that *do* have
+one — the embedded API, an SDK inside an agent framework — pass a
+`context.Context` carrying their span and get the whole run nested under
+it. Query by `readproof.run.id` rather than assuming one trace per run.
 
-In client/server mode the `ctx.run.*` and `ctx.resolve` spans are emitted by
-`ctxd` (`service.name=ctxd`), not by the CLI: the daemon does the work.
-Trace context is **not** propagated over the HTTP API yet, so a CLI span and
-the `ctxd` spans it caused are correlated by `ctx.run.id` and
-`ctx.resource.uri`, not by trace id.
+In client/server mode the `readproof.run.*` and `readproof.resolve` spans
+are emitted by `readproofd` (`service.name=readproofd`), not by the CLI:
+the daemon does the work. Trace context is **not** propagated over the
+HTTP API yet, so a CLI span and the `readproofd` spans it caused are
+correlated by `readproof.run.id` and `readproof.resource.uri`, not by
+trace id.
 
 ## Correlating a trace with an evidence bundle
 
-`ctx.manifest.merkle_root` on `ctx.run.commit` is byte-identical to the
-`subject[0].digest.sha256` of the [evidence bundle](evidence.md) exported
-for that manifest — both come from
-[`internal/merkle`](../internal/merkle), which exists precisely so there is
-one implementation of the rule. So:
+`readproof.manifest.merkle_root` on `readproof.run.commit` is
+byte-identical to the `subject[0].digest.sha256` of the [evidence
+bundle](evidence.md) exported for that manifest — both come from
+[`internal/merkle`](../internal/merkle), which exists precisely so there
+is one implementation of the rule. So:
 
 - given a trace, you can tell whether a bundle you were handed describes
   that exact run;
@@ -212,36 +215,36 @@ they are the contract, not the implementation's opinion.
 
 OpenTelemetry's GenAI semantic conventions describe retrieval steps in an
 agent, but they identify a *data source*, not a *version of a document*.
-Ctx emits the one attribute that maps cleanly today:
+Readproof emits the one attribute that maps cleanly today:
 
-| GenAI attribute | Ctx value | Why |
+| GenAI attribute | Readproof value | Why |
 | --- | --- | --- |
-| `gen_ai.data_source.id` | `ctx://<namespace>` | The namespace is the coarsest stable identifier of the corpus an agent read from — the analogue of a vector-store collection id. It is stable across snapshots, so grouping by it in a GenAI-aware backend puts Ctx retrievals next to vector-store ones. |
+| `gen_ai.data_source.id` | `readproof://<namespace>` | The namespace is the coarsest stable identifier of the corpus an agent read from — the analogue of a vector-store collection id. It is stable across snapshots, so grouping by it in a GenAI-aware backend puts Readproof retrievals next to vector-store ones. |
 
-Per-document identity deliberately stays on the `ctx.*` attributes
-(`ctx.resource.uri`, `ctx.snapshot.content_hash`,
-`ctx.snapshot.source_revision`, `ctx.snapshot.observed_at`): those are
-per-resolve values, and stuffing them into a data-source-level attribute
-would make them mean something they do not.
+Per-document identity deliberately stays on the `readproof.*` attributes
+(`readproof.resource.uri`, `readproof.snapshot.content_hash`,
+`readproof.snapshot.source_revision`, `readproof.snapshot.observed_at`):
+those are per-resolve values, and stuffing them into a data-source-level
+attribute would make them mean something they do not.
 
 ### Proposal: carry content identity on retrieved documents
 
-The gap this leaves is real and not Ctx-specific. Today a GenAI trace can
-say *which store* a document came from and *what it said*, but not *which
-version of it* — so an incident review can see the text the model got and
-still not prove it was the text the source held at the time, and two runs
-that read the same corpus at different revisions look identical in the
-trace.
+The gap this leaves is real and not Readproof-specific. Today a GenAI
+trace can say *which store* a document came from and *what it said*, but
+not *which version of it* — so an incident review can see the text the
+model got and still not prove it was the text the source held at the time,
+and two runs that read the same corpus at different revisions look
+identical in the trace.
 
-Ctx already computes exactly the missing fields. We propose they become
-conventional per-document attributes:
+Readproof already computes exactly the missing fields. We propose they
+become conventional per-document attributes:
 
-| Proposed attribute | Ctx source | Example |
+| Proposed attribute | Readproof source | Example |
 | --- | --- | --- |
-| `gen_ai.retrieval.documents.<i>.id` | `ctx.resource.uri` | `ctx://demo/policies/refunds` |
-| `gen_ai.retrieval.documents.<i>.content_hash` | `ctx.snapshot.content_hash` | `sha256:9f2c…` |
-| `gen_ai.retrieval.documents.<i>.source_revision` | `ctx.snapshot.source_revision` | `sha256:4b1e0a7c9d33` |
-| `gen_ai.retrieval.documents.<i>.observed_at` | `ctx.snapshot.observed_at` | `2026-08-14T09:12:44Z` |
+| `gen_ai.retrieval.documents.<i>.id` | `readproof.resource.uri` | `readproof://demo/policies/refunds` |
+| `gen_ai.retrieval.documents.<i>.content_hash` | `readproof.snapshot.content_hash` | `sha256:9f2c…` |
+| `gen_ai.retrieval.documents.<i>.source_revision` | `readproof.snapshot.source_revision` | `sha256:4b1e0a7c9d33` |
+| `gen_ai.retrieval.documents.<i>.observed_at` | `readproof.snapshot.observed_at` | `2026-08-14T09:12:44Z` |
 
 The same four fields fit
 [OpenInference](https://github.com/Arize-ai/openinference)'s existing
@@ -250,7 +253,7 @@ The same four fields fit
 ```jsonc
 // retrieval.documents.0.document.metadata
 {
-  "uri":             "ctx://demo/policies/refunds",
+  "uri":             "readproof://demo/policies/refunds",
   "content_hash":    "sha256:9f2c…",
   "source_revision": "sha256:4b1e0a7c9d33",
   "observed_at":     "2026-08-14T09:12:44Z",
@@ -264,18 +267,19 @@ strings; none of them is content, so the privacy posture of a trace does
 not change; and a backend that ignores them is no worse off than today.
 
 Until something like the above is conventional, the mapping a backend can
-apply right now — using only what Ctx emits and what each product already
-indexes — is:
+apply right now — using only what Readproof emits and what each product
+already indexes — is:
 
-| Backend | Where the Ctx attributes land | What it buys |
+| Backend | Where the Readproof attributes land | What it buys |
 | --- | --- | --- |
-| **Arize Phoenix** (OpenInference) | Copy `ctx.snapshot.content_hash` / `ctx.snapshot.source_revision` into `document.metadata` on the retrieval span; keep `gen_ai.data_source.id` as-is. | Group evaluation runs by the exact document version; diff two evals that disagree. |
-| **Langfuse** | `ctx.run.id` → trace/session id; `ctx.manifest.id`, `ctx.manifest.merkle_root` → trace metadata; `ctx.snapshot.content_hash` → observation metadata. | A Langfuse trace links to the manifest that reproduces it byte-for-byte. |
-| **LangSmith** | `ctx.manifest.id` and `ctx.snapshot.content_hash` as run metadata / tags on the retriever run. | Filter datasets to runs that saw one specific policy version. |
-| **Datadog LLM Observability** | Span tags pass through unchanged; facet `ctx.policy.decision`, `ctx.source.type`, `ctx.freshness.status`. | Alert on a spike in `use_current` (staleness) or `fetch` (cache thrash) per resource. |
-| **Honeycomb** | Attributes are already columns; no mapping needed. | `HEATMAP(ctx.materialization.bytes)` by `ctx.resource.uri`, or `COUNT` grouped by `ctx.policy.decision`. |
+| **Arize Phoenix** (OpenInference) | Copy `readproof.snapshot.content_hash` / `readproof.snapshot.source_revision` into `document.metadata` on the retrieval span; keep `gen_ai.data_source.id` as-is. | Group evaluation runs by the exact document version; diff two evals that disagree. |
+| **Langfuse** | `readproof.run.id` → trace/session id; `readproof.manifest.id`, `readproof.manifest.merkle_root` → trace metadata; `readproof.snapshot.content_hash` → observation metadata. | A Langfuse trace links to the manifest that reproduces it byte-for-byte. |
+| **LangSmith** | `readproof.manifest.id` and `readproof.snapshot.content_hash` as run metadata / tags on the retriever run. | Filter datasets to runs that saw one specific policy version. |
+| **Datadog LLM Observability** | Span tags pass through unchanged; facet `readproof.policy.decision`, `readproof.source.type`, `readproof.freshness.status`. | Alert on a spike in `use_current` (staleness) or `fetch` (cache thrash) per resource. |
+| **Honeycomb** | Attributes are already columns; no mapping needed. | `HEATMAP(readproof.materialization.bytes)` by `readproof.resource.uri`, or `COUNT` grouped by `readproof.policy.decision`. |
 
 Anything that stores OTLP attributes verbatim needs no adapter at all: the
-`ctx.*` names are stable, and the two that could have been ambiguous
-(`ctx.policy.decision` vs. `ctx.freshness.status`) are documented above as
-the same value under two names, with the canonical one named.
+`readproof.*` names are stable, and the two that could have been ambiguous
+(`readproof.policy.decision` vs. `readproof.freshness.status`) are
+documented above as the same value under two names, with the canonical one
+named.

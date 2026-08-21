@@ -5,34 +5,34 @@ import (
 	"os"
 	"testing"
 
-	"ctx/internal/ids"
+	"readproof/internal/ids"
 )
 
 // testConfig builds a Config from environment variables, skipping the test
-// if CTX_TEST_MINIO_ENDPOINT is unset so `go test ./...` stays green without
-// a live MinIO instance.
+// if READPROOF_TEST_MINIO_ENDPOINT is unset so `go test ./...` stays green
+// without a live MinIO instance.
 func testConfig(t *testing.T) Config {
 	t.Helper()
 
-	endpoint := os.Getenv("CTX_TEST_MINIO_ENDPOINT")
+	endpoint := os.Getenv("READPROOF_TEST_MINIO_ENDPOINT")
 	if endpoint == "" {
-		t.Skip("CTX_TEST_MINIO_ENDPOINT not set; skipping live MinIO test")
+		t.Skip("READPROOF_TEST_MINIO_ENDPOINT not set; skipping live MinIO test")
 	}
 
-	accessKey := os.Getenv("CTX_TEST_MINIO_ACCESS_KEY")
+	accessKey := os.Getenv("READPROOF_TEST_MINIO_ACCESS_KEY")
 	if accessKey == "" {
-		accessKey = "ctxadmin"
+		accessKey = "readproofadmin"
 	}
-	secretKey := os.Getenv("CTX_TEST_MINIO_SECRET_KEY")
+	secretKey := os.Getenv("READPROOF_TEST_MINIO_SECRET_KEY")
 	if secretKey == "" {
-		secretKey = "ctx_dev_password_minio"
+		secretKey = "readproof_dev_password_minio"
 	}
 
 	return Config{
 		Endpoint:        endpoint,
 		AccessKeyID:     accessKey,
 		SecretAccessKey: secretKey,
-		Bucket:          "ctx-blobs-test",
+		Bucket:          "readproof-blobs-test",
 		UseSSL:          false,
 	}
 }

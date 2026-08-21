@@ -1,21 +1,21 @@
-// Package client defines the operations the ctx CLI needs, with two
+// Package client defines the operations the readproof CLI needs, with two
 // implementations: local (direct in-process calls into an *app.App) and
-// remote (HTTP calls to a running ctxd). Every CLI command is written
+// remote (HTTP calls to a running readproofd). Every CLI command is written
 // against this interface, so it behaves identically regardless of which
-// implementation backs it — the --server flag / CTX_SERVER_URL env var is
-// the only thing that decides which one gets constructed.
+// implementation backs it — the --server flag / READPROOF_SERVER_URL env
+// var is the only thing that decides which one gets constructed.
 package client
 
 import (
 	"context"
 
-	"ctx/internal/diff"
-	"ctx/internal/manifest"
-	"ctx/internal/replay"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/snapshot"
-	"ctx/internal/tag"
+	"readproof/internal/diff"
+	"readproof/internal/manifest"
+	"readproof/internal/replay"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/snapshot"
+	"readproof/internal/tag"
 )
 
 type Client interface {
@@ -34,8 +34,8 @@ type Client interface {
 	ListTags(ctx context.Context, uri string) ([]tag.Tag, error)
 	DeleteTag(ctx context.Context, uri, name string) error
 
-	// Resolve accepts either a bare "ctx://ns/path" or a tagged
-	// "ctx://ns/path@<tag>". A tagged reference resolves to exactly that
+	// Resolve accepts either a bare "readproof://ns/path" or a tagged
+	// "readproof://ns/path@<tag>". A tagged reference resolves to exactly that
 	// snapshot: no source fetch, and the resource's policy is not consulted.
 	Resolve(ctx context.Context, uri string) (resolver.ResolveResult, error)
 

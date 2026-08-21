@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"ctx/internal/run"
+	"readproof/internal/run"
 )
 
 // ErrRunNotFound is an alias for run.ErrNotFound, kept exported here for

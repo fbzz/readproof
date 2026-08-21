@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"ctx/internal/manifest"
+	"readproof/internal/manifest"
 )
 
 // ErrManifestNotFound is an alias for manifest.ErrNotFound, kept exported

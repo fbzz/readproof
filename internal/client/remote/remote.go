@@ -1,5 +1,6 @@
 // Package remote implements client.Client over HTTP calls to a running
-// ctxd, using the same internal/wire types the server encodes/decodes.
+// readproofd, using the same internal/wire types the server
+// encodes/decodes.
 package remote
 
 import (
@@ -12,14 +13,14 @@ import (
 	"net/url"
 	"strings"
 
-	"ctx/internal/diff"
-	"ctx/internal/manifest"
-	"ctx/internal/replay"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/snapshot"
-	"ctx/internal/tag"
-	"ctx/internal/wire"
+	"readproof/internal/diff"
+	"readproof/internal/manifest"
+	"readproof/internal/replay"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/snapshot"
+	"readproof/internal/tag"
+	"readproof/internal/wire"
 )
 
 type Client struct {
@@ -29,8 +30,8 @@ type Client struct {
 }
 
 // New constructs a remote client. apiKey is sent as "Authorization: Bearer
-// <apiKey>" on every request when non-empty; pass "" for a ctxd instance
-// with no --api-key configured.
+// <apiKey>" on every request when non-empty; pass "" for a readproofd
+// instance with no --api-key configured.
 func New(baseURL, apiKey string) *Client {
 	return &Client{baseURL: strings.TrimSuffix(baseURL, "/"), apiKey: apiKey, http: http.DefaultClient}
 }
@@ -197,9 +198,9 @@ func (c *Client) doJSON(ctx context.Context, method, path string, body, out any)
 	if resp.StatusCode >= 300 {
 		var errResp wire.ErrorResponse
 		if jsonErr := json.NewDecoder(resp.Body).Decode(&errResp); jsonErr == nil && errResp.Error != "" {
-			return fmt.Errorf("ctxd: %s", errResp.Error)
+			return fmt.Errorf("readproofd: %s", errResp.Error)
 		}
-		return fmt.Errorf("ctxd: unexpected status %d", resp.StatusCode)
+		return fmt.Errorf("readproofd: unexpected status %d", resp.StatusCode)
 	}
 
 	if out == nil {

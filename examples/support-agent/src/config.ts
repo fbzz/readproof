@@ -1,26 +1,26 @@
-// Every knob the support agent has, in one place: which ctxd it talks to,
-// which model answers, which policy documents are governed by Ctx, and
+// Every knob the support agent has, in one place: which readproofd it talks to,
+// which model answers, which policy documents are governed by Readproof, and
 // where the ticket log lives. The CLI, the agent and the tests all read
 // this module, so they can never disagree about any of it.
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { Policy, SourceConfig } from "@ctx/sdk";
+import type { Policy, SourceConfig } from "@readproof/sdk";
 
 // ESM has no __dirname. Compiled output lives at dist/src/config.js, so the
 // example root is two levels up from this file at runtime.
 const exampleDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
- * Base URL of a running ctxd. `CTX_SERVER_URL` is accepted as a fallback
- * because that is the variable the Go CLI (`ctx --server`) already uses —
+ * Base URL of a running readproofd. `READPROOF_SERVER_URL` is accepted as a fallback
+ * because that is the variable the Go CLI (`readproof --server`) already uses —
  * one export, and both halves of the demo point at the same server.
  */
-export const CTX_ENDPOINT = process.env["CTX_ENDPOINT"] ?? process.env["CTX_SERVER_URL"] ?? "http://localhost:8080";
+export const READPROOF_ENDPOINT = process.env["READPROOF_ENDPOINT"] ?? process.env["READPROOF_SERVER_URL"] ?? "http://localhost:8080";
 
-/** Only needed when ctxd was started with --api-key. */
-export const CTX_API_KEY = process.env["CTX_API_KEY"];
+/** Only needed when readproofd was started with --api-key. */
+export const READPROOF_API_KEY = process.env["READPROOF_API_KEY"];
 
 /**
  * Chat model to answer with. When unset, `src/model.ts` asks Ollama what it
@@ -39,7 +39,7 @@ export const OLLAMA_HOST = process.env["OLLAMA_HOST"] ?? "http://localhost:11434
 /**
  * Truthy -> answer with a deterministic fake model instead of calling
  * Ollama. The tests and CI run this way: the point of the example is what
- * Ctx pins, which must be provable without a GPU or a network.
+ * Readproof pins, which must be provable without a GPU or a network.
  */
 export const FAKE_MODEL = isTruthy(process.env["SUPPORT_FAKE_MODEL"]);
 
@@ -71,7 +71,7 @@ export interface PolicyResource {
   name: string;
   /** File basename inside POLICY_DIR. */
   file: string;
-  /** Freshness strategy ctxd applies when this resource is resolved bare. */
+  /** Freshness strategy readproofd applies when this resource is resolved bare. */
   policy: Policy;
   /**
    * When set, the agent mounts `uri@<mountRef>` instead of the bare URI:
@@ -92,13 +92,13 @@ export interface PolicyResource {
  */
 export const POLICY_RESOURCES: PolicyResource[] = [
   {
-    uri: "ctx://acme/policies/refunds",
+    uri: "readproof://acme/policies/refunds",
     name: "refunds",
     file: "refunds.md",
     policy: { strategy: "require_fresh" },
   },
   {
-    uri: "ctx://acme/policies/shipping",
+    uri: "readproof://acme/policies/shipping",
     name: "shipping",
     file: "shipping.md",
     // max_age_seconds is the API's spelling of "how stale is acceptable"
@@ -106,7 +106,7 @@ export const POLICY_RESOURCES: PolicyResource[] = [
     policy: { strategy: "allow_stale", max_age_seconds: 3600 },
   },
   {
-    uri: "ctx://acme/policies/tone",
+    uri: "readproof://acme/policies/tone",
     name: "tone",
     file: "tone.md",
     policy: { strategy: "require_fresh" },
@@ -115,7 +115,7 @@ export const POLICY_RESOURCES: PolicyResource[] = [
 ];
 
 /**
- * Absolute path to a policy file. Absolute because ctxd resolves a
+ * Absolute path to a policy file. Absolute because readproofd resolves a
  * filesystem source relative to its own working directory, which is never
  * this example's.
  */
@@ -128,7 +128,7 @@ export function policySource(resource: PolicyResource): SourceConfig {
 }
 
 /**
- * What the agent mounts, in order. Order is a hard Ctx invariant — it is
+ * What the agent mounts, in order. Order is a hard Readproof invariant — it is
  * committed to the manifest and folded into the evidence Merkle root — so
  * it lives here rather than being rebuilt at each call site.
  */
@@ -136,15 +136,15 @@ export function mountSpecs(): string[] {
   return POLICY_RESOURCES.map((r) => (r.mountRef ? `${r.uri}@${r.mountRef}` : r.uri));
 }
 
-/** Accepts a full ctx:// URI or a short name ("refunds"). */
+/** Accepts a full readproof:// URI or a short name ("refunds"). */
 export function resolvePolicyURI(nameOrURI: string): string {
-  if (nameOrURI.startsWith("ctx://")) {
+  if (nameOrURI.startsWith("readproof://")) {
     return nameOrURI;
   }
   const match = POLICY_RESOURCES.find((r) => r.name === nameOrURI);
   if (!match) {
     const names = POLICY_RESOURCES.map((r) => r.name).join(", ");
-    throw new Error(`unknown policy "${nameOrURI}" — use a ctx:// URI or one of: ${names}`);
+    throw new Error(`unknown policy "${nameOrURI}" — use a readproof:// URI or one of: ${names}`);
   }
   return match.uri;
 }

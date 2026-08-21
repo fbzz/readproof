@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"ctx/internal/client"
-	"ctx/internal/ids"
+	"readproof/internal/client"
+	"readproof/internal/ids"
 )
 
 // VerifyOptions configures the checks Verify runs.
@@ -121,7 +121,7 @@ func verifyMerkle(b Bundle, report *Report) string {
 }
 
 // verifyEntryOrder guards the invariant the Merkle leaf depends on: entry
-// order is meaningful in Ctx, so positions must be the exact sequence
+// order is meaningful in Readproof, so positions must be the exact sequence
 // 0..n-1 in ascending order.
 func verifyEntryOrder(b Bundle, report *Report) {
 	for i, e := range b.Predicate.Entries {
@@ -156,7 +156,7 @@ func verifyEmbeddedContent(b Bundle, report *Report) {
 // verifyAgainstStore replays the manifest again, now, and compares the
 // hashes the store produces with the ones the bundle recorded — the check
 // that turns "this file is internally consistent" into "this file still
-// describes what Ctx holds".
+// describes what Readproof holds".
 func verifyAgainstStore(b Bundle, opts VerifyOptions, report *Report) {
 	if opts.Client == nil {
 		return

@@ -12,22 +12,22 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 
-	"ctx/internal/app"
-	"ctx/internal/client/local"
-	"ctx/internal/evidence"
-	"ctx/internal/merkle"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
-	"ctx/internal/tag"
-	"ctx/internal/telemetry"
+	"readproof/internal/app"
+	"readproof/internal/client/local"
+	"readproof/internal/evidence"
+	"readproof/internal/merkle"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
+	"readproof/internal/tag"
+	"readproof/internal/telemetry"
 )
 
 const (
 	refundsContent  = "Products can be refunded within 30 days.\n"
 	shippingContent = "Orders ship within 2 business days.\n"
-	refundsURI      = "ctx://demo/policies/refunds"
-	shippingURI     = "ctx://demo/policies/shipping"
+	refundsURI      = "readproof://demo/policies/refunds"
+	shippingURI     = "readproof://demo/policies/shipping"
 )
 
 func recordSpans(t *testing.T) func() tracetest.SpanStubs {
@@ -156,10 +156,10 @@ func newDemoApp(t *testing.T) *app.App {
 }
 
 // TestRunSpans walks the demo's own flow — start, mount by tag, mount by
-// URI, commit — and pins the run-level trace shape: one ctx.run.mount per
-// mounted resource, parenting that mount's ctx.resolve and
-// ctx.manifest.append, and a ctx.run.commit carrying the manifest's
-// identity plus the Merkle root of what was committed.
+// URI, commit — and pins the run-level trace shape: one readproof.run.mount
+// per mounted resource, parenting that mount's readproof.resolve and
+// readproof.manifest.append, and a readproof.run.commit carrying the
+// manifest's identity plus the Merkle root of what was committed.
 func TestRunSpans(t *testing.T) {
 	a := newDemoApp(t)
 	ctx := context.Background()
@@ -192,55 +192,55 @@ func TestRunSpans(t *testing.T) {
 	}
 	spans := collect()
 
-	startSpan := findSpan(t, spans, "ctx.run.start")
-	wantString(t, startSpan, "ctx.run.id", runID)
+	startSpan := findSpan(t, spans, "readproof.run.start")
+	wantString(t, startSpan, "readproof.run.id", runID)
 
-	mounts := spansNamed(spans, "ctx.run.mount")
+	mounts := spansNamed(spans, "readproof.run.mount")
 	if len(mounts) != 2 {
-		t.Fatalf("expected 2 ctx.run.mount spans, got %d (spans: %v)", len(mounts), spanNames(spans))
+		t.Fatalf("expected 2 readproof.run.mount spans, got %d (spans: %v)", len(mounts), spanNames(spans))
 	}
 	byURI := make(map[string]tracetest.SpanStub, len(mounts))
 	for _, m := range mounts {
-		byURI[attrs(m)["ctx.resource.uri"].AsString()] = m
+		byURI[attrs(m)["readproof.resource.uri"].AsString()] = m
 	}
 
 	tagged, ok := byURI[refundsURI]
 	if !ok {
-		t.Fatalf("no ctx.run.mount span for %s", refundsURI)
+		t.Fatalf("no readproof.run.mount span for %s", refundsURI)
 	}
-	wantString(t, tagged, "ctx.run.id", runID)
-	wantString(t, tagged, "ctx.resource.ref", "prod")
-	if got := attrs(tagged)["ctx.manifest.position"].AsInt64(); got != 0 {
-		t.Errorf("first mount ctx.manifest.position = %d, want 0", got)
+	wantString(t, tagged, "readproof.run.id", runID)
+	wantString(t, tagged, "readproof.resource.ref", "prod")
+	if got := attrs(tagged)["readproof.manifest.position"].AsInt64(); got != 0 {
+		t.Errorf("first mount readproof.manifest.position = %d, want 0", got)
 	}
 
 	plain, ok := byURI[shippingURI]
 	if !ok {
-		t.Fatalf("no ctx.run.mount span for %s", shippingURI)
+		t.Fatalf("no readproof.run.mount span for %s", shippingURI)
 	}
-	if _, ok := attrs(plain)["ctx.resource.ref"]; ok {
-		t.Error("an untagged mount must not set ctx.resource.ref")
+	if _, ok := attrs(plain)["readproof.resource.ref"]; ok {
+		t.Error("an untagged mount must not set readproof.resource.ref")
 	}
-	if got := attrs(plain)["ctx.manifest.position"].AsInt64(); got != 1 {
-		t.Errorf("second mount ctx.manifest.position = %d, want 1", got)
+	if got := attrs(plain)["readproof.manifest.position"].AsInt64(); got != 1 {
+		t.Errorf("second mount readproof.manifest.position = %d, want 1", got)
 	}
 
 	// The point of the mount span: everything a mount did hangs off it.
 	for _, m := range mounts {
-		uri := attrs(m)["ctx.resource.uri"].AsString()
-		if !hasChild(spans, m.SpanContext.SpanID(), "ctx.resolve") {
-			t.Errorf("ctx.run.mount(%s) does not parent a ctx.resolve span", uri)
+		uri := attrs(m)["readproof.resource.uri"].AsString()
+		if !hasChild(spans, m.SpanContext.SpanID(), "readproof.resolve") {
+			t.Errorf("readproof.run.mount(%s) does not parent a readproof.resolve span", uri)
 		}
-		if !hasChild(spans, m.SpanContext.SpanID(), "ctx.manifest.append") {
-			t.Errorf("ctx.run.mount(%s) does not parent a ctx.manifest.append span", uri)
+		if !hasChild(spans, m.SpanContext.SpanID(), "readproof.manifest.append") {
+			t.Errorf("readproof.run.mount(%s) does not parent a readproof.manifest.append span", uri)
 		}
 	}
 
-	commit := findSpan(t, spans, "ctx.run.commit")
-	wantString(t, commit, "ctx.run.id", runID)
-	wantString(t, commit, "ctx.manifest.id", man.ManifestID)
-	if got, want := attrs(commit)["ctx.manifest.entries"].AsInt64(), int64(len(man.Entries)); got != want {
-		t.Errorf("ctx.manifest.entries = %d, want %d", got, want)
+	commit := findSpan(t, spans, "readproof.run.commit")
+	wantString(t, commit, "readproof.run.id", runID)
+	wantString(t, commit, "readproof.manifest.id", man.ManifestID)
+	if got, want := attrs(commit)["readproof.manifest.entries"].AsInt64(), int64(len(man.Entries)); got != want {
+		t.Errorf("readproof.manifest.entries = %d, want %d", got, want)
 	}
 	if len(man.Entries) != 2 {
 		t.Fatalf("expected 2 manifest entries, got %d", len(man.Entries))
@@ -251,10 +251,10 @@ func TestRunSpans(t *testing.T) {
 		leaves[i] = merkle.Leaf(e.Position, e.URI, e.ContentHash)
 	}
 	wantRoot := merkle.Root(leaves)
-	wantString(t, commit, "ctx.manifest.merkle_root", wantRoot)
+	wantString(t, commit, "readproof.manifest.merkle_root", wantRoot)
 
-	// The span's root is the same value `ctx evidence export` signs, so a
-	// trace and a bundle can be joined on it.
+	// The span's root is the same value `readproof evidence export` signs, so
+	// a trace and a bundle can be joined on it.
 	bundle, err := evidence.Build(ctx, local.New(a), man.ManifestID, evidence.Options{})
 	if err != nil {
 		t.Fatalf("build evidence bundle: %v", err)
@@ -263,7 +263,7 @@ func TestRunSpans(t *testing.T) {
 		t.Fatalf("expected 1 bundle subject, got %d", len(bundle.Subject))
 	}
 	if got := bundle.Subject[0].Digest.SHA256; got != wantRoot {
-		t.Errorf("evidence subject digest %s != ctx.run.commit merkle root %s", got, wantRoot)
+		t.Errorf("evidence subject digest %s != readproof.run.commit merkle root %s", got, wantRoot)
 	}
 
 	assertNoContent(t, spans, refundsContent, shippingContent)
@@ -285,16 +285,17 @@ func TestCommitSpanOnEmptyRun(t *testing.T) {
 		t.Fatalf("commit: %v", err)
 	}
 
-	commit := findSpan(t, collect(), "ctx.run.commit")
-	wantString(t, commit, "ctx.manifest.id", man.ManifestID)
-	if got := attrs(commit)["ctx.manifest.entries"].AsInt64(); got != 0 {
-		t.Errorf("ctx.manifest.entries = %d, want 0", got)
+	commit := findSpan(t, collect(), "readproof.run.commit")
+	wantString(t, commit, "readproof.manifest.id", man.ManifestID)
+	if got := attrs(commit)["readproof.manifest.entries"].AsInt64(); got != 0 {
+		t.Errorf("readproof.manifest.entries = %d, want 0", got)
 	}
-	wantString(t, commit, "ctx.manifest.merkle_root", merkle.Root(nil))
+	wantString(t, commit, "readproof.manifest.merkle_root", merkle.Root(nil))
 }
 
 // assertNoContent scans every attribute value and event of every span for
-// the resolved bytes. Content is what Ctx stores, never what it exports.
+// the resolved bytes. Content is what Readproof stores, never what it
+// exports.
 func assertNoContent(t *testing.T, spans tracetest.SpanStubs, contents ...string) {
 	t.Helper()
 	check := func(span, where, value string) {

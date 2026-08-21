@@ -6,7 +6,7 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"ctx/internal/evidence"
+	"readproof/internal/evidence"
 )
 
 // Tool inputs. Field tags carry the JSON Schema descriptions the SDK
@@ -16,11 +16,11 @@ import (
 type emptyIn struct{}
 
 type uriIn struct {
-	URI string `json:"uri" jsonschema:"a Ctx resource reference, ctx://<namespace>/<path>, optionally with a trailing @<tag>"`
+	URI string `json:"uri" jsonschema:"a Readproof resource reference, readproof://<namespace>/<path>, optionally with a trailing @<tag>"`
 }
 
 type resolveIn struct {
-	URI string `json:"uri" jsonschema:"the resource to read, ctx://<namespace>/<path>; append @<tag> (e.g. ctx://acme/policies/refunds@prod) to pin exactly the snapshot that tag names"`
+	URI string `json:"uri" jsonschema:"the resource to read, readproof://<namespace>/<path>; append @<tag> (e.g. readproof://acme/policies/refunds@prod) to pin exactly the snapshot that tag names"`
 }
 
 type runIDIn struct {
@@ -28,8 +28,8 @@ type runIDIn struct {
 }
 
 type runMountIn struct {
-	RunID string `json:"run_id" jsonschema:"the run id passed to ctx_run_start"`
-	URI   string `json:"uri" jsonschema:"the resource to mount, ctx://<namespace>/<path>, optionally with @<tag>"`
+	RunID string `json:"run_id" jsonschema:"the run id passed to readproof_run_start"`
+	URI   string `json:"uri" jsonschema:"the resource to mount, readproof://<namespace>/<path>, optionally with @<tag>"`
 }
 
 type targetIn struct {
@@ -47,9 +47,9 @@ type replayIn struct {
 }
 
 type tagSetIn struct {
-	URI        string `json:"uri" jsonschema:"the resource the tag belongs to, ctx://<namespace>/<path>"`
+	URI        string `json:"uri" jsonschema:"the resource the tag belongs to, readproof://<namespace>/<path>"`
 	Tag        string `json:"tag" jsonschema:"the tag name, matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"`
-	SnapshotID string `json:"snapshot_id" jsonschema:"the snapshot to point the tag at; it must be a snapshot of this same resource (see ctx_history)"`
+	SnapshotID string `json:"snapshot_id" jsonschema:"the snapshot to point the tag at; it must be a snapshot of this same resource (see readproof_history)"`
 }
 
 type tagDeleteIn struct {
@@ -99,7 +99,7 @@ type TagDeleteOut struct {
 
 // readOnly and mutating are the tool annotation hints. Resolving and
 // mounting are NOT read-only: both may fetch from the source and record a
-// new snapshot, which is the whole point of Ctx observing a read.
+// new snapshot, which is the whole point of Readproof observing a read.
 var (
 	readOnly = &mcpsdk.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true}
 	mutating = &mcpsdk.ToolAnnotations{IdempotentHint: false}
@@ -107,16 +107,16 @@ var (
 
 func (s *server) registerTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_resources_list",
-		Title: "List Ctx resources",
-		Description: "List every document registered in Ctx, with its ctx:// URI, where its bytes come from, and the freshness policy that governs reading it. " +
+		Name:  "readproof_resources_list",
+		Title: "List Readproof resources",
+		Description: "List every document registered in Readproof, with its readproof:// URI, where its bytes come from, and the freshness policy that governs reading it. " +
 			"Call this first to discover what you are allowed to read.",
 		Annotations: readOnly,
 	}, s.toolResourcesList)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_resolve",
-		Title: "Read a Ctx resource",
+		Name:  "readproof_resolve",
+		Title: "Read a Readproof resource",
 		Description: "Read one document and get its bytes together with the snapshot id, content hash, and source revision that identify exactly what you read. " +
 			"Use it whenever you need the current governed version of a policy, spec, or runbook; append @<tag> to the URI to read a pinned snapshot instead. " +
 			"Note: depending on the resource's policy this may fetch from the source and record a new snapshot.",
@@ -124,40 +124,40 @@ func (s *server) registerTools(srv *mcpsdk.Server) {
 	}, s.toolResolve)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_history",
+		Name:  "readproof_history",
 		Title: "List a resource's snapshots",
-		Description: "List every snapshot Ctx has recorded for one resource, newest first, with the tags that point at each. " +
-			"Use it to find the snapshot id to pin with ctx_tag_set, or to see when and how often a document changed.",
+		Description: "List every snapshot Readproof has recorded for one resource, newest first, with the tags that point at each. " +
+			"Use it to find the snapshot id to pin with readproof_tag_set, or to see when and how often a document changed.",
 		Annotations: readOnly,
 	}, s.toolHistory)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_run_start",
-		Title: "Start a Ctx run",
+		Name:  "readproof_run_start",
+		Title: "Start a Readproof run",
 		Description: "Open a run: the container that records everything you are about to read. " +
-			"Call it once with an id you choose, then ctx_run_mount for each document, then ctx_run_commit — which returns the manifest id that names the complete, replayable set of bytes this run saw.",
+			"Call it once with an id you choose, then readproof_run_mount for each document, then readproof_run_commit — which returns the manifest id that names the complete, replayable set of bytes this run saw.",
 		Annotations: mutating,
 	}, s.toolRunStart)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_run_mount",
+		Name:  "readproof_run_mount",
 		Title: "Mount a resource into a run",
 		Description: "Read a document and record it in an open run at the next position. " +
-			"Use this instead of ctx_resolve whenever the work you are doing should be auditable: mounted reads become manifest entries you can later diff, replay, and export as evidence. " +
-			"Mount order is preserved because it can change what a model concludes. Like ctx_resolve, this may fetch from the source and record a new snapshot.",
+			"Use this instead of readproof_resolve whenever the work you are doing should be auditable: mounted reads become manifest entries you can later diff, replay, and export as evidence. " +
+			"Mount order is preserved because it can change what a model concludes. Like readproof_resolve, this may fetch from the source and record a new snapshot.",
 		Annotations: mutating,
 	}, s.toolRunMount)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_run_commit",
+		Name:  "readproof_run_commit",
 		Title: "Commit a run into a manifest",
 		Description: "Close a run and freeze everything mounted into it as an immutable manifest. " +
-			"Returns the manifest id — cite it in whatever you produce, because it is the single handle for ctx_manifest, ctx_diff, ctx_replay, and ctx_evidence_export.",
+			"Returns the manifest id — cite it in whatever you produce, because it is the single handle for readproof_manifest, readproof_diff, readproof_replay, and readproof_evidence_export.",
 		Annotations: mutating,
 	}, s.toolRunCommit)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_manifest",
+		Name:  "readproof_manifest",
 		Title: "Inspect a manifest",
 		Description: "Show a committed manifest: every document the run read, in mount order, with the snapshot id and content hash of each. " +
 			"Use it to answer 'what exactly did that run see?' from a manifest id or run id alone.",
@@ -165,7 +165,7 @@ func (s *server) registerTools(srv *mcpsdk.Server) {
 	}, s.toolManifest)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_diff",
+		Name:  "readproof_diff",
 		Title: "Diff two runs",
 		Description: "Compare what two runs read. For each document it reports added/removed/changed/unchanged, the unified text diff of any change, and the provenance behind it — each side's source revision, observation time, and pinned tag. " +
 			"Use it to explain why two runs of the same task disagreed.",
@@ -173,30 +173,30 @@ func (s *server) registerTools(srv *mcpsdk.Server) {
 	}, s.toolDiff)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_replay",
+		Name:  "readproof_replay",
 		Title: "Replay a manifest",
-		Description: "Reconstruct a manifest's bytes from Ctx's own storage and re-hash them, without contacting any source. " +
+		Description: "Reconstruct a manifest's bytes from Readproof's own storage and re-hash them, without contacting any source. " +
 			"Use it to prove a past run is still reproducible, or (with include_content) to get back exactly the bytes that run saw even after the sources changed.",
 		Annotations: readOnly,
 	}, s.toolReplay)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_tag_set",
+		Name:  "readproof_tag_set",
 		Title: "Point a tag at a snapshot",
-		Description: "Create or move a named pointer from a resource to one of its snapshots, so it can be read as ctx://<namespace>/<path>@<tag>. " +
+		Description: "Create or move a named pointer from a resource to one of its snapshots, so it can be read as readproof://<namespace>/<path>@<tag>. " +
 			"Use it to freeze a known-good version (e.g. 'prod') that later reads resolve to with no fetch and no policy evaluation.",
 		Annotations: mutating,
 	}, s.toolTagSet)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:        "ctx_tag_list",
+		Name:        "readproof_tag_list",
 		Title:       "List a resource's tags",
 		Description: "List the tags on one resource and the snapshot each points at, with the exact uri@tag reference to read it by.",
 		Annotations: readOnly,
 	}, s.toolTagList)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_tag_delete",
+		Name:  "readproof_tag_delete",
 		Title: "Delete a tag",
 		Description: "Remove a tag. The snapshot it pointed at is untouched and still readable by its snapshot id; only the name goes away. " +
 			"Manifests that mounted the tag keep replaying identically, because they recorded the snapshot, not the name.",
@@ -204,7 +204,7 @@ func (s *server) registerTools(srv *mcpsdk.Server) {
 	}, s.toolTagDelete)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
-		Name:  "ctx_evidence_export",
+		Name:  "readproof_evidence_export",
 		Title: "Export an evidence bundle",
 		Description: "Produce a portable, tamper-evident record of one run: an in-toto statement whose digest is a Merkle root over the manifest entries, plus each document's provenance, the resource definitions behind them, and a replay verification. " +
 			"Use it when someone needs to audit what the agent read — 'with_content' additionally embeds the bytes.",
@@ -271,7 +271,7 @@ func (s *server) toolRunStart(ctx context.Context, _ *mcpsdk.CallToolRequest, in
 	}
 	return nil, RunStartOut{
 		RunID:    in.RunID,
-		NextStep: "call ctx_run_mount for each resource this run reads, then ctx_run_commit to get the manifest id",
+		NextStep: "call readproof_run_mount for each resource this run reads, then readproof_run_commit to get the manifest id",
 	}, nil
 }
 
@@ -378,8 +378,8 @@ func (s *server) toolTagDelete(ctx context.Context, _ *mcpsdk.CallToolRequest, i
 
 func (s *server) toolEvidenceExport(ctx context.Context, _ *mcpsdk.CallToolRequest, in evidenceIn) (*mcpsdk.CallToolResult, evidence.Bundle, error) {
 	// evidence.Build is composed purely from client.Client calls, so the
-	// bundle an MCP caller gets is byte-identical to the one `ctx evidence
-	// export` writes for the same target.
+	// bundle an MCP caller gets is byte-identical to the one `readproof
+	// evidence export` writes for the same target.
 	bundle, err := evidence.Build(ctx, s.client, in.Target, evidence.Options{WithContent: in.WithContent})
 	if err != nil {
 		return nil, evidence.Bundle{}, fmt.Errorf("export evidence for %s: %w", in.Target, err)

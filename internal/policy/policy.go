@@ -2,7 +2,7 @@ package policy
 
 import "time"
 
-// Strategy is one of the freshness strategies Ctx v0.1 supports.
+// Strategy is one of the freshness strategies Readproof v0.1 supports.
 type Strategy string
 
 const (
@@ -28,10 +28,9 @@ const (
 	DecisionFetch Decision = iota
 	DecisionUseCurrent
 	DecisionUsePinned
-	// DecisionUseTag is the outcome of resolving ctx://ns/path@<tag>. It is
-	// never produced by Evaluate: a tag ref bypasses policy entirely (the
-	// caller asked for one exact snapshot), so the resolver sets it
-	// directly.
+	// DecisionUseTag is the outcome of resolving readproof://ns/path@<tag>. It
+	// is never produced by Evaluate: a tag ref bypasses policy entirely (the
+	// caller asked for one exact snapshot), so the resolver sets it directly.
 	DecisionUseTag
 )
 

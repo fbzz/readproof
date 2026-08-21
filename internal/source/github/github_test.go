@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ctx/internal/source"
+	"readproof/internal/source"
 )
 
 func TestFetch(t *testing.T) {

@@ -8,27 +8,27 @@ import (
 	"testing"
 	"time"
 
-	"ctx/internal/ids"
-	"ctx/internal/manifest"
-	"ctx/internal/materialization"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/run"
-	"ctx/internal/snapshot"
-	"ctx/internal/source"
-	"ctx/internal/storage/postgres"
+	"readproof/internal/ids"
+	"readproof/internal/manifest"
+	"readproof/internal/materialization"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/run"
+	"readproof/internal/snapshot"
+	"readproof/internal/source"
+	"readproof/internal/storage/postgres"
 )
 
-// testDB skips the test unless CTX_TEST_POSTGRES_DSN is set, so `go test
-// ./...` stays green without a live Postgres instance. Every row created by
-// these tests uses ULID-based unique IDs/URIs (via internal/ids), so
-// repeated runs against the same database never collide on unique
-// constraints and tests never need to truncate shared state.
+// testDB skips the test unless READPROOF_TEST_POSTGRES_DSN is set, so `go
+// test ./...` stays green without a live Postgres instance. Every row
+// created by these tests uses ULID-based unique IDs/URIs (via
+// internal/ids), so repeated runs against the same database never collide
+// on unique constraints and tests never need to truncate shared state.
 func testDB(t *testing.T) *sql.DB {
 	t.Helper()
-	dsn := os.Getenv("CTX_TEST_POSTGRES_DSN")
+	dsn := os.Getenv("READPROOF_TEST_POSTGRES_DSN")
 	if dsn == "" {
-		t.Skip("CTX_TEST_POSTGRES_DSN not set; skipping postgres integration tests")
+		t.Skip("READPROOF_TEST_POSTGRES_DSN not set; skipping postgres integration tests")
 	}
 	db, err := postgres.Open(dsn)
 	if err != nil {
@@ -64,7 +64,7 @@ func newStores(db *sql.DB) stores {
 func createTestResource(t *testing.T, ctx context.Context, st stores) resource.Resource {
 	t.Helper()
 	suffix := ids.New("res")
-	uri := "ctx://test/" + suffix
+	uri := "readproof://test/" + suffix
 	r := resource.Resource{
 		URI:       uri,
 		Namespace: "test",
@@ -171,10 +171,10 @@ func TestResourceStore_CreateGetUpdateList(t *testing.T) {
 		t.Fatalf("list did not include %q", r.URI)
 	}
 
-	if _, err := st.Resources.Get(ctx, "ctx://test/does-not-exist-"+ids.New("x")); !errors.Is(err, resource.ErrNotFound) {
+	if _, err := st.Resources.Get(ctx, "readproof://test/does-not-exist-"+ids.New("x")); !errors.Is(err, resource.ErrNotFound) {
 		t.Fatalf("get missing resource: got err %v, want resource.ErrNotFound", err)
 	}
-	if err := st.Resources.UpdateCurrentSnapshot(ctx, "ctx://test/does-not-exist-"+ids.New("x"), snap.SnapshotID); !errors.Is(err, resource.ErrNotFound) {
+	if err := st.Resources.UpdateCurrentSnapshot(ctx, "readproof://test/does-not-exist-"+ids.New("x"), snap.SnapshotID); !errors.Is(err, resource.ErrNotFound) {
 		t.Fatalf("update missing resource: got err %v, want resource.ErrNotFound", err)
 	}
 }

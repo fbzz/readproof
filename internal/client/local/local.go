@@ -7,14 +7,14 @@ package local
 import (
 	"context"
 
-	"ctx/internal/app"
-	"ctx/internal/diff"
-	"ctx/internal/manifest"
-	"ctx/internal/replay"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/snapshot"
-	"ctx/internal/tag"
+	"readproof/internal/app"
+	"readproof/internal/diff"
+	"readproof/internal/manifest"
+	"readproof/internal/replay"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/snapshot"
+	"readproof/internal/tag"
 )
 
 type Client struct {

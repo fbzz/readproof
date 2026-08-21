@@ -1,4 +1,4 @@
-// The model half of the agent: turn the bytes Ctx delivered into an answer.
+// The model half of the agent: turn the bytes Readproof delivered into an answer.
 //
 // The only thing that matters for the demo's claim is that the prompt is
 // built from `entries` and nothing else — no second read of the policy
@@ -9,7 +9,7 @@ import { Ollama } from "ollama";
 
 import { FAKE_MODEL, OLLAMA_HOST, OLLAMA_MODEL } from "./config.js";
 
-/** One policy document, as Ctx delivered it into this turn. */
+/** One policy document, as Readproof delivered it into this turn. */
 export interface ContextEntry {
   uri: string;
   /** The "@<tag>" it was mounted by; absent for a plain URI. */
@@ -101,7 +101,7 @@ function systemPrompt(entries: ContextEntry[]): string {
 }
 
 /**
- * Each document is labelled with its ctx:// identity and the first 12 hex
+ * Each document is labelled with its readproof:// identity and the first 12 hex
  * of its content hash. That header is what ties a sentence in the answer
  * back to a line in the manifest — and it costs a dozen tokens.
  */

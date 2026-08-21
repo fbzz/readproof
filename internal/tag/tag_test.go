@@ -28,7 +28,7 @@ func TestValidateName(t *testing.T) {
 		"_leading-underscore",
 		"has space",
 		"has/slash",
-		"has@at", // would make ctx://ns/p@a@b ambiguous
+		"has@at", // would make readproof://ns/p@a@b ambiguous
 		"héllo",  // ASCII only
 		strings.Repeat("a", 65),
 	}

@@ -11,9 +11,9 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 
-	"ctx/internal/manifest"
-	"ctx/internal/snapshot"
-	"ctx/internal/storage/blob"
+	"readproof/internal/manifest"
+	"readproof/internal/snapshot"
+	"readproof/internal/storage/blob"
 )
 
 type Status string
@@ -37,7 +37,8 @@ type EntryDiff struct {
 	SnapshotIDA string
 	SnapshotIDB string
 	// SourceRevisionA/B and ObservedAtA/B are the snapshot's recorded
-	// provenance — the source's own revision marker and when Ctx observed it.
+	// provenance — the source's own revision marker and when Readproof
+	// observed it.
 	SourceRevisionA string
 	SourceRevisionB string
 	ObservedAtA     time.Time

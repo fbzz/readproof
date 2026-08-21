@@ -10,20 +10,20 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"ctx/internal/ids"
-	"ctx/internal/materialization"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/snapshot"
-	"ctx/internal/source"
-	"ctx/internal/storage/blob"
-	"ctx/internal/tag"
-	"ctx/internal/telemetry"
+	"readproof/internal/ids"
+	"readproof/internal/materialization"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/snapshot"
+	"readproof/internal/source"
+	"readproof/internal/storage/blob"
+	"readproof/internal/tag"
+	"readproof/internal/telemetry"
 )
 
 // ResolveResult is what a single Resolve call produces. Manifest-entry
 // creation is deliberately NOT part of this result — that's run.Builder's
-// job, since Resolve backs both `ctx get` and `run.Builder.Mount`.
+// job, since Resolve backs both `readproof get` and `run.Builder.Mount`.
 type ResolveResult struct {
 	Resource        resource.Resource
 	Snapshot        snapshot.Snapshot
@@ -55,8 +55,8 @@ func (r *Resolver) now() time.Time {
 
 // Resolve resolves a single reference, which may carry a trailing "@<tag>"
 // (see resource.SplitRef). The signature is unchanged from v0.1 — every
-// existing caller passing a bare ctx:// URI keeps working — so this is also
-// the one place a combined "uri@ref" string is taken apart.
+// existing caller passing a bare readproof:// URI keeps working — so this
+// is also the one place a combined "uri@ref" string is taken apart.
 func (r *Resolver) Resolve(ctx context.Context, rawURI string) (ResolveResult, error) {
 	uri, ref, err := resource.SplitRef(rawURI)
 	if err != nil {
@@ -69,19 +69,20 @@ func (r *Resolver) Resolve(ctx context.Context, rawURI string) (ResolveResult, e
 // optional tag ref: resource lookup -> (tag lookup | policy/freshness
 // evaluation -> fetch-or-reuse -> snapshot creation) -> get-or-create
 // materialization -> result. Every stage is traced (span names match spec
-// §35: ctx.resolve, ctx.resource.lookup, ctx.policy.evaluate,
-// ctx.cache.lookup, ctx.source.fetch, ctx.snapshot.create, ctx.materialize,
-// plus ctx.tag.lookup for the tag path) and the top-level call is metered.
-// Resolved content is never attached to spans/metrics.
+// §35: readproof.resolve, readproof.resource.lookup,
+// readproof.policy.evaluate, readproof.cache.lookup,
+// readproof.source.fetch, readproof.snapshot.create, readproof.materialize,
+// plus readproof.tag.lookup for the tag path) and the top-level call is
+// metered. Resolved content is never attached to spans/metrics.
 //
 // With a non-empty ref the resource's Policy is deliberately NOT consulted
 // and the source is never contacted: the caller named one exact snapshot.
 func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result ResolveResult, err error) {
-	spanAttrs := []attribute.KeyValue{attribute.String("ctx.resource.uri", uri)}
+	spanAttrs := []attribute.KeyValue{attribute.String("readproof.resource.uri", uri)}
 	if ref != "" {
-		spanAttrs = append(spanAttrs, attribute.String("ctx.resource.ref", ref))
+		spanAttrs = append(spanAttrs, attribute.String("readproof.resource.ref", ref))
 	}
-	ctx, span := telemetry.Tracer.Start(ctx, "ctx.resolve", trace.WithAttributes(spanAttrs...))
+	ctx, span := telemetry.Tracer.Start(ctx, "readproof.resolve", trace.WithAttributes(spanAttrs...))
 	start := time.Now()
 	var parsed resource.URI
 	defer func() {
@@ -101,7 +102,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 
 	var res resource.Resource
 	err = func() error {
-		lctx, lspan := telemetry.Tracer.Start(ctx, "ctx.resource.lookup")
+		lctx, lspan := telemetry.Tracer.Start(ctx, "readproof.resource.lookup")
 		defer lspan.End()
 		var e error
 		res, e = r.Resources.Get(lctx, uri)
@@ -136,7 +137,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 		var current snapshot.Snapshot
 		hasCurrent := res.CurrentSnapshotID != ""
 		err = func() error {
-			pctx, pspan := telemetry.Tracer.Start(ctx, "ctx.policy.evaluate", trace.WithAttributes(attribute.String("ctx.policy.strategy", string(res.Policy.Strategy))))
+			pctx, pspan := telemetry.Tracer.Start(ctx, "readproof.policy.evaluate", trace.WithAttributes(attribute.String("readproof.policy.strategy", string(res.Policy.Strategy))))
 			defer pspan.End()
 			if hasCurrent {
 				var e error
@@ -148,7 +149,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 				}
 			}
 			decision = policy.Evaluate(res.Policy, hasCurrent, current.ObservedAt, now)
-			pspan.SetAttributes(attribute.String("ctx.freshness.status", decision.String()))
+			pspan.SetAttributes(attribute.String("readproof.freshness.status", decision.String()))
 			return nil
 		}()
 		if err != nil {
@@ -161,7 +162,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 		switch decision {
 		case policy.DecisionUsePinned:
 			err = func() error {
-				cctx, cspan := telemetry.Tracer.Start(ctx, "ctx.cache.lookup", trace.WithAttributes(attribute.Bool("ctx.cache.hit", true)))
+				cctx, cspan := telemetry.Tracer.Start(ctx, "readproof.cache.lookup", trace.WithAttributes(attribute.Bool("readproof.cache.hit", true)))
 				defer cspan.End()
 				var e error
 				snap, e = r.Snapshots.Get(cctx, res.Policy.PinnedSnapshotID)
@@ -186,7 +187,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 		case policy.DecisionUseCurrent:
 			snap = current
 			err = func() error {
-				_, cspan := telemetry.Tracer.Start(ctx, "ctx.cache.lookup", trace.WithAttributes(attribute.Bool("ctx.cache.hit", true)))
+				_, cspan := telemetry.Tracer.Start(ctx, "readproof.cache.lookup", trace.WithAttributes(attribute.Bool("readproof.cache.hit", true)))
 				defer cspan.End()
 				var e error
 				content, e = r.Blobs.Get(snap.ContentHash)
@@ -204,7 +205,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 		default: // policy.DecisionFetch
 			var fr source.FetchResult
 			err = func() error {
-				fctx, fspan := telemetry.Tracer.Start(ctx, "ctx.source.fetch", trace.WithAttributes(attribute.String("ctx.source.type", string(res.SourceConfig.Kind))))
+				fctx, fspan := telemetry.Tracer.Start(ctx, "readproof.source.fetch", trace.WithAttributes(attribute.String("readproof.source.type", string(res.SourceConfig.Kind))))
 				defer fspan.End()
 				fetchStart := time.Now()
 				var e error
@@ -222,7 +223,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 			}
 
 			err = func() error {
-				sctx, sspan := telemetry.Tracer.Start(ctx, "ctx.snapshot.create")
+				sctx, sspan := telemetry.Tracer.Start(ctx, "readproof.snapshot.create")
 				defer sspan.End()
 
 				hash, e := r.Blobs.Put(fr.Content)
@@ -256,7 +257,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 					sspan.SetStatus(codes.Error, e.Error())
 					return fmt.Errorf("update current snapshot: %w", e)
 				}
-				sspan.SetAttributes(attribute.String("ctx.snapshot.id", snap.SnapshotID))
+				sspan.SetAttributes(attribute.String("readproof.snapshot.id", snap.SnapshotID))
 				return nil
 			}()
 			if err != nil {
@@ -269,7 +270,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 
 	var mat materialization.Materialization
 	err = func() error {
-		mctx, mspan := telemetry.Tracer.Start(ctx, "ctx.materialize")
+		mctx, mspan := telemetry.Tracer.Start(ctx, "readproof.materialize")
 		defer mspan.End()
 
 		found := false
@@ -280,7 +281,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 			mspan.SetStatus(codes.Error, e.Error())
 			return fmt.Errorf("lookup materialization: %w", e)
 		}
-		mspan.SetAttributes(attribute.Bool("ctx.materialization.cached", found))
+		mspan.SetAttributes(attribute.Bool("readproof.materialization.cached", found))
 		if found {
 			return nil
 		}
@@ -311,7 +312,7 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 			return fmt.Errorf("create materialization: %w", e)
 		}
 		telemetry.RecordMaterializationCreated(ctx)
-		mspan.SetAttributes(attribute.String("ctx.materialization.id", mat.MaterializationID))
+		mspan.SetAttributes(attribute.String("readproof.materialization.id", mat.MaterializationID))
 		return nil
 	}()
 	if err != nil {
@@ -330,43 +331,45 @@ func (r *Resolver) ResolveRef(ctx context.Context, uri, ref string) (result Reso
 	return result, nil
 }
 
-// resolveAttrs is everything the ctx.resolve span can only know once the
-// result exists. It is the span an observability backend keys off to answer
-// "what exactly did the agent read?", so it carries the identity of the
-// bytes (hashes, ids, source revision, observation time) and never the
-// bytes: content is what Ctx stores, not what it exports to telemetry.
+// resolveAttrs is everything the readproof.resolve span can only know once
+// the result exists. It is the span an observability backend keys off to
+// answer "what exactly did the agent read?", so it carries the identity of
+// the bytes (hashes, ids, source revision, observation time) and never the
+// bytes: content is what Readproof stores, not what it exports to
+// telemetry.
 //
 // Two naming notes, both deliberate:
-//   - ctx.policy.decision and ctx.freshness.status always hold the same
-//     value. decision is the canonical name going forward (it also covers
-//     use_tag, which bypasses freshness evaluation entirely); status is kept
-//     because the v0.1 README documents it and dashboards may already query
-//     it. Neither will change meaning.
+//   - readproof.policy.decision and readproof.freshness.status always
+//     hold the same value. decision is the canonical name going forward
+//     (it also covers use_tag, which bypasses freshness evaluation
+//     entirely); status is kept because the v0.1 README documents it and
+//     dashboards may already query it. Neither will change meaning.
 //   - gen_ai.data_source.id is the OpenTelemetry GenAI semantic-convention
-//     attribute for the data source a retrieval read from. Ctx maps it to
-//     ctx://<namespace>, the coarsest stable identifier of the corpus — the
-//     per-document identity is on ctx.resource.uri/ctx.snapshot.* — so GenAI
-//     tooling can group Ctx retrievals alongside vector-store ones.
+//     attribute for the data source a retrieval read from. Readproof maps
+//     it to readproof://<namespace>, the coarsest stable identifier of the
+//     corpus — the per-document identity is on readproof.resource.uri and
+//     readproof.snapshot.* — so GenAI tooling can group Readproof
+//     retrievals alongside vector-store ones.
 func resolveAttrs(namespace string, result ResolveResult) []attribute.KeyValue {
 	decision := result.Decision.String()
 	return []attribute.KeyValue{
-		attribute.String("ctx.snapshot.id", result.Snapshot.SnapshotID),
-		attribute.String("ctx.snapshot.content_hash", result.Snapshot.ContentHash),
-		attribute.String("ctx.snapshot.source_revision", result.Snapshot.SourceRevision),
-		attribute.String("ctx.snapshot.observed_at", result.Snapshot.ObservedAt.UTC().Format(time.RFC3339)),
-		attribute.String("ctx.materialization.id", result.Materialization.MaterializationID),
-		attribute.Int64("ctx.materialization.bytes", result.Materialization.Bytes),
-		attribute.String("ctx.source.type", string(result.Resource.SourceConfig.Kind)),
-		attribute.String("ctx.policy.strategy", string(result.Resource.Policy.Strategy)),
-		attribute.String("ctx.policy.decision", decision),
-		attribute.String("ctx.freshness.status", decision),
-		attribute.String("gen_ai.data_source.id", "ctx://"+namespace),
+		attribute.String("readproof.snapshot.id", result.Snapshot.SnapshotID),
+		attribute.String("readproof.snapshot.content_hash", result.Snapshot.ContentHash),
+		attribute.String("readproof.snapshot.source_revision", result.Snapshot.SourceRevision),
+		attribute.String("readproof.snapshot.observed_at", result.Snapshot.ObservedAt.UTC().Format(time.RFC3339)),
+		attribute.String("readproof.materialization.id", result.Materialization.MaterializationID),
+		attribute.Int64("readproof.materialization.bytes", result.Materialization.Bytes),
+		attribute.String("readproof.source.type", string(result.Resource.SourceConfig.Kind)),
+		attribute.String("readproof.policy.strategy", string(result.Resource.Policy.Strategy)),
+		attribute.String("readproof.policy.decision", decision),
+		attribute.String("readproof.freshness.status", decision),
+		attribute.String("gen_ai.data_source.id", "readproof://"+namespace),
 	}
 }
 
 // resolveTagged loads the snapshot a tag names, plus its stored bytes. The
 // source is never contacted and the resource's Policy is never evaluated —
-// that is the whole point of `ctx://ns/path@tag`.
+// that is the whole point of `readproof://ns/path@tag`.
 func (r *Resolver) resolveTagged(ctx context.Context, uri, ref string) (snapshot.Snapshot, []byte, error) {
 	if err := tag.ValidateName(ref); err != nil {
 		return snapshot.Snapshot{}, nil, fmt.Errorf("resolver: %s@%s: %w", uri, ref, err)
@@ -374,9 +377,9 @@ func (r *Resolver) resolveTagged(ctx context.Context, uri, ref string) (snapshot
 
 	var t tag.Tag
 	err := func() error {
-		tctx, tspan := telemetry.Tracer.Start(ctx, "ctx.tag.lookup", trace.WithAttributes(
-			attribute.String("ctx.resource.uri", uri),
-			attribute.String("ctx.resource.ref", ref),
+		tctx, tspan := telemetry.Tracer.Start(ctx, "readproof.tag.lookup", trace.WithAttributes(
+			attribute.String("readproof.resource.uri", uri),
+			attribute.String("readproof.resource.ref", ref),
 		))
 		defer tspan.End()
 		var e error
@@ -399,7 +402,7 @@ func (r *Resolver) resolveTagged(ctx context.Context, uri, ref string) (snapshot
 		content []byte
 	)
 	err = func() error {
-		cctx, cspan := telemetry.Tracer.Start(ctx, "ctx.cache.lookup", trace.WithAttributes(attribute.Bool("ctx.cache.hit", true)))
+		cctx, cspan := telemetry.Tracer.Start(ctx, "readproof.cache.lookup", trace.WithAttributes(attribute.Bool("readproof.cache.hit", true)))
 		defer cspan.End()
 		var e error
 		snap, e = r.Snapshots.Get(cctx, t.SnapshotID)

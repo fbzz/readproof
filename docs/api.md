@@ -1,9 +1,9 @@
-# `ctxd` HTTP API reference
+# `readproofd` HTTP API reference
 
 All bodies are JSON. `Content` fields are base64-encoded (Go's
 `encoding/json` does this automatically for `[]byte`); the CLI and
-TypeScript SDK both decode it to text transparently. If `ctxd --api-key`
-is set, every route below except `/healthz` requires
+TypeScript SDK both decode it to text transparently. If `readproofd
+--api-key` is set, every route below except `/healthz` requires
 `Authorization: Bearer <key>`. Errors are `{"error": "<message>"}` with a
 4xx/5xx status — 404 for "not found", 400 for a bad request, 401 for a
 missing/wrong API key, 409 for a conflict with existing state, 500
@@ -24,7 +24,7 @@ Register a resource.
 **Request**
 ```json
 {
-  "uri": "ctx://acme/policies/refunds",
+  "uri": "readproof://acme/policies/refunds",
   "source": {
     "kind": "github",
     "github": { "owner": "acme", "repo": "company-docs", "path": "policies/refunds.md", "ref": "main" }
@@ -35,7 +35,7 @@ Register a resource.
 `source.kind` is `"filesystem"` (`source.filesystem.path`), `"github"`
 (`source.github.{owner,repo,path,ref}`), or `"http"`
 (`source.http.{url,headers}` — header values of the exact form
-`"${VAR_NAME}"`, or containing it, are resolved from `ctxd`'s own
+`"${VAR_NAME}"`, or containing it, are resolved from `readproofd`'s own
 environment at fetch time; see the README's Security section).
 `policy.strategy` is `"require_fresh"`, `"allow_stale"` (with optional
 `max_age_seconds`), or `"pinned"` (with `pinned_snapshot_id`).
@@ -44,7 +44,7 @@ environment at fetch time; see the README's Security section).
 header values in `source.http.headers` replaced by `"[REDACTED]"`:
 ```json
 {
-  "uri": "ctx://acme/policies/refunds",
+  "uri": "readproof://acme/policies/refunds",
   "namespace": "acme",
   "path": "policies/refunds",
   "source": { "kind": "github", "github": { "owner": "acme", "repo": "company-docs", "path": "policies/refunds.md", "ref": "main" } },
@@ -73,7 +73,7 @@ Snapshot history, newest first. **Response** `200`:
   "snapshots": [
     {
       "id": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3",
-      "resource_uri": "ctx://acme/policies/refunds",
+      "resource_uri": "readproof://acme/policies/refunds",
       "source_revision": "8af92d1",
       "content_hash": "sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb",
       "observed_at": "2026-08-19T16:05:30Z",
@@ -100,13 +100,13 @@ the snapshot must belong to that resource. Tag names must match
 
 **Request**
 ```json
-{ "uri": "ctx://acme/policies/refunds", "tag": "prod", "snapshot_id": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3" }
+{ "uri": "readproof://acme/policies/refunds", "tag": "prod", "snapshot_id": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3" }
 ```
 
 **Response** `200` — the stored tag:
 ```json
 {
-  "uri": "ctx://acme/policies/refunds",
+  "uri": "readproof://acme/policies/refunds",
   "tag": "prod",
   "snapshot_id": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3",
   "updated_at": "2026-08-20T09:00:00Z"
@@ -119,7 +119,7 @@ resource; `404` if the snapshot doesn't exist.
 
 A resource's tags, sorted by name. **Response** `200`:
 ```json
-{ "tags": [ { "uri": "ctx://acme/policies/refunds", "tag": "prod", "snapshot_id": "snap_...", "updated_at": "2026-08-20T09:00:00Z" } ] }
+{ "tags": [ { "uri": "readproof://acme/policies/refunds", "tag": "prod", "snapshot_id": "snap_...", "updated_at": "2026-08-20T09:00:00Z" } ] }
 ```
 
 ## `DELETE /v1/tags?uri=<uri>&tag=<tag>`
@@ -133,21 +133,21 @@ Resolve a resource — the primary operation.
 
 **Request**
 ```json
-{ "uri": "ctx://acme/policies/refunds" }
+{ "uri": "readproof://acme/policies/refunds" }
 ```
 
 `uri` may carry a trailing `@<tag>`
-(`"ctx://acme/policies/refunds@prod"`), which resolves to exactly that
-tagged snapshot: **no source fetch, and the resource's freshness policy is
-not consulted**. The response then reports `freshness.status: "use_tag"`
-and echoes the tag as `resource.ref`. An unknown tag is a `404` naming
-both the URI and the tag.
+(`"readproof://acme/policies/refunds@prod"`), which resolves to exactly
+that tagged snapshot: **no source fetch, and the resource's freshness
+policy is not consulted**. The response then reports `freshness.status:
+"use_tag"` and echoes the tag as `resource.ref`. An unknown tag is a `404`
+naming both the URI and the tag.
 
 **Response** `200`:
 ```json
 {
   "resource": {
-    "uri": "ctx://acme/policies/refunds",
+    "uri": "readproof://acme/policies/refunds",
     "policy": { "strategy": "require_fresh" }
   },
   "snapshot": { "...": "SnapshotWire, as in /v1/resources/history" },
@@ -176,10 +176,11 @@ body.
 ## `POST /v1/runs/mount`
 
 Resolve a URI and stage it as the next entry in a run. Start the run with
-`/v1/runs` first (the CLI's `ctx run mount` and the TS SDK's `Run.mount()`
-both do).
+`/v1/runs` first (the CLI's `readproof run mount` and the TS SDK's
+`Run.mount()` both do).
 
-**Request** `{ "run_id": "run-a", "uri": "ctx://acme/policies/refunds" }`
+**Request** `{ "run_id": "run-a", "uri":
+"readproof://acme/policies/refunds" }`
 
 `uri` may carry a trailing `@<tag>`, exactly as in `/v1/resolve`; the
 manifest entry then records the bare URI plus that tag as `ref`.
@@ -202,14 +203,14 @@ preserved. **Request** `{ "run_id": "run-a" }`. **Response** `200`:
   "run_id": "run-a",
   "created_at": "2026-08-19T16:05:30Z",
   "entries": [
-    { "position": 0, "uri": "ctx://acme/policies/refunds", "ref": "prod", "snapshot_id": "snap_...", "materialization_id": "mat_...", "content_hash": "sha256:..." }
+    { "position": 0, "uri": "readproof://acme/policies/refunds", "ref": "prod", "snapshot_id": "snap_...", "materialization_id": "mat_...", "content_hash": "sha256:..." }
   ]
 }
 ```
-`uri` is always the bare `ctx://<namespace>/<path>`; `ref` is the `@<tag>`
-that entry was mounted by and is omitted for a plain URI. `ref` is
-informational — replay and diff key off `snapshot_id`/`content_hash`, so
-moving a tag afterwards can never change what a committed manifest
+`uri` is always the bare `readproof://<namespace>/<path>`; `ref` is the
+`@<tag>` that entry was mounted by and is omitted for a plain URI. `ref`
+is informational — replay and diff key off `snapshot_id`/`content_hash`,
+so moving a tag afterwards can never change what a committed manifest
 replays.
 
 A run has exactly one manifest, and only a run that `POST /v1/runs`
@@ -235,7 +236,7 @@ Diff two manifests (each identified by manifest ID or run ID).
   "manifest_b": { "...": "ManifestWire" },
   "entries": [
     {
-      "uri": "ctx://acme/policies/refunds",
+      "uri": "readproof://acme/policies/refunds",
       "status": "changed",
       "snapshot_id_a": "snap_01M0DCAH6EBHMGYD09ATZ2GEF3",
       "snapshot_id_b": "snap_01M0DCARRQ91XA135AHG6W64H0",
@@ -244,17 +245,17 @@ Diff two manifests (each identified by manifest ID or run ID).
       "observed_at_a": "2026-08-19T16:05:30Z",
       "observed_at_b": "2026-08-20T09:00:00Z",
       "ref_b": "prod",
-      "unified_diff": "--- a/ctx://acme/policies/refunds\n+++ b/ctx://acme/policies/refunds\n@@ -1,2 +1,2 @@\n-Products can be refunded within 30 days.\n+Products can be refunded within 14 days.\n \n"
+      "unified_diff": "--- a/readproof://acme/policies/refunds\n+++ b/readproof://acme/policies/refunds\n@@ -1,2 +1,2 @@\n-Products can be refunded within 30 days.\n+Products can be refunded within 14 days.\n \n"
     }
   ]
 }
 ```
 `status` is `"changed"`, `"added"`, `"removed"`, or `"unchanged"`;
 `unified_diff` is only present for `"changed"`. The `*_a`/`*_b` fields
-carry each side's provenance — the source's own revision marker, when Ctx
-observed it, and the `@<tag>` it was mounted by — and are present only for
-a side whose manifest actually contains that URI. This is what `ctx diff`
-prints as its per-entry `why:` line.
+carry each side's provenance — the source's own revision marker, when
+Readproof observed it, and the `@<tag>` it was mounted by — and are
+present only for a side whose manifest actually contains that URI. This is
+what `readproof diff` prints as its per-entry `why:` line.
 
 ## `GET /v1/replay?target=<manifest-id-or-run-id>`
 
@@ -268,7 +269,7 @@ the live source.
   "entries": [
     {
       "position": 0,
-      "uri": "ctx://acme/policies/refunds",
+      "uri": "readproof://acme/policies/refunds",
       "materialization_id": "mat_01M0DCAH6E4ADEJFDKTFBZ5MS2",
       "recorded_hash": "sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb",
       "replayed_hash": "sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb",
@@ -284,5 +285,5 @@ this is the product's core invariant:
 `SHA256(original) == SHA256(replay)`.
 
 Replay is strict everywhere it surfaces: a missing blob or materialization
-is an error response here, and `ctx replay` exits non-zero on any
+is an error response here, and `readproof replay` exits non-zero on any
 `"match": false` entry rather than reporting it and continuing.

@@ -14,7 +14,7 @@ var ErrNotFound = errors.New("manifest: not found")
 // entry order is a hard invariant since it can change effective model input.
 type Entry struct {
 	Position int
-	// URI is always the bare ctx://<ns>/<path>; Ref records the "@<tag>"
+	// URI is always the bare readproof://<ns>/<path>; Ref records the "@<tag>"
 	// the caller mounted it by ("" for a plain URI). Ref is informational
 	// provenance — replay and diff key off SnapshotID/ContentHash, so a tag
 	// that later moves can never change what a committed manifest replays.

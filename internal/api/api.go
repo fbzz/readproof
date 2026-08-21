@@ -1,4 +1,4 @@
-// Package api exposes the Ctx resolution pipeline over HTTP: the wire
+// Package api exposes the Readproof resolution pipeline over HTTP: the wire
 // contract every handler here implements is defined in internal/wire, and
 // shared by internal/client/remote on the client side.
 package api
@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"ctx/internal/app"
-	"ctx/internal/diff"
-	"ctx/internal/manifest"
-	"ctx/internal/resource"
-	"ctx/internal/run"
-	"ctx/internal/snapshot"
-	"ctx/internal/tag"
-	"ctx/internal/wire"
+	"readproof/internal/app"
+	"readproof/internal/diff"
+	"readproof/internal/manifest"
+	"readproof/internal/resource"
+	"readproof/internal/run"
+	"readproof/internal/snapshot"
+	"readproof/internal/tag"
+	"readproof/internal/wire"
 )
 
 // Options configures the HTTP API.
@@ -26,11 +26,11 @@ type Options struct {
 	// APIKey, when non-empty, requires every request except /healthz to
 	// carry a matching "Authorization: Bearer <APIKey>" header. Empty
 	// (the default) leaves the API unauthenticated — fine for local
-	// development, not for exposing ctxd beyond localhost.
+	// development, not for exposing readproofd beyond localhost.
 	APIKey string
 }
 
-// NewHandler builds the full Ctx HTTP API over an already-opened App.
+// NewHandler builds the full Readproof HTTP API over an already-opened App.
 func NewHandler(a *app.App, opts Options) http.Handler {
 	mux := http.NewServeMux()
 

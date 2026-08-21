@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"ctx/internal/ids"
-	"ctx/internal/source"
+	"readproof/internal/ids"
+	"readproof/internal/source"
 )
 
 // Fetcher reads content directly from the local filesystem.

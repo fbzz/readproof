@@ -1,11 +1,12 @@
-// Package merkle implements the Merkle tree Ctx commits manifests with.
+// Package merkle implements the Merkle tree Readproof commits manifests
+// with.
 //
 // It exists so that exactly one implementation of the leaf/root rule is
 // shipped: internal/evidence puts the root in a bundle's in-toto subject
-// digest, and internal/run puts the same value on the ctx.run.commit span
-// (ctx.manifest.merkle_root). Those two must agree byte for byte or the
-// trace stops being a usable handle on the evidence, so neither package
-// keeps its own copy of the algorithm.
+// digest, and internal/run puts the same value on the readproof.run.commit
+// span (readproof.manifest.merkle_root). Those two must agree byte for byte
+// or the trace stops being a usable handle on the evidence, so neither
+// package keeps its own copy of the algorithm.
 //
 // The fixed vectors in internal/evidence/merkle_test.go are the contract:
 // this package's output must never change for a given input.
@@ -45,8 +46,8 @@ func Leaf(position int, uri, contentHash string) string {
 
 // Root computes the hex-encoded root of a standard binary Merkle tree over
 // the given hex-encoded leaves, in the order supplied (manifest entries are
-// already in position order — order is a hard Ctx invariant, so it must be
-// committed to, not sorted away).
+// already in position order — order is a hard Readproof invariant, so it
+// must be committed to, not sorted away).
 //
 // Rules, fixed and mirrored by the TypeScript exporter:
 //   - zero leaves      -> sha256 of the empty input

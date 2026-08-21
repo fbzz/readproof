@@ -1,8 +1,8 @@
 {
-  "name": "ctx-support-agent-example",
+  "name": "readproof-support-agent-example",
   "version": "0.1.0",
   "private": true,
-  "description": "Customer-support agent that answers tickets from Ctx-governed policy documents, using an open model served by Ollama.",
+  "description": "Customer-support agent that answers tickets from Readproof-governed policy documents, using an open model served by Ollama.",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -15,7 +15,7 @@
     "clean": "rm -rf dist data"
   },
   "dependencies": {
-    "@ctx/sdk": "file:../../sdk/typescript",
+    "@readproof/sdk": "file:../../sdk/typescript",
     "ollama": "0.6.3"
   },
   "devDependencies": {

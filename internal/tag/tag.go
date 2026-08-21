@@ -2,8 +2,8 @@
 // Snapshots — `(resource_uri, tag) -> snapshot_id`. A tag is the only
 // mutable thing in the model: the Snapshot it names never changes, but the
 // tag can be re-pointed at a different Snapshot at any time. Resolving
-// `ctx://ns/path@<tag>` therefore delivers exactly the bytes that tag names,
-// with no source fetch and no policy evaluation.
+// `readproof://ns/path@<tag>` therefore delivers exactly the bytes that tag
+// names, with no source fetch and no policy evaluation.
 package tag
 
 import (
@@ -19,8 +19,8 @@ var ErrNotFound = errors.New("tag: not found")
 
 // ErrSnapshotMismatch is returned by Store.Set when the snapshot exists but
 // was observed for a different Resource. A tag names a snapshot *of its own
-// resource*; a cross-resource pointer would let `ctx://a/x@prod` deliver
-// content that never belonged to `ctx://a/x`.
+// resource*; a cross-resource pointer would let `readproof://a/x@prod`
+// deliver content that never belonged to `readproof://a/x`.
 var ErrSnapshotMismatch = errors.New("tag: snapshot belongs to a different resource")
 
 // ErrInvalidName is returned by ValidateName (and therefore by Store.Set)

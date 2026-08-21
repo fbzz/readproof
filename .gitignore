@@ -1,6 +1,6 @@
-.ctx/
-/ctx
-/ctxd
+.readproof/
+/readproof
+/readproofd
 *.test
 .env
 .env.*

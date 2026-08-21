@@ -10,10 +10,10 @@ import (
 // script over hashlib), not by running MerkleRoot — otherwise the vectors
 // would only assert that the code agrees with itself.
 var (
-	entryA = Entry{Position: 0, URI: "ctx://demo/policies/refunds", ContentHash: "sha256:aaaa"}
-	entryB = Entry{Position: 1, URI: "ctx://demo/policies/shipping", ContentHash: "sha256:bbbb"}
-	entryC = Entry{Position: 2, URI: "ctx://demo/faq", ContentHash: "sha256:cccc"}
-	entryD = Entry{Position: 3, URI: "ctx://demo/tos", ContentHash: "sha256:dddd"}
+	entryA = Entry{Position: 0, URI: "readproof://demo/policies/refunds", ContentHash: "sha256:aaaa"}
+	entryB = Entry{Position: 1, URI: "readproof://demo/policies/shipping", ContentHash: "sha256:bbbb"}
+	entryC = Entry{Position: 2, URI: "readproof://demo/faq", ContentHash: "sha256:cccc"}
+	entryD = Entry{Position: 3, URI: "readproof://demo/tos", ContentHash: "sha256:dddd"}
 )
 
 func TestMerkleRootFixedVectors(t *testing.T) {
@@ -30,22 +30,22 @@ func TestMerkleRootFixedVectors(t *testing.T) {
 		{
 			name:    "single entry root is its leaf",
 			entries: []Entry{entryA},
-			want:    "70d55a88f1fbbf31b196930195a7a943b637d58c828ede07b76c444ba9177c43",
+			want:    "70c844e26de1089a9d8386db4c8c4aa51e6a21202a0e857f5d51f92b496c4799",
 		},
 		{
 			name:    "two entries",
 			entries: []Entry{entryA, entryB},
-			want:    "f11999b8089a3ad1dc8090eca9e3dfe3e2b579354fb739c8ce1c4bf23e245399",
+			want:    "9f4a65f56078f8bbadbd8c2aaf697699ac14d7ada1e15e45a0af1a8b56c6f87a",
 		},
 		{
 			name:    "three entries duplicate the last leaf",
 			entries: []Entry{entryA, entryB, entryC},
-			want:    "8ce5f7d3589e166bdf8c13111c7ce1212f21297f4c5707074b15ec33da5c12bb",
+			want:    "c56ea8ed87709d94dd208274e1865c78941d16bbbd14f7e09b6eeef96804a9b6",
 		},
 		{
 			name:    "four entries",
 			entries: []Entry{entryA, entryB, entryC, entryD},
-			want:    "a41de6697c3d1cf9f416fbf985c1acefacc339b23e6cc061b9c9d60775c96cfc",
+			want:    "a5b64b93a399a39b411a31b4d5dd47adaef09272a9438649670d8ebe9459c99d",
 		},
 	}
 
@@ -59,7 +59,7 @@ func TestMerkleRootFixedVectors(t *testing.T) {
 }
 
 func TestLeafHashFixedVector(t *testing.T) {
-	const want = "70d55a88f1fbbf31b196930195a7a943b637d58c828ede07b76c444ba9177c43"
+	const want = "70c844e26de1089a9d8386db4c8c4aa51e6a21202a0e857f5d51f92b496c4799"
 	if got := hex.EncodeToString(LeafHash(entryA)); got != want {
 		t.Fatalf("LeafHash = %s, want %s", got, want)
 	}
@@ -85,13 +85,13 @@ func TestMerkleRootIgnoresDescriptiveFields(t *testing.T) {
 func TestMerkleRootIsOrderAndValueSensitive(t *testing.T) {
 	base := MerkleRoot([]Entry{entryA, entryB})
 
-	// Order is a hard Ctx invariant: the same two resources mounted the
+	// Order is a hard Readproof invariant: the same two resources mounted the
 	// other way round is a different context and must digest differently.
 	swapped := MerkleRoot([]Entry{entryB, entryA})
 	if swapped == base {
 		t.Fatal("swapping entry order did not change the root")
 	}
-	if want := "9f8a8a5aa906949eb82be3a087a7f92af5dabd43dd75fb2f2c355f97a003f03f"; swapped != want {
+	if want := "22fa08b5ca3cbcb085610c4b620fa8e8f05e1d01bf596bcdc43b175c3d5f4e88"; swapped != want {
 		t.Fatalf("swapped root = %s, want %s", swapped, want)
 	}
 
@@ -99,7 +99,7 @@ func TestMerkleRootIsOrderAndValueSensitive(t *testing.T) {
 		{Position: 1, URI: entryA.URI, ContentHash: entryA.ContentHash},
 		{Position: 0, URI: entryB.URI, ContentHash: entryB.ContentHash},
 	})
-	if want := "d99793a5b91de30b813550ea9af7606c866ba09c9410f9c05308fc9c4958a197"; positionsFlipped != want {
+	if want := "0643819135b60291ac113bc4f398c0d848011e0a19433cf8012d6d4bba464ffb"; positionsFlipped != want {
 		t.Fatalf("position-flipped root = %s, want %s", positionsFlipped, want)
 	}
 
@@ -107,7 +107,7 @@ func TestMerkleRootIsOrderAndValueSensitive(t *testing.T) {
 	if tamperedHash == base {
 		t.Fatal("changing a content hash did not change the root")
 	}
-	if want := "ab225edface320414016f65d9e83ae4d4827fd6734f4f00c470dbd8b2e98855b"; tamperedHash != want {
+	if want := "7f2132f24b570d6130a6aaeff85ce535a631daef70de4e17e58164aa90749e5d"; tamperedHash != want {
 		t.Fatalf("hash-tampered root = %s, want %s", tamperedHash, want)
 	}
 }

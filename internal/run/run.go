@@ -10,12 +10,12 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"ctx/internal/ids"
-	"ctx/internal/manifest"
-	"ctx/internal/merkle"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/telemetry"
+	"readproof/internal/ids"
+	"readproof/internal/manifest"
+	"readproof/internal/merkle"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/telemetry"
 )
 
 // ErrNotFound is returned by RunStore.GetRun, and by Builder.Commit, when
@@ -25,8 +25,8 @@ var ErrNotFound = errors.New("run: not found")
 // ErrAlreadyCommitted is returned by Builder.Commit for a run that already
 // has a manifest. A manifest is the immutable record of what one run saw,
 // so a run gets exactly one: committing twice would leave two manifests
-// claiming to be that record, and every later `ctx manifest run-a` /
-// `ctx replay run-a` picking between them arbitrarily.
+// claiming to be that record, and every later `readproof manifest run-a` /
+// `readproof replay run-a` picking between them arbitrarily.
 var ErrAlreadyCommitted = errors.New("run: already committed")
 
 type Status string
@@ -47,8 +47,8 @@ type Run struct {
 // MountEntry is one resolved resource staged into an open Run before commit.
 type MountEntry struct {
 	Position int
-	// URI is the bare ctx://<ns>/<path>; Ref is the "@<tag>" it was mounted
-	// by, or "" — see manifest.Entry.
+	// URI is the bare readproof://<ns>/<path>; Ref is the "@<tag>" it was
+	// mounted by, or "" — see manifest.Entry.
 	URI               string
 	Ref               string
 	SnapshotID        string
@@ -67,7 +67,7 @@ type RunStore interface {
 }
 
 // Builder is the CLI-only orchestrator standing in for the future SDK's
-// ctx.run({id}).mount(uri)...commit() flow.
+// readproof.run({id}).mount(uri)...commit() flow.
 type Builder struct {
 	Runs      RunStore
 	Manifests manifest.Store
@@ -82,14 +82,14 @@ func (b *Builder) now() time.Time {
 	return time.Now().UTC()
 }
 
-// Start opens a run. ctx.run.id is on this span and on every later
-// ctx.run.mount/ctx.run.commit because a run legitimately spans processes
-// (`ctx run start`, then `ctx run mount` from a worker, then `ctx run
-// commit`): with no ambient span to share, that attribute is the only thing
-// joining them.
+// Start opens a run. readproof.run.id is on this span and on every later
+// readproof.run.mount/readproof.run.commit because a run legitimately spans
+// processes (`readproof run start`, then `readproof run mount` from a
+// worker, then `readproof run commit`): with no ambient span to share, that
+// attribute is the only thing joining them.
 func (b *Builder) Start(ctx context.Context, runID string) error {
-	sctx, span := telemetry.Tracer.Start(ctx, "ctx.run.start", trace.WithAttributes(
-		attribute.String("ctx.run.id", runID),
+	sctx, span := telemetry.Tracer.Start(ctx, "readproof.run.start", trace.WithAttributes(
+		attribute.String("readproof.run.id", runID),
 	))
 	defer span.End()
 	err := b.Runs.StartRun(sctx, runID)
@@ -100,15 +100,15 @@ func (b *Builder) Start(ctx context.Context, runID string) error {
 	return err
 }
 
-// Mount resolves rawURI via the same pipeline `ctx get` uses — including a
-// trailing "@<tag>" — then stages it as the next entry in the run. The
-// entry records the bare URI and the ref separately, so what the run
-// mounted stays readable without re-parsing the combined string.
+// Mount resolves rawURI via the same pipeline `readproof get` uses —
+// including a trailing "@<tag>" — then stages it as the next entry in the
+// run. The entry records the bare URI and the ref separately, so what the
+// run mounted stays readable without re-parsing the combined string.
 //
-// The whole mount is one ctx.run.mount span, so the ctx.resolve tree and
-// the ctx.manifest.append that records it hang off the same parent: a
-// reader of the trace sees "this run mounted this URI, and here is
-// everything that took" rather than two unrelated subtrees.
+// The whole mount is one readproof.run.mount span, so the readproof.resolve
+// tree and the readproof.manifest.append that records it hang off the same
+// parent: a reader of the trace sees "this run mounted this URI, and here
+// is everything that took" rather than two unrelated subtrees.
 func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (result resolver.ResolveResult, err error) {
 	uri, ref, err := resource.SplitRef(rawURI)
 	if err != nil {
@@ -116,13 +116,13 @@ func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (result resol
 	}
 
 	mountAttrs := []attribute.KeyValue{
-		attribute.String("ctx.run.id", runID),
-		attribute.String("ctx.resource.uri", uri),
+		attribute.String("readproof.run.id", runID),
+		attribute.String("readproof.resource.uri", uri),
 	}
 	if ref != "" {
-		mountAttrs = append(mountAttrs, attribute.String("ctx.resource.ref", ref))
+		mountAttrs = append(mountAttrs, attribute.String("readproof.resource.ref", ref))
 	}
-	ctx, span := telemetry.Tracer.Start(ctx, "ctx.run.mount", trace.WithAttributes(mountAttrs...))
+	ctx, span := telemetry.Tracer.Start(ctx, "readproof.run.mount", trace.WithAttributes(mountAttrs...))
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -166,13 +166,13 @@ func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (result resol
 		MaterializationID: result.Materialization.MaterializationID,
 		ContentHash:       result.Materialization.ContentHash,
 	}
-	span.SetAttributes(attribute.Int("ctx.manifest.position", entry.Position))
+	span.SetAttributes(attribute.Int("readproof.manifest.position", entry.Position))
 
 	err = func() error {
-		actx, aspan := telemetry.Tracer.Start(ctx, "ctx.manifest.append", trace.WithAttributes(
-			attribute.String("ctx.resource.uri", uri),
-			attribute.String("ctx.snapshot.id", entry.SnapshotID),
-			attribute.Int("ctx.manifest.position", entry.Position),
+		actx, aspan := telemetry.Tracer.Start(ctx, "readproof.manifest.append", trace.WithAttributes(
+			attribute.String("readproof.resource.uri", uri),
+			attribute.String("readproof.snapshot.id", entry.SnapshotID),
+			attribute.Int("readproof.manifest.position", entry.Position),
 		))
 		defer aspan.End()
 		e := b.Runs.AppendMount(actx, runID, entry)
@@ -197,14 +197,14 @@ func (b *Builder) Mount(ctx context.Context, runID, rawURI string) (result resol
 // genuinely read nothing" and is the one answer a provenance record must
 // never invent.
 //
-// The ctx.run.commit span carries the Merkle root of the committed entries
-// — the same value `ctx evidence export` puts in the bundle's in-toto
-// subject digest (see internal/merkle). That makes the trace and the
-// evidence bundle joinable on a single field: given a trace, an auditor can
-// tell whether a bundle they were handed describes that exact run.
+// The readproof.run.commit span carries the Merkle root of the committed
+// entries — the same value `readproof evidence export` puts in the bundle's
+// in-toto subject digest (see internal/merkle). That makes the trace and
+// the evidence bundle joinable on a single field: given a trace, an auditor
+// can tell whether a bundle they were handed describes that exact run.
 func (b *Builder) Commit(ctx context.Context, runID string) (man manifest.Manifest, err error) {
-	ctx, span := telemetry.Tracer.Start(ctx, "ctx.run.commit", trace.WithAttributes(
-		attribute.String("ctx.run.id", runID),
+	ctx, span := telemetry.Tracer.Start(ctx, "readproof.run.commit", trace.WithAttributes(
+		attribute.String("readproof.run.id", runID),
 	))
 	defer func() {
 		if err != nil {
@@ -261,9 +261,9 @@ func (b *Builder) Commit(ctx context.Context, runID string) (man manifest.Manife
 	}
 	telemetry.RecordRunCommitted(ctx)
 	span.SetAttributes(
-		attribute.String("ctx.manifest.id", man.ManifestID),
-		attribute.Int("ctx.manifest.entries", len(man.Entries)),
-		attribute.String("ctx.manifest.merkle_root", merkleRoot(man.Entries)),
+		attribute.String("readproof.manifest.id", man.ManifestID),
+		attribute.Int("readproof.manifest.entries", len(man.Entries)),
+		attribute.String("readproof.manifest.merkle_root", merkleRoot(man.Entries)),
 	)
 	return man, nil
 }

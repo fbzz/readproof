@@ -21,10 +21,10 @@ unset. To run everything, including those:
 
 ```bash
 docker compose up -d
-export CTX_TEST_POSTGRES_DSN='postgres://ctx:ctx_dev_password@localhost:5434/ctx?sslmode=disable'
-export CTX_TEST_MINIO_ENDPOINT=localhost:9000
-export CTX_TEST_MINIO_ACCESS_KEY=ctxadmin
-export CTX_TEST_MINIO_SECRET_KEY=ctx_dev_password_minio
+export READPROOF_TEST_POSTGRES_DSN='postgres://readproof:readproof_dev_password@localhost:5434/readproof?sslmode=disable'
+export READPROOF_TEST_MINIO_ENDPOINT=localhost:9000
+export READPROOF_TEST_MINIO_ACCESS_KEY=readproofadmin
+export READPROOF_TEST_MINIO_SECRET_KEY=readproof_dev_password_minio
 go test ./...
 ```
 
@@ -37,17 +37,17 @@ npm run build
 npm test
 ```
 
-`npm run example` additionally needs a running `ctxd` (`docker compose up
--d --build` from the repo root).
+`npm run example` additionally needs a running `readproofd` (`docker
+compose up -d --build` from the repo root).
 
 ## Before opening a PR
 
 - `go build ./... && go vet ./... && gofmt -l . && go test ./...` clean
 - `cd sdk/typescript && npm run build && npm test` clean
 - If you touched the SDK's public surface: `cd examples/langgraph-ts &&
-  npm ci && npm run build` clean too — it consumes `@ctx/sdk` as a `file:`
-  dependency, and CI builds it
-- If you touched `docker-compose.yml`, `Dockerfile`, or anything `ctxd`
+  npm ci && npm run build` clean too — it consumes `@readproof/sdk` as a
+  `file:` dependency, and CI builds it
+- If you touched `docker-compose.yml`, `Dockerfile`, or anything `readproofd`
   reads at startup: `docker compose up -d --build` from a clean state
   (`docker compose down -v` first) and confirm all services report
   healthy
@@ -66,5 +66,5 @@ npm test
 ## Reporting issues
 
 Open an issue describing what you expected vs. what happened, including
-`ctx`/`ctxd` version (git commit) and whether you're in embedded or
-client/server mode.
+`readproof`/`readproofd` version (git commit) and whether you're in
+embedded or client/server mode.

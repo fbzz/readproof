@@ -3,13 +3,13 @@ package evidence
 import (
 	"encoding/hex"
 
-	"ctx/internal/merkle"
+	"readproof/internal/merkle"
 )
 
 // LeafHash returns the Merkle leaf for one entry. The rule lives in
-// internal/merkle so that the ctx.run.commit span can compute the same root
-// from manifest entries without importing the bundle types; this is a thin
-// projection of Entry onto the three fields the leaf commits to.
+// internal/merkle so that the readproof.run.commit span can compute the
+// same root from manifest entries without importing the bundle types; this
+// is a thin projection of Entry onto the three fields the leaf commits to.
 func LeafHash(e Entry) []byte {
 	// merkle.Leaf always returns hex, so the error is unreachable.
 	b, _ := hex.DecodeString(merkle.Leaf(e.Position, e.URI, e.ContentHash))

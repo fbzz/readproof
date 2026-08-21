@@ -20,7 +20,8 @@ func SHA256Hex(b []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// ContentHash returns the "sha256:<hex>" content hash used throughout Ctx.
+// ContentHash returns the "sha256:<hex>" content hash used throughout
+// Readproof.
 func ContentHash(b []byte) string {
 	return "sha256:" + SHA256Hex(b)
 }

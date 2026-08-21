@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"ctx/internal/ids"
-	"ctx/internal/run"
-	"ctx/internal/snapshot"
-	"ctx/internal/storage/postgres"
-	"ctx/internal/tag"
+	"readproof/internal/ids"
+	"readproof/internal/run"
+	"readproof/internal/snapshot"
+	"readproof/internal/storage/postgres"
+	"readproof/internal/tag"
 )
 
 // These mirror internal/storage/sqlite/tags_test.go exactly — same
 // assertions, different backend — and skip themselves without
-// CTX_TEST_POSTGRES_DSN, like every other test in this package.
+// READPROOF_TEST_POSTGRES_DSN, like every other test in this package.
 func TestTagStore_SetGetListDelete(t *testing.T) {
 	db := testDB(t)
 	st := newStores(db)

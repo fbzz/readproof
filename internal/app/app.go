@@ -7,22 +7,22 @@ import (
 	"os"
 	"path/filepath"
 
-	"ctx/internal/manifest"
-	"ctx/internal/materialization"
-	"ctx/internal/replay"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/run"
-	"ctx/internal/snapshot"
-	"ctx/internal/source"
-	fsSource "ctx/internal/source/filesystem"
-	ghSource "ctx/internal/source/github"
-	httpSource "ctx/internal/source/http"
-	"ctx/internal/storage/blob"
-	"ctx/internal/storage/postgres"
-	"ctx/internal/storage/s3blob"
-	"ctx/internal/storage/sqlite"
-	"ctx/internal/tag"
+	"readproof/internal/manifest"
+	"readproof/internal/materialization"
+	"readproof/internal/replay"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/run"
+	"readproof/internal/snapshot"
+	"readproof/internal/source"
+	fsSource "readproof/internal/source/filesystem"
+	ghSource "readproof/internal/source/github"
+	httpSource "readproof/internal/source/http"
+	"readproof/internal/storage/blob"
+	"readproof/internal/storage/postgres"
+	"readproof/internal/storage/s3blob"
+	"readproof/internal/storage/sqlite"
+	"readproof/internal/tag"
 )
 
 // App is the composition root wiring every store, the resolver, the run
@@ -41,12 +41,13 @@ type App struct {
 	Replayer         *replay.Replayer
 }
 
-// DataDir resolves the default local data directory: $CTX_HOME, or ".ctx".
+// DataDir resolves the default local data directory: $READPROOF_HOME, or
+// ".readproof".
 func DataDir() string {
-	if dir := os.Getenv("CTX_HOME"); dir != "" {
+	if dir := os.Getenv("READPROOF_HOME"); dir != "" {
 		return dir
 	}
-	return ".ctx"
+	return ".readproof"
 }
 
 // Open sets up (creating and migrating if needed) the local SQLite database
@@ -59,7 +60,7 @@ func Open(dataDir string) (*App, error) {
 		return nil, fmt.Errorf("app: create data dir: %w", err)
 	}
 
-	db, err := sqlite.Open(filepath.Join(dataDir, "ctx.db"))
+	db, err := sqlite.Open(filepath.Join(dataDir, "readproof.db"))
 	if err != nil {
 		return nil, err
 	}

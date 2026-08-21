@@ -1,0 +1,58 @@
+# Zero-code path: reach Readproof through its own MCP server instead of the
+# TypeScript plugin.
+#
+#   go build -o /usr/local/bin/readproof ./cmd/readproof       # from the Readproof repository
+#   dsh web --patch "$PWD/integrations/deepseek-harness/readproof-mcp.cordis.yml"
+#
+# `@deepseek-ai/dsh-mcp-client` starts `readproof mcp` on stdio, discovers its
+# tools, and registers them as `mcp__readproof__readproof_resolve`, `mcp__readproof__readproof_run_mount`,
+# and so on — every tool from docs/mcp.md, under that prefix. Readproof's MCP
+# resources (`resources/list` / `resources/read`) are NOT bridged: DSH's MCP
+# client bridges tools only, so `mcp__readproof__readproof_resolve` is how a model reads
+# a document over this path.
+#
+# The stdio bridge scrubs ambient variables whose names look like
+# credentials before launching the child, so anything the server needs must
+# be named explicitly under `env` (see the --server variant below).
+- insert:
+    - id: readproof-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: readproof
+        transport: stdio
+        # Absolute paths only: the client chooses the working directory, so a
+        # relative --data-dir will not resolve to what you expect.
+        command: !!js >-
+          process.env.READPROOF_BIN?.trim() || 'readproof'
+        args:
+          - mcp
+          - --data-dir
+          - !!js >-
+            process.env.READPROOF_HOME?.trim() || process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:os').homedir(), '.readproof')
+        cwd: !!js process.cwd()
+
+# Against a shared readproofd instead of a local data directory. Replace the row
+# above with this one — `serverName` must stay unique across live instances,
+# so the two cannot both be mounted as `readproof`.
+#
+# - insert:
+#     - id: readproof-mcp
+#       name: '@deepseek-ai/dsh-mcp-client'
+#       config:
+#         serverName: readproof
+#         transport: stdio
+#         command: !!js >-
+#           process.env.READPROOF_BIN?.trim() || 'readproof'
+#         args:
+#           - mcp
+#           - --server
+#           - !!js >-
+#             process.env.READPROOF_SERVER_URL?.trim() || 'https://readproofd.internal'
+#         cwd: !!js process.cwd()
+#         env:
+#           # Named explicitly because the bridge scrubs credential-looking
+#           # ambient variables — READPROOF_API_KEY would not otherwise survive.
+#           # A flag would work too, but a flag is visible in the process
+#           # list to every user on the machine.
+#           READPROOF_API_KEY: !!js >-
+#             process.env.READPROOF_API_KEY ?? ''

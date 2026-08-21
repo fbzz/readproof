@@ -2,16 +2,16 @@
 // things at once:
 //
 //   1. every entry replays byte-for-byte (recorded hash == replayed hash),
-//      reconstructed from Ctx's store without touching the live source;
+//      reconstructed from Readproof's store without touching the live source;
 //   2. if the live source has since changed, the replay still returns the
 //      ORIGINAL bytes — the live re-resolve below is what shows the drift.
 //
 //   npm run replay                    # the manifest the last run checkpointed
 //   npm run replay -- <manifest-id>   # any older manifest or run id
 
-import { Ctx } from "@ctx/sdk";
+import { Readproof } from "@readproof/sdk";
 
-import { CTX_API_KEY, CTX_ENDPOINT, readRunRecord } from "./config.js";
+import { READPROOF_API_KEY, READPROOF_ENDPOINT, readRunRecord } from "./config.js";
 
 function indent(text: string): string {
   return text.trimEnd().split("\n").map((line) => `      | ${line}`).join("\n");
@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   const override = process.argv[2];
   const record = readRunRecord();
   const target = override ?? record.manifest_id;
-  const ctx = new Ctx({ endpoint: CTX_ENDPOINT, apiKey: CTX_API_KEY });
+  const rp = new Readproof({ endpoint: READPROOF_ENDPOINT, apiKey: READPROOF_API_KEY });
 
   if (override) {
     console.log(`manifest: ${target}   (from the command line)`);
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
     console.log(`manifest: ${target}   (checkpointed ${record.recorded_at})`);
   }
 
-  const replay = await ctx.replay(target);
+  const replay = await rp.replay(target);
 
   let mismatches = 0;
   let drifted = 0;
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
 
     // Re-resolve the live resource. Same URI, today's bytes — which is
     // exactly what the replay above refuses to be affected by.
-    const live = await ctx.resolve(entry.uri);
+    const live = await rp.resolve(entry.uri);
     if (live.snapshot.content_hash === entry.recorded_hash) {
       console.log("        live source: unchanged since the run");
     } else {

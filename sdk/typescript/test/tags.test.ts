@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 
-import { Ctx } from "../src/index.js";
+import { Readproof } from "../src/index.js";
 import type { DiffResult, Manifest } from "../src/index.js";
 
 function startMockServer(handler: http.RequestListener): Promise<{ url: string; close: () => Promise<void> }> {
@@ -39,7 +39,7 @@ test("setTag PUTs the tag and returns it", async () => {
     res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify({
-        uri: "ctx://demo/policies/refunds",
+        uri: "readproof://demo/policies/refunds",
         tag: "prod",
         snapshot_id: "snap_1",
         updated_at: "2026-08-20T09:00:00Z",
@@ -48,11 +48,11 @@ test("setTag PUTs the tag and returns it", async () => {
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const tag = await ctx.setTag("ctx://demo/policies/refunds", "prod", "snap_1");
+    const rp = new Readproof({ endpoint: url });
+    const tag = await rp.setTag("readproof://demo/policies/refunds", "prod", "snap_1");
     assert.equal(method, "PUT");
     assert.equal(path, "/v1/tags");
-    assert.deepEqual(received, { uri: "ctx://demo/policies/refunds", tag: "prod", snapshot_id: "snap_1" });
+    assert.deepEqual(received, { uri: "readproof://demo/policies/refunds", tag: "prod", snapshot_id: "snap_1" });
     assert.equal(tag.tag, "prod");
     assert.equal(tag.snapshot_id, "snap_1");
     assert.equal(tag.updated_at, "2026-08-20T09:00:00Z");
@@ -69,17 +69,17 @@ test("listTags unwraps the tags array", async () => {
     res.end(
       JSON.stringify({
         tags: [
-          { uri: "ctx://demo/x", tag: "baseline", snapshot_id: "snap_1", updated_at: "2026-08-19T00:00:00Z" },
-          { uri: "ctx://demo/x", tag: "prod", snapshot_id: "snap_2", updated_at: "2026-08-20T00:00:00Z" },
+          { uri: "readproof://demo/x", tag: "baseline", snapshot_id: "snap_1", updated_at: "2026-08-19T00:00:00Z" },
+          { uri: "readproof://demo/x", tag: "prod", snapshot_id: "snap_2", updated_at: "2026-08-20T00:00:00Z" },
         ],
       }),
     );
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const tags = await ctx.listTags("ctx://demo/x");
-    assert.equal(path, "/v1/tags?uri=ctx%3A%2F%2Fdemo%2Fx");
+    const rp = new Readproof({ endpoint: url });
+    const tags = await rp.listTags("readproof://demo/x");
+    assert.equal(path, "/v1/tags?uri=readproof%3A%2F%2Fdemo%2Fx");
     assert.equal(tags.length, 2);
     assert.equal(tags[0]?.tag, "baseline");
     assert.equal(tags[1]?.snapshot_id, "snap_2");
@@ -99,10 +99,10 @@ test("deleteTag sends DELETE with uri and tag, and tolerates 204", async () => {
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    await ctx.deleteTag("ctx://demo/x", "prod");
+    const rp = new Readproof({ endpoint: url });
+    await rp.deleteTag("readproof://demo/x", "prod");
     assert.equal(method, "DELETE");
-    assert.equal(path, "/v1/tags?uri=ctx%3A%2F%2Fdemo%2Fx&tag=prod");
+    assert.equal(path, "/v1/tags?uri=readproof%3A%2F%2Fdemo%2Fx&tag=prod");
   } finally {
     await close();
   }
@@ -116,10 +116,10 @@ test("resolve passes a @tag URI through and surfaces use_tag freshness", async (
     res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify({
-        resource: { uri: "ctx://demo/policies/refunds", ref: "prod", policy: { strategy: "require_fresh" } },
+        resource: { uri: "readproof://demo/policies/refunds", ref: "prod", policy: { strategy: "require_fresh" } },
         snapshot: {
           id: "snap_1",
-          resource_uri: "ctx://demo/policies/refunds",
+          resource_uri: "readproof://demo/policies/refunds",
           source_revision: "rev1",
           content_hash: "sha256:abc",
           observed_at: "2026-01-01T00:00:00Z",
@@ -143,9 +143,9 @@ test("resolve passes a @tag URI through and surfaces use_tag freshness", async (
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const result = await ctx.resolve("ctx://demo/policies/refunds@prod");
-    assert.equal(requestedURI, "ctx://demo/policies/refunds@prod");
+    const rp = new Readproof({ endpoint: url });
+    const result = await rp.resolve("readproof://demo/policies/refunds@prod");
+    assert.equal(requestedURI, "readproof://demo/policies/refunds@prod");
     assert.equal(result.resource.ref, "prod");
     assert.equal(result.freshness.status, "use_tag");
     assert.equal(result.content, "30 days");
@@ -167,14 +167,14 @@ test("run.mount accepts a @tag URI and the manifest entry carries the ref", asyn
     }
     if (req.url === "/v1/runs/mount") {
       const parsed = JSON.parse(body) as { uri: string };
-      assert.equal(parsed.uri, "ctx://demo/policies/refunds@prod");
+      assert.equal(parsed.uri, "readproof://demo/policies/refunds@prod");
       res.end(
         JSON.stringify({
           position: 0,
           resolve: {
-            resource: { uri: "ctx://demo/policies/refunds", ref: "prod", policy: { strategy: "require_fresh" } },
+            resource: { uri: "readproof://demo/policies/refunds", ref: "prod", policy: { strategy: "require_fresh" } },
             snapshot: {
-              id: "snap_1", resource_uri: "ctx://demo/policies/refunds", source_revision: "rev1",
+              id: "snap_1", resource_uri: "readproof://demo/policies/refunds", source_revision: "rev1",
               content_hash: "sha256:abc", observed_at: "2026-01-01T00:00:00Z",
               created_at: "2026-01-01T00:00:00Z", content_type: "text/markdown", bytes: 1, provenance: {},
             },
@@ -197,7 +197,7 @@ test("run.mount accepts a @tag URI and the manifest entry carries the ref", asyn
         entries: [
           {
             position: 0,
-            uri: "ctx://demo/policies/refunds",
+            uri: "readproof://demo/policies/refunds",
             ref: "prod",
             snapshot_id: "snap_1",
             materialization_id: "mat_1",
@@ -213,15 +213,15 @@ test("run.mount accepts a @tag URI and the manifest entry carries the ref", asyn
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const run = ctx.run({ id: "run-c" });
-    const mounted = await run.mount("ctx://demo/policies/refunds@prod");
+    const rp = new Readproof({ endpoint: url });
+    const run = rp.run({ id: "run-c" });
+    const mounted = await run.mount("readproof://demo/policies/refunds@prod");
     assert.equal(mounted.resource.ref, "prod");
     assert.equal(mounted.freshness.status, "use_tag");
 
     const manifest = await run.commit();
     assert.equal(manifest.entries[0]?.ref, "prod");
-    assert.equal(manifest.entries[0]?.uri, "ctx://demo/policies/refunds");
+    assert.equal(manifest.entries[0]?.uri, "readproof://demo/policies/refunds");
   } finally {
     await close();
   }
@@ -234,7 +234,7 @@ test("diff entries carry per-side provenance", async () => {
       manifest_b: { manifest_id: "m_b", run_id: "run-b", created_at: "2026-01-02T00:00:00Z", entries: [] },
       entries: [
         {
-          uri: "ctx://demo/policies/refunds",
+          uri: "readproof://demo/policies/refunds",
           status: "changed",
           snapshot_id_a: "snap_1",
           snapshot_id_b: "snap_2",
@@ -252,8 +252,8 @@ test("diff entries carry per-side provenance", async () => {
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const result = await ctx.diff("run-a", "run-b");
+    const rp = new Readproof({ endpoint: url });
+    const result = await rp.diff("run-a", "run-b");
     const entry = result.entries[0];
     assert.equal(entry?.source_revision_a, "8af92d1");
     assert.equal(entry?.source_revision_b, "c31be07");

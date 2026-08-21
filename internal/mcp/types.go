@@ -1,16 +1,16 @@
 package mcp
 
 import (
-	"ctx/internal/diff"
-	"ctx/internal/manifest"
-	"ctx/internal/policy"
-	"ctx/internal/redact"
-	"ctx/internal/replay"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/snapshot"
-	"ctx/internal/source"
-	"ctx/internal/tag"
+	"readproof/internal/diff"
+	"readproof/internal/manifest"
+	"readproof/internal/policy"
+	"readproof/internal/redact"
+	"readproof/internal/replay"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/snapshot"
+	"readproof/internal/source"
+	"readproof/internal/tag"
 )
 
 // The types in this file are the JSON payloads the MCP tools return. They
@@ -66,7 +66,8 @@ func policyInfo(p policy.Policy) PolicyInfo {
 	}
 }
 
-// ResourceInfo is one registered resource as ctx_resources_list reports it.
+// ResourceInfo is one registered resource as readproof_resources_list
+// reports it.
 type ResourceInfo struct {
 	URI               string     `json:"uri"`
 	Namespace         string     `json:"namespace"`

@@ -8,22 +8,22 @@ import (
 	"testing"
 	"time"
 
-	"ctx/internal/ids"
-	"ctx/internal/materialization"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/run"
-	"ctx/internal/snapshot"
-	"ctx/internal/source"
-	"ctx/internal/storage/sqlite"
-	"ctx/internal/tag"
+	"readproof/internal/ids"
+	"readproof/internal/materialization"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/run"
+	"readproof/internal/snapshot"
+	"readproof/internal/source"
+	"readproof/internal/storage/sqlite"
+	"readproof/internal/tag"
 )
 
 // testDB opens a migrated SQLite database in a per-test temp dir — no
 // external service, so these run on every `go test ./...`.
 func testDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sqlite.Open(filepath.Join(t.TempDir(), "ctx.db"))
+	db, err := sqlite.Open(filepath.Join(t.TempDir(), "readproof.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestTagStore_SetGetListDelete(t *testing.T) {
 	snapshots := sqlite.NewSnapshotStore(db)
 	tags := sqlite.NewTagStore(db)
 
-	uri := "ctx://test/policies/refunds"
+	uri := "readproof://test/policies/refunds"
 	createResource(t, ctx, resources, uri)
 	first := createSnapshot(t, ctx, snapshots, uri)
 	second := createSnapshot(t, ctx, snapshots, uri)
@@ -136,8 +136,8 @@ func TestTagStore_SetRejectsUnknownAndForeignSnapshots(t *testing.T) {
 	snapshots := sqlite.NewSnapshotStore(db)
 	tags := sqlite.NewTagStore(db)
 
-	uri := "ctx://test/policies/refunds"
-	otherURI := "ctx://test/policies/shipping"
+	uri := "readproof://test/policies/refunds"
+	otherURI := "readproof://test/policies/shipping"
 	createResource(t, ctx, resources, uri)
 	createResource(t, ctx, resources, otherURI)
 	foreign := createSnapshot(t, ctx, snapshots, otherURI)
@@ -160,7 +160,7 @@ func TestTagStore_SetRejectsInvalidNames(t *testing.T) {
 	snapshots := sqlite.NewSnapshotStore(db)
 	tags := sqlite.NewTagStore(db)
 
-	uri := "ctx://test/policies/refunds"
+	uri := "readproof://test/policies/refunds"
 	createResource(t, ctx, resources, uri)
 	snap := createSnapshot(t, ctx, snapshots, uri)
 
@@ -182,7 +182,7 @@ func TestRunStore_MountRefRoundTrip(t *testing.T) {
 	materializations := sqlite.NewMaterializationStore(db)
 	runs := sqlite.NewRunStore(db)
 
-	uri := "ctx://test/policies/refunds"
+	uri := "readproof://test/policies/refunds"
 	createResource(t, ctx, resources, uri)
 	snap := createSnapshot(t, ctx, snapshots, uri)
 	mat := materializationFor(t, ctx, materializations, snap)

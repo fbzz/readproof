@@ -1,4 +1,4 @@
-module ctx
+module readproof
 
 go 1.26.6
 

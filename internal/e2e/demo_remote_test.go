@@ -2,8 +2,8 @@
 // demo_test.go, but through a real HTTP round-trip: an httptest server
 // wrapping internal/api over an embedded App, driven by the
 // internal/client/remote client — proving the CLI's --server mode
-// (client.Client -> HTTP -> ctxd -> App) behaves identically to embedded
-// mode for every operation the CLI uses, not just resolve.
+// (client.Client -> HTTP -> readproofd -> App) behaves identically to
+// embedded mode for every operation the CLI uses, not just resolve.
 package e2e
 
 import (
@@ -13,12 +13,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ctx/internal/api"
-	"ctx/internal/app"
-	"ctx/internal/client/remote"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/api"
+	"readproof/internal/app"
+	"readproof/internal/client/remote"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
@@ -46,7 +46,7 @@ func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
 	defer c.Close()
 
 	ctx := context.Background()
-	uri := "ctx://demo/policies/refunds"
+	uri := "readproof://demo/policies/refunds"
 
 	// Exercise every client operation the CLI uses, not just resolve/replay,
 	// so a wire round-trip bug in any one of them fails this test.
@@ -226,7 +226,7 @@ func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
 		t.Fatalf("expected a non-empty unified diff for the changed entry")
 	}
 	// The provenance behind the change must survive the wire round-trip —
-	// it's what `ctx diff`'s "why" line prints.
+	// it's what `readproof diff`'s "why" line prints.
 	changedEntry := diffResult.Entries[0]
 	if changedEntry.SourceRevisionA == "" || changedEntry.SourceRevisionB == "" || changedEntry.SourceRevisionA == changedEntry.SourceRevisionB {
 		t.Fatalf("diff provenance lost over the wire: %q vs %q", changedEntry.SourceRevisionA, changedEntry.SourceRevisionB)

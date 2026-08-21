@@ -1,9 +1,9 @@
-// A two-node LangGraph: `load_context` mounts ctx:// resources into a Ctx
+// A two-node LangGraph: `load_context` mounts readproof:// resources into a Readproof
 // run and commits a manifest; `answer_question` calls a chat model with the
 // exact bytes that manifest recorded.
 //
 // The point of the example is the handoff between the two: whatever the
-// model sees is pinned to `ctx_manifest_id`, which lands in the graph's
+// model sees is pinned to `readproof_manifest_id`, which lands in the graph's
 // checkpoint. Anything that can read the checkpoint later can replay the
 // exact bytes of that turn — see src/replay.ts.
 
@@ -12,9 +12,9 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { FakeListChatModel } from "@langchain/core/utils/testing";
 import { Annotation, END, MemorySaver, START, StateGraph } from "@langchain/langgraph";
-import { Ctx } from "@ctx/sdk";
+import { Readproof } from "@readproof/sdk";
 
-import { CONTEXT_RESOURCES, CTX_API_KEY, CTX_ENDPOINT } from "./config.js";
+import { CONTEXT_RESOURCES, READPROOF_API_KEY, READPROOF_ENDPOINT } from "./config.js";
 
 /** One resource as it was delivered into this turn. */
 export interface MountedEntry {
@@ -25,7 +25,7 @@ export interface MountedEntry {
 }
 
 /**
- * Graph state. `ctx_manifest_id` is a first-class channel rather than
+ * Graph state. `readproof_manifest_id` is a first-class channel rather than
  * checkpoint metadata on purpose: the id doesn't exist until the node has
  * run, and metadata is fixed when the graph is invoked. State channels are
  * written into the same checkpoint record, so a durable checkpointer
@@ -34,8 +34,8 @@ export interface MountedEntry {
  */
 export const GraphState = Annotation.Root({
   question: Annotation<string>,
-  ctx_manifest_id: Annotation<string>,
-  ctx_entries: Annotation<MountedEntry[]>({
+  readproof_manifest_id: Annotation<string>,
+  readproof_entries: Annotation<MountedEntry[]>({
     reducer: (_previous, next) => next,
     default: () => [],
   }),
@@ -45,10 +45,10 @@ export const GraphState = Annotation.Root({
 export type GraphStateType = typeof GraphState.State;
 
 /** The state key the manifest id lives under, for readers outside this file. */
-export const MANIFEST_ID_KEY = "ctx_manifest_id";
+export const MANIFEST_ID_KEY = "readproof_manifest_id";
 
-function ctxClient(): Ctx {
-  return new Ctx({ endpoint: CTX_ENDPOINT, apiKey: CTX_API_KEY });
+function readproofClient(): Readproof {
+  return new Readproof({ endpoint: READPROOF_ENDPOINT, apiKey: READPROOF_API_KEY });
 }
 
 function threadIdOf(config: RunnableConfig): string {
@@ -60,7 +60,7 @@ function threadIdOf(config: RunnableConfig): string {
 }
 
 /**
- * Node 1 — resolve every ctx:// resource inside one Ctx run and commit it.
+ * Node 1 — resolve every readproof:// resource inside one Readproof run and commit it.
  *
  * `mount()` resolves the resource *and* records it as the next ordered
  * entry of the run; `commit()` freezes those entries into an immutable
@@ -69,10 +69,10 @@ function threadIdOf(config: RunnableConfig): string {
  */
 async function loadContext(_state: GraphStateType, config: RunnableConfig): Promise<Partial<GraphStateType>> {
   const threadId = threadIdOf(config);
-  // One Ctx run per graph thread keeps the two ids trivially correlatable.
-  // (Re-invoking the same thread would need a fresh run id — ctxd rejects
+  // One Readproof run per graph thread keeps the two ids trivially correlatable.
+  // (Re-invoking the same thread would need a fresh run id — readproofd rejects
   // a duplicate.)
-  const run = ctxClient().run({ id: `langgraph-${threadId}` });
+  const run = readproofClient().run({ id: `langgraph-${threadId}` });
 
   const entries: MountedEntry[] = [];
   for (const resource of CONTEXT_RESOURCES) {
@@ -86,14 +86,14 @@ async function loadContext(_state: GraphStateType, config: RunnableConfig): Prom
   }
 
   const manifest = await run.commit();
-  return { ctx_manifest_id: manifest.manifest_id, ctx_entries: entries };
+  return { readproof_manifest_id: manifest.manifest_id, readproof_entries: entries };
 }
 
 /** Node 2 — answer the question from the mounted context. */
 async function answerQuestion(state: GraphStateType, _config: RunnableConfig): Promise<Partial<GraphStateType>> {
-  const model = await createModel(state.ctx_entries);
+  const model = await createModel(state.readproof_entries);
   const response = await model.invoke([
-    new SystemMessage(systemPrompt(state.ctx_entries)),
+    new SystemMessage(systemPrompt(state.readproof_entries)),
     new HumanMessage(state.question),
   ]);
   return { answer: response.text };
@@ -109,7 +109,7 @@ function systemPrompt(entries: MountedEntry[]): string {
 
 /**
  * Default: a fake in-memory model, so the example runs with no API key and
- * no network beyond ctxd. Its canned reply is derived from the mounted
+ * no network beyond readproofd. Its canned reply is derived from the mounted
  * policy text, which is what makes the demo legible: change the source
  * document and a fresh run's answer changes with it, while a replay of the
  * old manifest still returns the old bytes.
@@ -122,7 +122,7 @@ async function createModel(entries: MountedEntry[]): Promise<BaseChatModel> {
     const anthropic = await loadAnthropic();
     if (anthropic) {
       return new anthropic.ChatAnthropic({
-        model: process.env.CTX_ANTHROPIC_MODEL ?? "claude-opus-5",
+        model: process.env.READPROOF_ANTHROPIC_MODEL ?? "claude-opus-5",
       });
     }
     console.warn("ANTHROPIC_API_KEY is set but @langchain/anthropic is not installed — using the fake model");

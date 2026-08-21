@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	"ctx/internal/app"
-	"ctx/internal/client"
-	"ctx/internal/client/local"
-	"ctx/internal/ids"
-	"ctx/internal/policy"
-	"ctx/internal/redact"
-	"ctx/internal/replay"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/app"
+	"readproof/internal/client"
+	"readproof/internal/client/local"
+	"readproof/internal/ids"
+	"readproof/internal/policy"
+	"readproof/internal/redact"
+	"readproof/internal/replay"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 const refundsContent = "Products can be refunded within 30 days.\n"
@@ -52,7 +52,7 @@ func newDemoRun(t *testing.T) (client.Client, string) {
 	t.Cleanup(func() { c.Close() })
 
 	ctx := context.Background()
-	uris := []string{"ctx://demo/policies/refunds", "ctx://demo/policies/shipping"}
+	uris := []string{"readproof://demo/policies/refunds", "readproof://demo/policies/shipping"}
 	paths := []string{refunds, shipping}
 	for i, uri := range uris {
 		parsed, err := resource.ParseURI(uri)
@@ -137,7 +137,7 @@ func TestBuildProducesInTotoStatementForARun(t *testing.T) {
 		t.Fatalf("expected 2 entries, got %d", len(b.Predicate.Entries))
 	}
 	first := b.Predicate.Entries[0]
-	if first.Position != 0 || first.URI != "ctx://demo/policies/refunds" {
+	if first.Position != 0 || first.URI != "readproof://demo/policies/refunds" {
 		t.Errorf("entry 0 = %+v", first)
 	}
 	// Entries must be hydrated from the snapshot, not just copied from the
@@ -162,7 +162,7 @@ func TestBuildProducesInTotoStatementForARun(t *testing.T) {
 		t.Fatalf("expected 2 resources, got %d", len(b.Predicate.Resources))
 	}
 	res := b.Predicate.Resources[0]
-	if res.URI != "ctx://demo/policies/refunds" || res.Namespace != "demo" || res.Path != "policies/refunds" {
+	if res.URI != "readproof://demo/policies/refunds" || res.Namespace != "demo" || res.Path != "policies/refunds" {
 		t.Errorf("resource 0 = %+v", res)
 	}
 	if res.Source.Kind != string(source.KindFilesystem) || res.Source.Config.Filesystem == nil {
@@ -388,7 +388,7 @@ func TestBuildRedactsHTTPSourceHeaders(t *testing.T) {
 	defer c.Close()
 
 	ctx := context.Background()
-	const uri = "ctx://demo/policies/remote"
+	const uri = "readproof://demo/policies/remote"
 	err = c.RegisterResource(ctx, resource.Resource{
 		URI:       uri,
 		Namespace: "demo",
@@ -505,9 +505,9 @@ func TestIsNotFoundAcrossClientErrorShapes(t *testing.T) {
 	}{
 		{"typed sentinel from the local client", resource.ErrNotFound, true},
 		{"wrapped sentinel", errors.New("x: " + resource.ErrNotFound.Error()), true},
-		// The remote client flattens ctxd's 404 body into a plain error.
-		{"flattened remote 404", errors.New("ctxd: resource: not found: ctx://demo/x"), true},
-		{"unrelated failure", errors.New("ctxd: request failed: connection refused"), false},
+		// The remote client flattens readproofd's 404 body into a plain error.
+		{"flattened remote 404", errors.New("readproofd: resource: not found: readproof://demo/x"), true},
+		{"unrelated failure", errors.New("readproofd: request failed: connection refused"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -522,7 +522,7 @@ func TestDecodeToleratesUnknownFields(t *testing.T) {
 	const forwardCompatible = `{
 	  "_type": "https://in-toto.io/Statement/v1",
 	  "subject": [{"name": "man_1", "digest": {"sha256": "abc"}, "annotations": {"x": 1}}],
-	  "predicateType": "urn:ctx:evidence:v0.2",
+	  "predicateType": "urn:readproof:evidence:v0.3",
 	  "predicate": {"manifest_id": "man_1", "entries": [], "future_field": {"nested": true}}
 	}`
 	b, err := Decode([]byte(forwardCompatible))
