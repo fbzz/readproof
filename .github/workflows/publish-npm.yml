@@ -1,0 +1,79 @@
+name: Publish npm packages
+
+# The same `v*` tag that cuts the GitHub release publishes the two npm
+# packages, so a version can never exist as a binary but not as a package.
+# workflow_dispatch is the retry path for a publish that failed after the
+# release succeeded.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  # --provenance signs the package with a Sigstore attestation minted from
+  # this workflow's OIDC identity; that needs id-token: write and nothing
+  # else needs write at all.
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    name: "@readproof/sdk and dsh-plugin-readproof"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # The plugin consumes the SDK as a file: dependency, so the SDK's
+      # dist/ must exist before the plugin can build or test.
+      - name: Build and test the SDK
+        working-directory: sdk/typescript
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      - name: Publish @readproof/sdk
+        working-directory: sdk/typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          # A re-run of an already-published version must be a no-op, not a
+          # hard failure: this workflow is also the retry path for the other
+          # package below.
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already on the registry — skipping."
+          else
+            npm publish --provenance --access public
+          fi
+
+      - name: Build and test dsh-plugin-readproof
+        working-directory: integrations/deepseek-harness/dsh-plugin-readproof
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      - name: Publish dsh-plugin-readproof
+        working-directory: integrations/deepseek-harness/dsh-plugin-readproof
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already on the registry — skipping."
+          else
+            # scripts/prepack.mjs rewrites the file: @readproof/sdk
+            # dependency to the published semver inside the tarball, and
+            # postpack puts the working tree back.
+            npm publish --provenance --access public
+          fi

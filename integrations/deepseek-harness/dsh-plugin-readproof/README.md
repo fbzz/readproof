@@ -76,7 +76,19 @@ data directory — including the one a `spawn: true` plugin uses.)
 
 ### A. As a bundle (the normal path)
 
+From npm — the published tarball ships built `dist/`, so there is no build
+step and no permission to run one:
+
 ```sh
+dsh plugin --profile web add dsh-plugin-readproof
+dsh web
+```
+
+Or from a checkout of this repository, which is what you want while
+developing against unreleased Readproof changes:
+
+```sh
+cd sdk/typescript && npm ci && npm run build && cd -                        # the file: dependency below
 cd integrations/deepseek-harness/dsh-plugin-readproof && npm install && npm run build && cd -
 dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof
 dsh web
@@ -268,6 +280,45 @@ merkle root matches the SDK's `merkleRoot` *and* which the Go
 Requires Go and Node on `PATH`, and network access on first `npm install`.
 
 ## Publishing
+
+Publishing is automated: pushing a `v*` tag runs
+[`.github/workflows/publish-npm.yml`](../../../.github/workflows/publish-npm.yml),
+which publishes `@readproof/sdk` first and this package second, both with
+`--provenance`. [`docs/releasing.md`](../../../docs/releasing.md) has the
+whole procedure.
+
+### The `@readproof/sdk` dependency is rewritten at pack time
+
+In this repository the dependency is
+`"@readproof/sdk": "file:../../../sdk/typescript"`. That is deliberate — it
+is what lets `npm ci && npm test` here exercise the plugin against SDK
+changes that are not released yet, and it is what CI does. A `file:`
+specifier is meaningless to anyone installing from npm, so it cannot be
+what ships.
+
+npm's `prepack`/`postpack` hooks close the gap:
+
+- [`scripts/prepack.mjs`](./scripts/prepack.mjs) backs up `package.json`,
+  reads the SDK's own version out of `sdk/typescript/package.json`, and
+  writes `"@readproof/sdk": "^<that version>"` in its place. It also refuses
+  to pack a tree with no `dist/src/index.js`.
+- [`scripts/postpack.mjs`](./scripts/postpack.mjs) restores the backup, so
+  the working tree after `npm pack` or `npm publish` is byte-identical to
+  the one before it.
+
+The range therefore tracks the SDK automatically; there is no second place
+to bump. Confirm it any time with:
+
+```sh
+npm pack && tar xzOf dsh-plugin-readproof-*.tgz package/package.json | grep '@readproof/sdk'
+#   "@readproof/sdk": "^0.3.0",
+```
+
+If a pack is interrupted between the two hooks, `package.json.prepack-backup`
+survives; the next `prepack` refuses to run and tells you to restore it
+(`node scripts/postpack.mjs`).
+
+### Other notes
 
 - `npm publish` with `dist/` built at pack time, so
   `dsh plugin --profile <name> add dsh-plugin-readproof` installs prebuilt code
