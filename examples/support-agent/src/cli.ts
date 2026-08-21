@@ -12,20 +12,20 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { buildEvidence, encodeEvidence } from "@ctx/sdk";
-import type { DiffEntry, ManifestEntry } from "@ctx/sdk";
+import { buildEvidence, encodeEvidence } from "@readproof/sdk";
+import type { DiffEntry, ManifestEntry } from "@readproof/sdk";
 
-import { CTX_ENDPOINT, FAKE_MODEL, PROD_TAG, resolvePolicyURI } from "./config.js";
-import { ask, ctxClient, loadTicket, setup, ticketsFile } from "./agent.js";
+import { READPROOF_ENDPOINT, FAKE_MODEL, PROD_TAG, resolvePolicyURI } from "./config.js";
+import { ask, readproofClient, loadTicket, setup, ticketsFile } from "./agent.js";
 import { shortHash } from "./model.js";
 
-const USAGE = `support-agent — answer support tickets from Ctx-governed policy documents
+const USAGE = `support-agent — answer support tickets from Readproof-governed policy documents
 
 usage:
   npm run agent -- <command> [args]        (or: node dist/src/cli.js <command>)
 
 commands:
-  setup                              check ctxd, register the three policies,
+  setup                              check readproofd, register the three policies,
                                      tag the tone policy @${PROD_TAG}
   ask <ticket> <question...>         answer a ticket; commits one manifest
   show <ticket>                      the stored answer and its manifest entries
@@ -37,11 +37,11 @@ commands:
                                      promote whatever the policy says is current)
   history <policy>                   snapshots and tags for one policy
 
-  <policy> is a ctx:// URI or a short name: refunds, shipping, tone
+  <policy> is a readproof:// URI or a short name: refunds, shipping, tone
 
 environment:
-  CTX_ENDPOINT         ctxd base URL (default http://localhost:8080)
-  CTX_API_KEY          bearer token, if ctxd was started with --api-key
+  READPROOF_ENDPOINT         readproofd base URL (default http://localhost:8080)
+  READPROOF_API_KEY          bearer token, if readproofd was started with --api-key
   OLLAMA_HOST          Ollama base URL (default http://localhost:11434)
   OLLAMA_MODEL         chat model; default = first non-embedding model Ollama lists
   SUPPORT_FAKE_MODEL   1 = deterministic fake model, no Ollama needed
@@ -83,7 +83,7 @@ async function main(argv: string[]): Promise<void> {
 async function cmdSetup(): Promise<void> {
   const result = await setup((line) => console.log(line));
   const total = result.registered.length + result.alreadyRegistered.length;
-  console.log(`\n${total} policies governed by Ctx, ${result.registered.length} registered just now.`);
+  console.log(`\n${total} policies governed by Readproof, ${result.registered.length} registered just now.`);
   if (result.mismatched.length > 0) {
     console.log(`${result.mismatched.length} registered against a different path — see the warnings above.`);
   }
@@ -121,22 +121,22 @@ async function cmdShow(args: string[]): Promise<void> {
   console.log("\n--- answer ---");
   console.log(record.answer);
 
-  // Read the manifest back from ctxd rather than trusting the local log:
+  // Read the manifest back from readproofd rather than trusting the local log:
   // the manifest is the record of what happened, the log is a convenience.
-  const manifest = await ctxClient().getManifest(record.manifest_id);
-  console.log("\n--- manifest entries (from ctxd) ---");
+  const manifest = await readproofClient().getManifest(record.manifest_id);
+  console.log("\n--- manifest entries (from readproofd) ---");
   printEntries(manifest.entries);
 }
 
 async function cmdReplay(args: string[]): Promise<void> {
   const ticket = requireTicket(args[0], "replay");
   const record = loadTicket(ticket);
-  const ctx = ctxClient();
+  const rp = readproofClient();
 
   console.log(`ticket:   ${record.ticket}`);
   console.log(`manifest: ${record.manifest_id}  (answered ${record.at})`);
 
-  const replay = await ctx.replay(record.manifest_id);
+  const replay = await rp.replay(record.manifest_id);
   let mismatches = 0;
   let drifted = 0;
 
@@ -151,7 +151,7 @@ async function cmdReplay(args: string[]): Promise<void> {
 
     // Same URI, no ref, today's bytes — which is precisely what the replay
     // above refuses to be affected by.
-    const live = await ctx.resolve(entry.uri);
+    const live = await rp.resolve(entry.uri);
     if (live.snapshot.content_hash === entry.recorded_hash) {
       console.log("        live source: unchanged");
     } else {
@@ -178,7 +178,7 @@ async function cmdDiff(args: string[]): Promise<void> {
   const recordA = loadTicket(a);
   const recordB = loadTicket(b);
 
-  const result = await ctxClient().diff(recordA.manifest_id, recordB.manifest_id);
+  const result = await readproofClient().diff(recordA.manifest_id, recordB.manifest_id);
   console.log(`--- ticket ${a} (${result.manifest_a.manifest_id})`);
   console.log(`+++ ticket ${b} (${result.manifest_b.manifest_id})`);
 
@@ -213,7 +213,7 @@ async function cmdEvidence(args: string[]): Promise<void> {
   const outFile = path.resolve(outIndex === -1 ? `ticket-${ticket}.bundle.json` : (args[outIndex + 1] as string));
 
   const record = loadTicket(ticket);
-  const bundle = await buildEvidence(ctxClient(), record.manifest_id, { withContent });
+  const bundle = await buildEvidence(readproofClient(), record.manifest_id, { withContent });
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   fs.writeFileSync(outFile, encodeEvidence(bundle), "utf-8");
 
@@ -223,7 +223,7 @@ async function cmdEvidence(args: string[]): Promise<void> {
   console.log(`  merkle root: ${root}`);
   console.log(`  replay:      ${bundle.predicate.replay.all_match ? "all entries match" : "MISMATCH — see predicate.replay"}`);
   console.log("\nverify it with the Go CLI:");
-  console.log(`  ctx --server ${CTX_ENDPOINT} evidence verify ${outFile}`);
+  console.log(`  readproof --server ${READPROOF_ENDPOINT} evidence verify ${outFile}`);
 }
 
 async function cmdPromote(args: string[]): Promise<void> {
@@ -232,7 +232,7 @@ async function cmdPromote(args: string[]): Promise<void> {
     throw new UsageError("promote needs a policy: promote refunds [snapshot-id]");
   }
   const uri = resolvePolicyURI(target);
-  const ctx = ctxClient();
+  const rp = readproofClient();
 
   let snapshotId = args[1];
   if (!snapshotId) {
@@ -240,15 +240,15 @@ async function cmdPromote(args: string[]): Promise<void> {
     // says is current *now*, so resolve before reading it back. Skipping
     // this would silently re-promote the snapshot from before the edit the
     // operator is trying to promote.
-    await ctx.resolve(uri);
-    const resource = await ctx.getResource(uri);
-    snapshotId = resource.current_snapshot_id ?? (await ctx.history(uri))[0]?.id;
+    await rp.resolve(uri);
+    const resource = await rp.getResource(uri);
+    snapshotId = resource.current_snapshot_id ?? (await rp.history(uri))[0]?.id;
   }
   if (!snapshotId) {
     throw new Error(`${uri} has no snapshots yet — resolve it once first (npm run agent -- history ${target})`);
   }
 
-  const tag = await ctx.setTag(uri, PROD_TAG, snapshotId);
+  const tag = await rp.setTag(uri, PROD_TAG, snapshotId);
   console.log(`${uri}@${PROD_TAG} -> ${tag.snapshot_id}`);
 }
 
@@ -258,9 +258,9 @@ async function cmdHistory(args: string[]): Promise<void> {
     throw new UsageError("history needs a policy: history refunds");
   }
   const uri = resolvePolicyURI(target);
-  const ctx = ctxClient();
+  const rp = readproofClient();
 
-  const [snapshots, tags] = await Promise.all([ctx.history(uri), ctx.listTags(uri)]);
+  const [snapshots, tags] = await Promise.all([rp.history(uri), rp.listTags(uri)]);
   const tagsBySnapshot = new Map<string, string[]>();
   for (const tag of tags) {
     tagsBySnapshot.set(tag.snapshot_id, [...(tagsBySnapshot.get(tag.snapshot_id) ?? []), tag.tag]);
@@ -290,11 +290,11 @@ interface PrintableEntry {
 }
 
 function printEntries(entries: PrintableEntry[] | ManifestEntry[]): void {
-  console.log(pad("POS", 5) + pad("URI@REF", 34) + pad("SNAPSHOT", 33) + "HASH");
+  console.log(pad("POS", 5) + pad("URI@REF", 40) + pad("SNAPSHOT", 33) + "HASH");
   for (const [index, entry] of entries.entries()) {
     const position = entry.position ?? index;
     const label = entry.ref ? `${entry.uri}@${entry.ref}` : entry.uri;
-    console.log(pad(String(position), 5) + pad(label, 34) + pad(entry.snapshot_id, 33) + shortHash(entry.content_hash));
+    console.log(pad(String(position), 5) + pad(label, 40) + pad(entry.snapshot_id, 33) + shortHash(entry.content_hash));
   }
 }
 
@@ -346,7 +346,7 @@ main(process.argv.slice(2)).catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
   console.error(`error: ${message}`);
   // Usage gets dumped for misuse only. A failed replay or an unreachable
-  // ctxd is a runtime failure, and burying the one line that matters under
+  // readproofd is a runtime failure, and burying the one line that matters under
   // a wall of usage text helps nobody.
   if (err instanceof UsageError) {
     console.error("\nrun with --help for usage");

@@ -1,23 +1,23 @@
-# LangGraph.js + Ctx
+# LangGraph.js + Readproof
 
 A two-node [LangGraph.js](https://github.com/langchain-ai/langgraphjs) agent
-that mounts `ctx://` resources inside a graph node, records the resulting
+that mounts `readproof://` resources inside a graph node, records the resulting
 **manifest id in the checkpoint**, and replays that manifest byte-for-byte
 from a later process — even after the underlying documents have changed.
 
 ```
 START ──▶ load_context ──▶ answer_question ──▶ END
              │                    │
-             │ ctx.run(id)        │ model sees exactly the bytes
+             │ rp.run(id)         │ model sees exactly the bytes
              │   .mount(uri)…     │ the manifest recorded
              │   .commit()        │
              ▼                    ▼
-     ctx_manifest_id  ────────────────────▶  checkpoint (MemorySaver)
+   readproof_manifest_id  ────────────────▶  checkpoint (MemorySaver)
                                                     │
                                       graph.getState(config)
                                                     │
                                                     ▼
-                                          ctx.replay(manifest_id)
+                                           rp.replay(manifest_id)
 ```
 
 ## What it proves
@@ -34,9 +34,9 @@ START ──▶ load_context ──▶ answer_question ──▶ END
 ## Prerequisites
 
 - Node 18+ and Go 1.26+.
-- **`ctxd` running on the host, in embedded mode.** The demo resources are
-  `filesystem` sources pointing into this repo, so `ctxd` has to be able to
-  see those paths — a Compose/Docker `ctxd` cannot (see the root README).
+- **`readproofd` running on the host, in embedded mode.** The demo resources are
+  `filesystem` sources pointing into this repo, so `readproofd` has to be able to
+  see those paths — a Compose/Docker `readproofd` cannot (see the root README).
 
 ## Run it
 
@@ -44,12 +44,12 @@ From the repository root:
 
 ```bash
 # 1. Build the SDK this example consumes (a local file: dependency —
-#    node_modules/@ctx/sdk symlinks to sdk/typescript, so dist/ must exist).
+#    node_modules/@readproof/sdk symlinks to sdk/typescript, so dist/ must exist).
 cd sdk/typescript && npm ci && npm run build && cd ../..
 
-# 2. Start ctxd on the host, embedded mode, its own data dir.
-go build -o ctxd ./cmd/ctxd
-./ctxd --addr :8080 --data-dir /tmp/ctx-langgraph &
+# 2. Start readproofd on the host, embedded mode, its own data dir.
+go build -o readproofd ./cmd/readproofd
+./readproofd --addr :8080 --data-dir /tmp/readproof-langgraph &
 
 # 3. Build and run the graph.
 cd examples/langgraph-ts
@@ -59,11 +59,11 @@ npm run replay
 ```
 
 `npm run start` accepts a question (`npm run start -- "…"`), and both
-scripts honour `CTX_SERVER_URL` (default `http://localhost:8080`) and
-`CTX_API_KEY` (only if `ctxd` was started with `--api-key`).
+scripts honour `READPROOF_SERVER_URL` (default `http://localhost:8080`) and
+`READPROOF_API_KEY` (only if `readproofd` was started with `--api-key`).
 
 `npm run start` prints the mounted entries with their content hashes, the
-answer, and the `ctx_manifest_id` it read back out of the checkpoint, then
+answer, and the `readproof_manifest_id` it read back out of the checkpoint, then
 writes `last-run.json` (`{thread_id, manifest_id, …}`) — the handoff to the
 replay script, which runs as a separate process.
 
@@ -92,24 +92,24 @@ the hash the manifest recorded.
 
 `src/graph.ts` — the graph.
 
-- `load_context` opens one Ctx run per LangGraph thread
-  (`ctx.run({ id: "langgraph-<thread_id>" })`), `mount()`s each `ctx://`
+- `load_context` opens one Readproof run per LangGraph thread
+  (`rp.run({ id: "langgraph-<thread_id>" })`), `mount()`s each `readproof://`
   URI, and `commit()`s. `mount()` resolves the resource *and* records it as
   the next manifest entry; `commit()` freezes them.
-- `ctx_manifest_id` is a **state channel**, not checkpoint metadata: the id
+- `readproof_manifest_id` is a **state channel**, not checkpoint metadata: the id
   doesn't exist until the node has run, while metadata is fixed when the
   graph is invoked. State channels live in the same checkpoint record, so
   `graph.getState(config)` reads the id straight back out of it.
 - `answer_question` prompts the model with exactly the bytes `load_context`
   recorded — not a second, possibly different read of the same URIs.
 
-`src/run.ts` registers the two demo resources against `ctxd` if it doesn't
-know them yet (`ctx://demo/policies/refunds` → the repo's refund-agent
-fixture, `ctx://demo/policies/tone` → `context/tone.md`, both `filesystem`
+`src/run.ts` registers the two demo resources against `readproofd` if it doesn't
+know them yet (`readproof://demo/policies/refunds` → the repo's refund-agent
+fixture, `readproof://demo/policies/tone` → `context/tone.md`, both `filesystem`
 sources with `require_fresh`), then invokes the graph and reads the
 manifest id from the checkpoint.
 
-`src/replay.ts` calls `ctx.replay(manifest_id)`, asserts every entry's
+`src/replay.ts` calls `rp.replay(manifest_id)`, asserts every entry's
 `recorded_hash == replayed_hash`, prints the replayed bytes, and re-resolves
 each URI live to show whether the world has moved on.
 
@@ -122,7 +122,7 @@ later. Nothing else in the example changes.
 ## Using a real model
 
 The default model is `FakeListChatModel` from `@langchain/core` — no API
-key, no network beyond `ctxd`. Its canned reply is derived from the mounted
+key, no network beyond `readproofd`. Its canned reply is derived from the mounted
 policy text, which is what makes the run-vs-replay difference visible in
 the output.
 
@@ -137,7 +137,7 @@ npm run start
 `src/graph.ts` picks it up when both the key is set and the (optional,
 deliberately un-pinned and un-declared) package is importable; otherwise it
 falls back to the fake and says so. Override the model id with
-`CTX_ANTHROPIC_MODEL` (default `claude-opus-5`). Everything else — the
+`READPROOF_ANTHROPIC_MODEL` (default `claude-opus-5`). Everything else — the
 graph, the mounts, the manifest, the replay — is identical either way,
 which is the point.
 
@@ -145,4 +145,4 @@ which is the point.
 
 Exact, no ranges: `@langchain/langgraph` 1.4.12, `@langchain/core` 1.2.9,
 `zod` 4.4.3 (a LangGraph peer dependency), `typescript` 5.9.3,
-`@types/node` 22.20.1. `@ctx/sdk` is consumed as `file:../../sdk/typescript`.
+`@types/node` 22.20.1. `@readproof/sdk` is consumed as `file:../../sdk/typescript`.

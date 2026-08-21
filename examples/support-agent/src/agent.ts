@@ -1,4 +1,4 @@
-// The agent itself: one Ctx run per ticket.
+// The agent itself: one Readproof run per ticket.
 //
 //   run.mount(uri)  resolves a policy AND records it as the next ordered
 //                   entry of the run
@@ -13,12 +13,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { Ctx, CtxError } from "@ctx/sdk";
-import type { Tag } from "@ctx/sdk";
+import { Readproof, ReadproofError } from "@readproof/sdk";
+import type { Tag } from "@readproof/sdk";
 
 import {
-  CTX_API_KEY,
-  CTX_ENDPOINT,
+  READPROOF_API_KEY,
+  READPROOF_ENDPOINT,
   DATA_DIR,
   POLICY_RESOURCES,
   PROD_TAG,
@@ -51,8 +51,8 @@ export interface TicketRecord {
   at: string;
 }
 
-export function ctxClient(): Ctx {
-  return new Ctx({ endpoint: CTX_ENDPOINT, apiKey: CTX_API_KEY });
+export function readproofClient(): Readproof {
+  return new Readproof({ endpoint: READPROOF_ENDPOINT, apiKey: READPROOF_API_KEY });
 }
 
 /** Run id for a ticket. Deterministic, so `show`/`replay` need no lookup table. */
@@ -73,14 +73,14 @@ export interface SetupResult {
 }
 
 /**
- * Make ctxd ready to answer tickets: reachable, all three policies
+ * Make readproofd ready to answer tickets: reachable, all three policies
  * registered, and the tone policy carrying a `prod` tag for the agent to
  * mount by. Idempotent — running it twice changes nothing.
  */
 export async function setup(log: Logger = () => {}): Promise<SetupResult> {
   await checkHealth(log);
 
-  const ctx = ctxClient();
+  const rp = readproofClient();
   const result: SetupResult = {
     registered: [],
     alreadyRegistered: [],
@@ -91,7 +91,7 @@ export async function setup(log: Logger = () => {}): Promise<SetupResult> {
 
   for (const resource of POLICY_RESOURCES) {
     const wantPath = policyPath(resource);
-    const existing = await getResourceOrNull(ctx, resource.uri);
+    const existing = await getResourceOrNull(rp, resource.uri);
 
     if (existing) {
       const havePath = existing.source.filesystem?.path;
@@ -100,7 +100,7 @@ export async function setup(log: Logger = () => {}): Promise<SetupResult> {
         log(`warning: ${resource.uri} is registered against a different path`);
         log(`  registered: ${havePath ?? "(not a filesystem source)"}`);
         log(`  this checkout: ${wantPath}`);
-        log("  start ctxd with a fresh --data-dir if that is not what you want");
+        log("  start readproofd with a fresh --data-dir if that is not what you want");
       } else {
         log(`ok       ${resource.uri} (already registered)`);
       }
@@ -108,13 +108,13 @@ export async function setup(log: Logger = () => {}): Promise<SetupResult> {
       continue;
     }
 
-    await ctx.registerResource({
+    await rp.registerResource({
       uri: resource.uri,
       source: policySource(resource),
       policy: resource.policy,
     });
     result.registered.push(resource.uri);
-    log(`register ${resource.uri} -> ${wantPath} (${describePolicy(resource.uri)})`);
+    log(`register   ${resource.uri} -> ${wantPath} (${describePolicy(resource.uri)})`);
   }
 
   // The agent mounts tone@prod, so a `prod` tag has to exist before the
@@ -124,7 +124,7 @@ export async function setup(log: Logger = () => {}): Promise<SetupResult> {
     throw new Error("no policy is configured to be mounted by tag — check src/config.ts");
   }
 
-  const tags = await ctx.listTags(tone.uri);
+  const tags = await rp.listTags(tone.uri);
   const existingTag = tags.find((t) => t.tag === PROD_TAG);
   if (existingTag) {
     result.toneTag = existingTag;
@@ -132,10 +132,10 @@ export async function setup(log: Logger = () => {}): Promise<SetupResult> {
     return result;
   }
 
-  const resolved = await ctx.resolve(tone.uri);
-  result.toneTag = await ctx.setTag(tone.uri, PROD_TAG, resolved.snapshot.id);
+  const resolved = await rp.resolve(tone.uri);
+  result.toneTag = await rp.setTag(tone.uri, PROD_TAG, resolved.snapshot.id);
   result.toneTagCreated = true;
-  log(`tag      ${tone.uri}@${PROD_TAG} -> ${resolved.snapshot.id}`);
+  log(`tag        ${tone.uri}@${PROD_TAG} -> ${resolved.snapshot.id}`);
   return result;
 }
 
@@ -154,15 +154,15 @@ export async function ask(
   question: string,
   opts: AnswerOptions = {},
 ): Promise<AskResult> {
-  const ctx = ctxClient();
+  const rp = readproofClient();
   const runId = runIdFor(ticketId);
-  const run = ctx.run({ id: runId });
+  const run = rp.run({ id: runId });
 
   const mounted: ContextEntry[] = [];
   for (const spec of mountSpecs()) {
     const resolved = await run.mount(spec);
     mounted.push({
-      // resource.uri is always the bare ctx://ns/path; the tag, if any, is
+      // resource.uri is always the bare readproof://ns/path; the tag, if any, is
       // reported separately as resource.ref — same split the manifest uses.
       uri: resolved.resource.uri,
       ...(resolved.resource.ref ? { ref: resolved.resource.ref } : {}),
@@ -230,25 +230,25 @@ export function appendTicket(record: TicketRecord): void {
 async function checkHealth(log: Logger): Promise<void> {
   let response: Response;
   try {
-    response = await fetch(`${CTX_ENDPOINT.replace(/\/+$/, "")}/healthz`);
+    response = await fetch(`${READPROOF_ENDPOINT.replace(/\/+$/, "")}/healthz`);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `cannot reach ctxd at ${CTX_ENDPOINT}: ${message} — start one with: go run ./cmd/ctxd --data-dir .ctx`,
+      `cannot reach readproofd at ${READPROOF_ENDPOINT}: ${message} — start one with: go run ./cmd/readproofd --data-dir .readproof`,
     );
   }
   if (!response.ok) {
-    throw new Error(`ctxd at ${CTX_ENDPOINT} answered /healthz with ${response.status}`);
+    throw new Error(`readproofd at ${READPROOF_ENDPOINT} answered /healthz with ${response.status}`);
   }
-  log(`ctxd     ${CTX_ENDPOINT} ok`);
+  log(`readproofd ${READPROOF_ENDPOINT} ok`);
 }
 
-async function getResourceOrNull(ctx: Ctx, uri: string) {
+async function getResourceOrNull(rp: Readproof, uri: string) {
   try {
-    return await ctx.getResource(uri);
+    return await rp.getResource(uri);
   } catch (err: unknown) {
     // Anything but "not registered here yet" is a real problem.
-    if (err instanceof CtxError && err.status === 404) {
+    if (err instanceof ReadproofError && err.status === 404) {
       return null;
     }
     throw err;

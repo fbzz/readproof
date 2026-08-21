@@ -1,4 +1,4 @@
-# Support Agent — a real agent on Ctx, with an open model
+# Support Agent — a real agent on Readproof, with an open model
 
 > Prefer a web page? [`guide.html`](guide.html) explains everything on this
 > page — architecture, every file and command, the real transcript, tests —
@@ -6,9 +6,9 @@
 
 A customer-support agent that answers tickets from three policy documents,
 with an open model served by [Ollama](https://ollama.com) — no Claude, no
-Anthropic SDK, no API key. Every ticket is one **Ctx run**: the agent mounts
-`ctx://acme/policies/refunds`, `ctx://acme/policies/shipping` and
-`ctx://acme/policies/tone@prod`, hands the model *exactly* those bytes,
+Anthropic SDK, no API key. Every ticket is one **Readproof run**: the agent mounts
+`readproof://acme/policies/refunds`, `readproof://acme/policies/shipping` and
+`readproof://acme/policies/tone@prod`, hands the model *exactly* those bytes,
 commits a manifest, and stores the manifest id next to the answer. When the
 refund policy changes from 30 days to 14 days a week later, `diff` says which
 document moved and why, `replay` reconstructs the exact text the old answer
@@ -18,7 +18,7 @@ at all until somebody deliberately promotes it.
 
 ## Prerequisites
 
-- **Go 1.26+** — the scenario builds `ctx` and `ctxd` from this repo.
+- **Go 1.26+** — the scenario builds `readproof` and `readproofd` from this repo.
 - **Node 18+** — the agent is TypeScript, and uses the global `fetch`.
 - **Ollama** with a chat model, for the real run:
   ```bash
@@ -27,7 +27,7 @@ at all until somebody deliberately promotes it.
   ```
   `OLLAMA_HOST=https://…` points the example at a remote or cloud-backed
   Ollama instead. **Or skip Ollama entirely** with `SUPPORT_FAKE_MODEL=1`
-  (see [Fake mode](#fake-mode)) — everything Ctx does is unchanged.
+  (see [Fake mode](#fake-mode)) — everything Readproof does is unchanged.
 
 ## Quickstart
 
@@ -39,8 +39,8 @@ OLLAMA_MODEL=llama3.2 npm run scenario                 # pick the model
 SUPPORT_FAKE_MODEL=1 npm run scenario                  # no Ollama at all
 ```
 
-`scripts/scenario.sh` is self-contained: it builds `ctx` and `ctxd`, starts a
-throwaway `ctxd` on `:18090` with its own data directory, runs the whole story
+`scripts/scenario.sh` is self-contained: it builds `readproof` and `readproofd`, starts a
+throwaway `readproofd` on `:18090` with its own data directory, runs the whole story
 below, and restores the two policy fixtures it edits — always, including on
 failure and on Ctrl-C.
 
@@ -49,19 +49,19 @@ failure and on Ctrl-C.
 Everything below is real output from
 `OLLAMA_MODEL=deepseek-v4-flash:cloud bash scripts/scenario.sh`, with
 snapshot ids and hashes trimmed. Run the individual commands yourself with
-`npm run agent -- <command>` once a `ctxd` is up.
+`npm run agent -- <command>` once a `readproofd` is up.
 
-### 1. `setup` — put the policies under Ctx
+### 1. `setup` — put the policies under Readproof
 
 ```
 $ npm run agent -- setup
-ctxd     http://localhost:18090 ok
-register ctx://acme/policies/refunds -> …/context/policies/refunds.md (require_fresh)
-register ctx://acme/policies/shipping -> …/context/policies/shipping.md (allow_stale, max age 3600s)
-register ctx://acme/policies/tone -> …/context/policies/tone.md (require_fresh)
-tag      ctx://acme/policies/tone@prod -> snap_01M0HW18V0…
+readproofd     http://localhost:18090 ok
+register readproof://acme/policies/refunds -> …/context/policies/refunds.md (require_fresh)
+register readproof://acme/policies/shipping -> …/context/policies/shipping.md (allow_stale, max age 3600s)
+register readproof://acme/policies/tone -> …/context/policies/tone.md (require_fresh)
+tag      readproof://acme/policies/tone@prod -> snap_01M0HW18V0…
 
-3 policies governed by Ctx, 3 registered just now.
+3 policies governed by Readproof, 3 registered just now.
 ```
 
 Three documents, three deliberately different freshness contracts. `setup` is
@@ -83,9 +83,9 @@ order number.
 
 manifest: manifest_01M0HW1AQ9…
 POS  URI@REF                           SNAPSHOT             HASH
-0    ctx://acme/policies/refunds       snap_01M0HW194M…     sha256:72be2c034713
-1    ctx://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
-2    ctx://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c
+0    readproof://acme/policies/refunds       snap_01M0HW194M…     sha256:72be2c034713
+1    readproof://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
+2    readproof://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c
 ```
 
 Tokens stream to stdout as the model produces them. The three entries are the
@@ -113,13 +113,13 @@ review any other concerns.
 
 manifest: manifest_01M0HW1CFV…
 POS  URI@REF                           SNAPSHOT             HASH
-0    ctx://acme/policies/refunds       snap_01M0HW1AZH…     sha256:3117512b66c3
-1    ctx://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
-2    ctx://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c
+0    readproof://acme/policies/refunds       snap_01M0HW1AZH…     sha256:3117512b66c3
+1    readproof://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
+2    readproof://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c
 ```
 
 The model flipped its decision. `require_fresh` on the refunds policy is why:
-Ctx re-verified the source and delivered a new snapshot. Shipping and tone are
+Readproof re-verified the source and delivered a new snapshot. Shipping and tone are
 byte-identical to ticket 1001.
 
 ### 5. `diff 1001 1002` — which document moved, and why
@@ -129,19 +129,19 @@ $ npm run agent -- diff 1001 1002
 --- ticket 1001 (manifest_01M0HW1AQ9…)
 +++ ticket 1002 (manifest_01M0HW1CFV…)
 
-~ ctx://acme/policies/refunds  (snap_01M0HW194M… -> snap_01M0HW1AZH…)
+~ readproof://acme/policies/refunds  (snap_01M0HW194M… -> snap_01M0HW1AZH…)
   why: source revision sha256:72be2c034713 -> sha256:3117512b66c3; observed 2026-08-21T09:57:02Z -> 2026-08-21T09:57:04Z
-  --- a/ctx://acme/policies/refunds
-  +++ b/ctx://acme/policies/refunds
+  --- a/readproof://acme/policies/refunds
+  +++ b/readproof://acme/policies/refunds
   @@ -1,4 +1,4 @@
    # Refund policy
    
   -Products can be refunded within 30 days of delivery. Refunds go to the original payment method within 5 business days.
   +Products can be refunded within 14 days of delivery. Refunds go to the original payment method within 5 business days.
 
-= ctx://acme/policies/shipping  (snap_01M0HW194S…)
+= readproof://acme/policies/shipping  (snap_01M0HW194S…)
 
-= ctx://acme/policies/tone  (snap_01M0HW18V0…)
+= readproof://acme/policies/tone  (snap_01M0HW18V0…)
 
 1 resource changed, 0 added, 0 removed, 2 unchanged
 ```
@@ -156,7 +156,7 @@ $ npm run agent -- replay 1001
 ticket:   1001
 manifest: manifest_01M0HW1AQ9…  (answered 2026-08-21T09:57:04Z)
 
-  [0] ctx://acme/policies/refunds
+  [0] readproof://acme/policies/refunds
         recorded sha256:72be2c034713…
         replayed sha256:72be2c034713…   MATCH
       | # Refund policy
@@ -164,7 +164,7 @@ manifest: manifest_01M0HW1AQ9…  (answered 2026-08-21T09:57:04Z)
       | Products can be refunded within 30 days of delivery. Refunds go to the original payment method within 5 business days.
         live source: CHANGED -> sha256:3117512b66c3…
 
-  [1] ctx://acme/policies/shipping
+  [1] readproof://acme/policies/shipping
         recorded sha256:e8178eaf5ca5…
         replayed sha256:e8178eaf5ca5…   MATCH
       | # Shipping policy
@@ -172,7 +172,7 @@ manifest: manifest_01M0HW1AQ9…  (answered 2026-08-21T09:57:04Z)
       | Orders ship within 2 business days. Standard delivery takes 3-5 business days, express 1-2. Tracking is emailed as soon as the label is created.
         live source: unchanged
 
-  [2] ctx://acme/policies/tone
+  [2] readproof://acme/policies/tone
         recorded sha256:c04b1f6dbc3c…
         replayed sha256:c04b1f6dbc3c…   MATCH
       | # House style for support replies
@@ -185,7 +185,7 @@ Replay verified: 3/3 entries match.
 ```
 
 The refund policy on disk says 14 days. The replay says 30 days, because
-that is what the agent read at 09:57:04 — reconstructed from Ctx's store,
+that is what the agent read at 09:57:04 — reconstructed from Readproof's store,
 with no fetch. Replay is strict: any hash mismatch exits non-zero.
 
 ### 7. `evidence 1001` — hand it to someone who doesn't trust you
@@ -198,11 +198,11 @@ evidence bundle written to …/ticket-1001.bundle.json
   replay:      all entries match
 
 verify it with the Go CLI:
-  ctx --server http://localhost:18090 evidence verify …/ticket-1001.bundle.json
+  readproof --server http://localhost:18090 evidence verify …/ticket-1001.bundle.json
 ```
 
 ```
-$ ctx --server http://localhost:18090 evidence verify ticket-1001.bundle.json
+$ readproof --server http://localhost:18090 evidence verify ticket-1001.bundle.json
 evidence verified: 3 entries, merkle root e8d8572c0d97…, embedded content 3/3 re-hashed, replay match 3/3
 ```
 
@@ -225,9 +225,9 @@ have any other questions or concerns.
 
 manifest: manifest_01M0HW1GMK…
 POS  URI@REF                           SNAPSHOT             HASH
-0    ctx://acme/policies/refunds       snap_01M0HW1E27…     sha256:3117512b66c3
-1    ctx://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
-2    ctx://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c
+0    readproof://acme/policies/refunds       snap_01M0HW1E27…     sha256:3117512b66c3
+1    readproof://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
+2    readproof://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c
 ```
 
 The tone entry is `snap_01M0HW18V0…` — the same snapshot ticket 1001 used,
@@ -237,10 +237,10 @@ consulted**. Editing the file is not deploying it. Deploying it is:
 
 ```
 $ npm run agent -- promote tone
-ctx://acme/policies/tone@prod -> snap_01M0HW6DMN…
+readproof://acme/policies/tone@prod -> snap_01M0HW6DMN…
 
 $ npm run agent -- history tone
-ctx://acme/policies/tone
+readproof://acme/policies/tone
 SNAPSHOT                         OBSERVED                      CONTENT_HASH          TAGS
 snap_01M0HW6DMN…                 2026-08-21T09:59:51Z          sha256:8ed369c0dc9b   prod
 snap_01M0HW6D8B…                 2026-08-21T09:59:50Z          sha256:c04b1f6dbc3c
@@ -256,24 +256,24 @@ there, and `promote tone <old-snapshot-id>` rolls back to it.
 
 | Command | What it does |
 | --- | --- |
-| `setup` | Check `ctxd`, register the three policies idempotently, tag `tone@prod` |
-| `ask <ticket> <question…>` | One Ctx run: mount → model → commit → append to the ticket log |
-| `show <ticket>` | The stored answer, plus the manifest read back from `ctxd` |
+| `setup` | Check `readproofd`, register the three policies idempotently, tag `tone@prod` |
+| `ask <ticket> <question…>` | One Readproof run: mount → model → commit → append to the ticket log |
+| `show <ticket>` | The stored answer, plus the manifest read back from `readproofd` |
 | `replay <ticket>` | Reconstruct the exact bytes that answer used; compare against the live source |
 | `diff <a> <b>` | What changed in the context between two tickets, with provenance |
 | `evidence <ticket> [--out <file>] [--with-content]` | Write an in-toto evidence bundle |
 | `promote <policy> [snapshot-id]` | Move the `@prod` tag; with no id, resolves the resource and promotes what its policy says is current |
 | `history <policy>` | Snapshots and tags for one policy |
 
-`<policy>` is a `ctx://` URI or one of the short names `refunds`, `shipping`,
+`<policy>` is a `readproof://` URI or one of the short names `refunds`, `shipping`,
 `tone`. `npm run agent -- --help` prints all of this.
 
 ## Environment
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `CTX_ENDPOINT` | `http://localhost:8080` | Base URL of the `ctxd` to talk to. `CTX_SERVER_URL` (the Go CLI's variable) is accepted as a fallback. |
-| `CTX_API_KEY` | — | Bearer token, if `ctxd` was started with `--api-key`. |
+| `READPROOF_ENDPOINT` | `http://localhost:8080` | Base URL of the `readproofd` to talk to. `READPROOF_SERVER_URL` (the Go CLI's variable) is accepted as a fallback. |
+| `READPROOF_API_KEY` | — | Bearer token, if `readproofd` was started with `--api-key`. |
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama is. The `ollama` JS client does **not** read this itself (it hardcodes `127.0.0.1:11434`), so `src/config.ts` reads it and passes it to the client. |
 | `OLLAMA_MODEL` | first non-embedding model Ollama lists | Which chat model answers. |
 | `SUPPORT_FAKE_MODEL` | — | `1` = deterministic fake model, no Ollama. |
@@ -304,7 +304,7 @@ npm test                       # the test suite always runs this way
 ```
 
 That is what CI runs, and it is the point: the guarantees this example
-demonstrates are properties of Ctx, not of the model.
+demonstrates are properties of Readproof, not of the model.
 
 ## Tests
 
@@ -312,8 +312,8 @@ demonstrates are properties of Ctx, not of the model.
 npm test
 ```
 
-`test/agent.test.ts` builds `ctx` and `ctxd` with `go build`, starts a
-throwaway `ctxd` on a free port, **copies the three policy fixtures into a
+`test/agent.test.ts` builds `readproof` and `readproofd` with `go build`, starts a
+throwaway `readproofd` on a free port, **copies the three policy fixtures into a
 temp directory and registers those**, then asserts:
 
 1. `setup` registers three resources with their declared policies and creates
@@ -327,7 +327,7 @@ temp directory and registers those**, then asserts:
 5. Editing `tone.md` leaves the tone entry's snapshot identical (pinned by the
    tag) while the refunds entry moves.
 6. The evidence bundle's `subject[0].digest.sha256` equals `merkleRoot()`
-   recomputed from its entries, `ctx evidence verify` exits 0 — and exits
+   recomputed from its entries, `readproof evidence verify` exits 0 — and exits
    non-zero after one byte of `content_b64` is flipped.
 7. The repository's own fixtures were never touched.
 
@@ -347,11 +347,11 @@ temp directory and registers those**, then asserts:
   `llama3.2`, or for the fake function, and every guarantee above holds
   unchanged.
 
-## How it maps to Ctx
+## How it maps to Readproof
 
-| Ctx concept | Here |
+| Readproof concept | Here |
 | --- | --- |
-| **Identity** | `ctx://acme/policies/{refunds,shipping,tone}` — stable names, independent of the files behind them |
+| **Identity** | `readproof://acme/policies/{refunds,shipping,tone}` — stable names, independent of the files behind them |
 | **Policy** | `require_fresh` on refunds (money), `allow_stale` 1h on shipping (rarely changes), `require_fresh` on tone (but mounted by tag, so it never fetches) |
 | **Tag** | `tone@prod`, moved only by `promote` — an explicit deployment of house style |
 | **Run** | One per ticket, id `ticket-<id>`; `mount()` resolves *and* records |
@@ -365,10 +365,10 @@ temp directory and registers those**, then asserts:
 ```
 src/config.ts     endpoints, model settings, the three resource definitions
 src/model.ts      Ollama chat (streaming) + the deterministic fake model
-src/agent.ts      setup(), ask() — one Ctx run per ticket — and loadTicket()
+src/agent.ts      setup(), ask() — one Readproof run per ticket — and loadTicket()
 src/cli.ts        the commands above
 scripts/scenario.sh   the whole story, self-contained
-test/agent.test.ts    end-to-end against a real ctxd, fake model
+test/agent.test.ts    end-to-end against a real readproofd, fake model
 context/policies/     the three governed documents
 ```
 

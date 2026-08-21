@@ -1,5 +1,5 @@
 // Settings shared by the graph, the runner and the replayer. Kept in one
-// place so the three can never disagree about which ctxd they talk to,
+// place so the three can never disagree about which readproofd they talk to,
 // which resources they mount, or where the run record lives.
 
 import fs from "node:fs";
@@ -10,17 +10,17 @@ import { fileURLToPath } from "node:url";
 const exampleDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(exampleDir, "../..");
 
-/** ctxd base URL. Matches the env var the Go CLI uses (`ctx --server`). */
-export const CTX_ENDPOINT = process.env.CTX_SERVER_URL ?? "http://localhost:8080";
+/** readproofd base URL. Matches the env var the Go CLI uses (`readproof --server`). */
+export const READPROOF_ENDPOINT = process.env.READPROOF_SERVER_URL ?? "http://localhost:8080";
 
-/** Only needed if ctxd was started with --api-key. */
-export const CTX_API_KEY = process.env.CTX_API_KEY;
+/** Only needed if readproofd was started with --api-key. */
+export const READPROOF_API_KEY = process.env.READPROOF_API_KEY;
 
 export interface DemoResource {
   /** Logical, stable identity — what the graph mounts. */
   uri: string;
   /**
-   * Absolute path on the machine running ctxd. Absolute, because ctxd
+   * Absolute path on the machine running readproofd. Absolute, because readproofd
    * resolves a filesystem source relative to its own working directory,
    * which is not this example's.
    */
@@ -35,11 +35,11 @@ export interface DemoResource {
  */
 export const CONTEXT_RESOURCES: DemoResource[] = [
   {
-    uri: "ctx://demo/policies/refunds",
+    uri: "readproof://demo/policies/refunds",
     path: path.join(repoRoot, "examples", "refund-agent", "policies", "refunds.md"),
   },
   {
-    uri: "ctx://demo/policies/tone",
+    uri: "readproof://demo/policies/tone",
     path: path.join(exampleDir, "context", "tone.md"),
   },
 ];
@@ -52,7 +52,7 @@ export interface RunRecord {
   thread_id: string;
   /** Read back out of the checkpoint, not out of a local variable. */
   manifest_id: string;
-  /** Informational: which ctxd produced it, and when. */
+  /** Informational: which readproofd produced it, and when. */
   endpoint: string;
   recorded_at: string;
 }
