@@ -169,7 +169,8 @@ Two minutes, either path — or both.
 claude mcp add readproof -- readproof mcp --data-dir ~/.readproof
 # DeepSeek Harness
 dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof && dsh web
-# Cursor / Claude Desktop: mcpServers → {"command": "readproof", "args": ["mcp", "--data-dir", "~/.readproof"]}
+# Cursor / Claude Desktop (mcpServers):
+#   {"command": "readproof", "args": ["mcp", "--data-dir", "~/.readproof"]}
 ```
 
 The agent gets `readproof_resolve`, `readproof_run_*`, `readproof_diff`, `readproof_replay`, `readproof_tag_*`, `readproof_evidence_export`; every `resources/read` carries provenance in `_meta`. Details: [`docs/mcp.md`](docs/mcp.md).
@@ -190,10 +191,15 @@ specs, prices), read it through Readproof, never directly:
 2. `readproof run mount <task-id> readproof://<ns>/<path>[@prod]`  ← use the bytes it prints
 3. `readproof run commit <task-id>`  → put the manifest id in your output / PR / ticket
 Single shot: `readproof run --id <task-id> <uri> <uri>…`
-Register once: `readproof resource add readproof://<ns>/<path> --source-type filesystem|github|http … --policy require_fresh|allow_stale`
-Explain a change: `readproof diff <a> <b>` · reproduce: `readproof replay <id>` · prove: `readproof evidence export <id> --out bundle.json` then `readproof evidence verify bundle.json`
-Deploy a document by moving a tag (`readproof tag set <uri> prod <snapshot>`), never by editing the file in place.
-Never paste secrets into resource definitions (use `${ENV_VAR}` headers); never touch the data directory by hand.
+Register once: `readproof resource add readproof://<ns>/<path>
+  --source-type filesystem|github|http … --policy require_fresh|allow_stale`
+Explain a change: `readproof diff <a> <b>`
+Reproduce:        `readproof replay <id>`
+Prove:            `readproof evidence export <id> --out bundle.json`
+                  `readproof evidence verify bundle.json`
+Deploy a document by moving a tag (`readproof tag set <uri> prod <snapshot>`),
+never by editing the file in place. Never paste secrets into resource
+definitions (use `${ENV_VAR}` headers); never touch the data directory by hand.
 ```
 
 Full version with setup, policies, and the do-nots: [`skills/readproof/SKILL.md`](skills/readproof/SKILL.md).
