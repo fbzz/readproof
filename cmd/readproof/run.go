@@ -13,7 +13,7 @@ func newRunCmd() *cobra.Command {
 		Use:   "run [uris...]",
 		Short: "Start, mount, and commit a context run in one shot (requires --id)",
 		Long: "Start, mount, and commit a context run in one shot (requires --id).\n\n" +
-			"Each <uri> may carry a trailing @<tag> (ctx://ns/path@prod) to mount\n" +
+			"Each <uri> may carry a trailing @<tag> (readproof://ns/path@prod) to mount\n" +
 			"exactly that tagged snapshot instead of resolving through the policy.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runID == "" {

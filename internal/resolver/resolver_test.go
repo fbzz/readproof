@@ -7,21 +7,21 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ctx/internal/materialization"
-	"ctx/internal/policy"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/source"
-	fsSource "ctx/internal/source/filesystem"
-	"ctx/internal/storage/blob"
-	"ctx/internal/storage/sqlite"
+	"readproof/internal/materialization"
+	"readproof/internal/policy"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/source"
+	fsSource "readproof/internal/source/filesystem"
+	"readproof/internal/storage/blob"
+	"readproof/internal/storage/sqlite"
 )
 
 func newTestResolver(t *testing.T) (*resolver.Resolver, string) {
 	t.Helper()
 	dir := t.TempDir()
 
-	db, err := sqlite.Open(filepath.Join(dir, "ctx.db"))
+	db, err := sqlite.Open(filepath.Join(dir, "readproof.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestResolveDedupAndChangeDetection(t *testing.T) {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	uri := "ctx://demo/policies/refunds"
+	uri := "readproof://demo/policies/refunds"
 	err := res.Resources.Create(ctx, resource.Resource{
 		URI:       uri,
 		Namespace: "demo",

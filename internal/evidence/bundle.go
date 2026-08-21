@@ -1,12 +1,12 @@
 // Package evidence builds and verifies tamper-evident evidence bundles for
-// a Ctx run: an in-toto Statement whose subject digest is a Merkle root
-// over the run's manifest entries.
+// a Readproof run: an in-toto Statement whose subject digest is a Merkle
+// root over the run's manifest entries.
 //
 // Everything here is composed purely from client.Client calls (manifest,
-// snapshots, resources, replay), so `ctx evidence` behaves identically in
-// embedded mode and against a remote ctxd — a bundle is a projection of
-// what any Ctx deployment can already answer, never a new storage or wire
-// concept.
+// snapshots, resources, replay), so `readproof evidence` behaves
+// identically in embedded mode and against a remote readproofd — a bundle
+// is a projection of what any Readproof deployment can already answer,
+// never a new storage or wire concept.
 package evidence
 
 import (
@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"time"
 
-	"ctx/internal/version"
+	"readproof/internal/version"
 )
 
 const (
@@ -23,18 +23,18 @@ const (
 	// attestation verifiers) can sign and transport them unmodified.
 	StatementType = "https://in-toto.io/Statement/v1"
 
-	// PredicateType is a PLACEHOLDER URN. Ctx has not settled its final
-	// name, and the predicate type is the one string external verifiers
-	// key off — keeping it in a single exported const makes the rename a
-	// one-line change here, mirrored by the same const in
+	// PredicateType is a PLACEHOLDER URN. Readproof has not settled its
+	// final predicate schema, and the predicate type is the one string
+	// external verifiers key off — keeping it in a single exported const
+	// makes a bump a one-line change here, mirrored by the same const in
 	// sdk/typescript/src/evidence.ts.
-	PredicateType = "urn:ctx:evidence:v0.2"
+	PredicateType = "urn:readproof:evidence:v0.3"
 
 	// ExporterName / ExporterVersion identify the producer of the bundle
-	// format, not the Ctx deployment it was exported from — hence the plain
-	// version.Version rather than version.String(): two builds of the same
-	// source must export byte-identical bundles.
-	ExporterName    = "ctx"
+	// format, not the Readproof deployment it was exported from — hence the
+	// plain version.Version rather than version.String(): two builds of the
+	// same source must export byte-identical bundles.
+	ExporterName    = "readproof"
 	ExporterVersion = version.Version
 
 	// MerkleAlgorithm and MerkleLeafFormula are embedded in every bundle
@@ -43,10 +43,10 @@ const (
 	MerkleLeafFormula = "sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)"
 )
 
-// Bundle is an in-toto Statement v1 describing one Ctx manifest. Field
-// order is fixed by the struct definition rather than by map iteration, so
-// the JSON encoding is stable across runs and byte-comparable between the
-// Go and TypeScript exporters.
+// Bundle is an in-toto Statement v1 describing one Readproof manifest.
+// Field order is fixed by the struct definition rather than by map
+// iteration, so the JSON encoding is stable across runs and byte-comparable
+// between the Go and TypeScript exporters.
 type Bundle struct {
 	Type          string    `json:"_type"`
 	Subject       []Subject `json:"subject"`
@@ -182,7 +182,8 @@ type ReplayEntry struct {
 }
 
 // Encode renders a bundle as indented JSON with a trailing newline, so
-// `ctx evidence export > bundle.json` produces a well-formed text file.
+// `readproof evidence export > bundle.json` produces a well-formed text
+// file.
 func Encode(b Bundle) ([]byte, error) {
 	data, err := json.MarshalIndent(b, "", "  ")
 	if err != nil {

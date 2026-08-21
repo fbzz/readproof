@@ -3,7 +3,7 @@ package merkle_test
 import (
 	"testing"
 
-	"ctx/internal/merkle"
+	"readproof/internal/merkle"
 )
 
 // The exhaustive fixed vectors live in internal/evidence/merkle_test.go —
@@ -12,14 +12,14 @@ import (
 // leaves crossing between Leaf and Root as hex strings rather than bytes.
 
 const (
-	uriA  = "ctx://demo/policies/refunds"
-	uriB  = "ctx://demo/policies/shipping"
+	uriA  = "readproof://demo/policies/refunds"
+	uriB  = "readproof://demo/policies/shipping"
 	hashA = "sha256:aaaa"
 	hashB = "sha256:bbbb"
 )
 
 func TestLeafAndRootMatchKnownVectors(t *testing.T) {
-	const wantLeafA = "70d55a88f1fbbf31b196930195a7a943b637d58c828ede07b76c444ba9177c43"
+	const wantLeafA = "70c844e26de1089a9d8386db4c8c4aa51e6a21202a0e857f5d51f92b496c4799"
 
 	if got := merkle.Leaf(0, uriA, hashA); got != wantLeafA {
 		t.Fatalf("Leaf = %s, want %s", got, wantLeafA)
@@ -35,13 +35,13 @@ func TestLeafAndRootMatchKnownVectors(t *testing.T) {
 	if got, want := merkle.Root([]string{
 		merkle.Leaf(0, uriA, hashA),
 		merkle.Leaf(1, uriB, hashB),
-	}), "f11999b8089a3ad1dc8090eca9e3dfe3e2b579354fb739c8ce1c4bf23e245399"; got != want {
+	}), "9f4a65f56078f8bbadbd8c2aaf697699ac14d7ada1e15e45a0af1a8b56c6f87a"; got != want {
 		t.Fatalf("Root of two leaves = %s, want %s", got, want)
 	}
 }
 
-// Order is a hard Ctx invariant — the same two resources mounted the other
-// way round is a different context and must digest differently.
+// Order is a hard Readproof invariant — the same two resources mounted the
+// other way round is a different context and must digest differently.
 func TestRootIsOrderSensitive(t *testing.T) {
 	a, b := merkle.Leaf(0, uriA, hashA), merkle.Leaf(1, uriB, hashB)
 	if merkle.Root([]string{a, b}) == merkle.Root([]string{b, a}) {

@@ -11,7 +11,7 @@ import (
 // meter delegates to whatever MeterProvider is current at call time (see
 // telemetry.go's package doc), so instruments created here at package-init
 // time still export correctly once Init installs a real provider.
-var meter = otel.Meter("ctx")
+var meter = otel.Meter("readproof")
 
 func mustCounter(name, description string) metric.Int64Counter {
 	c, err := meter.Int64Counter(name, metric.WithDescription(description))
@@ -30,23 +30,23 @@ func mustDurationHistogram(name, description string) metric.Float64Histogram {
 }
 
 var (
-	resolveTotal                = mustCounter("ctx_resolve_total", "Total resolve calls")
-	resolveDuration             = mustDurationHistogram("ctx_resolve_duration_seconds", "Resolve call latency")
-	resolveErrorsTotal          = mustCounter("ctx_resolve_errors_total", "Resolve calls that returned an error")
-	cacheHitTotal               = mustCounter("ctx_cache_hit_total", "Resolves served from a cached snapshot")
-	cacheMissTotal              = mustCounter("ctx_cache_miss_total", "Resolves that required a source fetch")
-	sourceFetchTotal            = mustCounter("ctx_source_fetch_total", "Total source fetch attempts")
-	sourceFetchDuration         = mustDurationHistogram("ctx_source_fetch_duration_seconds", "Source fetch latency")
-	sourceFetchErrors           = mustCounter("ctx_source_fetch_errors_total", "Source fetch attempts that failed")
-	snapshotCreatedTotal        = mustCounter("ctx_snapshot_created_total", "Snapshot rows created")
-	materializationCreatedTotal = mustCounter("ctx_materialization_created_total", "Materialization rows created")
-	manifestCreatedTotal        = mustCounter("ctx_manifest_created_total", "Manifests created")
-	runCommittedTotal           = mustCounter("ctx_run_committed_total", "Runs committed to a manifest")
-	tagResolveTotal             = mustCounter("ctx_tag_resolve_total", "Resolves pinned to a tag ref")
+	resolveTotal                = mustCounter("readproof_resolve_total", "Total resolve calls")
+	resolveDuration             = mustDurationHistogram("readproof_resolve_duration_seconds", "Resolve call latency")
+	resolveErrorsTotal          = mustCounter("readproof_resolve_errors_total", "Resolve calls that returned an error")
+	cacheHitTotal               = mustCounter("readproof_cache_hit_total", "Resolves served from a cached snapshot")
+	cacheMissTotal              = mustCounter("readproof_cache_miss_total", "Resolves that required a source fetch")
+	sourceFetchTotal            = mustCounter("readproof_source_fetch_total", "Total source fetch attempts")
+	sourceFetchDuration         = mustDurationHistogram("readproof_source_fetch_duration_seconds", "Source fetch latency")
+	sourceFetchErrors           = mustCounter("readproof_source_fetch_errors_total", "Source fetch attempts that failed")
+	snapshotCreatedTotal        = mustCounter("readproof_snapshot_created_total", "Snapshot rows created")
+	materializationCreatedTotal = mustCounter("readproof_materialization_created_total", "Materialization rows created")
+	manifestCreatedTotal        = mustCounter("readproof_manifest_created_total", "Manifests created")
+	runCommittedTotal           = mustCounter("readproof_run_committed_total", "Runs committed to a manifest")
+	tagResolveTotal             = mustCounter("readproof_tag_resolve_total", "Resolves pinned to a tag ref")
 )
 
 func RecordResolve(ctx context.Context, uri string, durationSeconds float64, err error) {
-	attrs := metric.WithAttributes(attribute.String("ctx.resource.uri", uri))
+	attrs := metric.WithAttributes(attribute.String("readproof.resource.uri", uri))
 	resolveTotal.Add(ctx, 1, attrs)
 	resolveDuration.Record(ctx, durationSeconds, attrs)
 	if err != nil {
@@ -63,7 +63,7 @@ func RecordCacheResult(ctx context.Context, hit bool) {
 }
 
 func RecordSourceFetch(ctx context.Context, sourceType string, durationSeconds float64, err error) {
-	attrs := metric.WithAttributes(attribute.String("ctx.source.type", sourceType))
+	attrs := metric.WithAttributes(attribute.String("readproof.source.type", sourceType))
 	sourceFetchTotal.Add(ctx, 1, attrs)
 	sourceFetchDuration.Record(ctx, durationSeconds, attrs)
 	if err != nil {
@@ -85,7 +85,7 @@ func RecordManifestCreated(ctx context.Context) {
 
 // RecordRunCommitted counts one run reaching a committed manifest. Run ids
 // are caller-supplied and unbounded, so they stay off the metric and live
-// only on the ctx.run.commit span, where cardinality is not a cost.
+// only on the readproof.run.commit span, where cardinality is not a cost.
 func RecordRunCommitted(ctx context.Context) {
 	runCommittedTotal.Add(ctx, 1)
 }

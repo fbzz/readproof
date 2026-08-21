@@ -10,17 +10,17 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"ctx/internal/api"
-	"ctx/internal/app"
-	"ctx/internal/client/remote"
-	"ctx/internal/evidence"
+	"readproof/internal/api"
+	"readproof/internal/app"
+	"readproof/internal/client/remote"
+	"readproof/internal/evidence"
 )
 
-// TestServerOverRemoteClient runs the same MCP surface against a ctxd
+// TestServerOverRemoteClient runs the same MCP surface against a readproofd
 // reached over HTTP instead of an embedded data directory. The server is
 // written entirely against client.Client, so this is the test that proves
-// the claim: nothing in internal/mcp knows which implementation it got,
-// and `ctx mcp --server https://…` therefore behaves like `ctx mcp
+// the claim: nothing in internal/mcp knows which implementation it got, and
+// `readproof mcp --server https://…` therefore behaves like `readproof mcp
 // --data-dir …`.
 func TestServerOverRemoteClient(t *testing.T) {
 	fixturePath := filepath.Join(t.TempDir(), "refunds.md")
@@ -34,7 +34,7 @@ func TestServerOverRemoteClient(t *testing.T) {
 	}
 	defer a.Close()
 
-	// An API key on the server proves the MCP layer inherits ctxd's auth
+	// An API key on the server proves the MCP layer inherits readproofd's auth
 	// rather than bypassing it: the same client the CLI builds carries it.
 	const apiKey = "test-key"
 	server := httptest.NewServer(api.NewHandler(a, api.Options{APIKey: apiKey}))
@@ -67,16 +67,16 @@ func TestServerOverRemoteClient(t *testing.T) {
 		t.Fatalf("decision over HTTP = %q, want fetch", got)
 	}
 
-	callTool[TagInfo](t, cs, "ctx_tag_set", map[string]any{"uri": demoURI, "tag": "prod", "snapshot_id": snapshotID})
+	callTool[TagInfo](t, cs, "readproof_tag_set", map[string]any{"uri": demoURI, "tag": "prod", "snapshot_id": snapshotID})
 
-	callTool[RunStartOut](t, cs, "ctx_run_start", map[string]any{"run_id": "run-a"})
+	callTool[RunStartOut](t, cs, "readproof_run_start", map[string]any{"run_id": "run-a"})
 	// Mounting by tag over the wire must keep the ref on the manifest
-	// entry, since that is what `ctx diff`'s why-line reads back.
-	mounted := callTool[MountOut](t, cs, "ctx_run_mount", map[string]any{"run_id": "run-a", "uri": demoURI + "@prod"})
+	// entry, since that is what `readproof diff`'s why-line reads back.
+	mounted := callTool[MountOut](t, cs, "readproof_run_mount", map[string]any{"run_id": "run-a", "uri": demoURI + "@prod"})
 	if mounted.Resolved.Ref != "prod" || mounted.Resolved.Decision != "use_tag" {
 		t.Fatalf("tagged mount lost its ref/decision over HTTP: %+v", mounted.Resolved)
 	}
-	man := callTool[ManifestOut](t, cs, "ctx_run_commit", map[string]any{"run_id": "run-a"})
+	man := callTool[ManifestOut](t, cs, "readproof_run_commit", map[string]any{"run_id": "run-a"})
 	if len(man.Entries) != 1 || man.Entries[0].Ref != "prod" || man.Entries[0].URI != demoURI {
 		t.Fatalf("manifest entry did not record uri+ref over HTTP: %+v", man.Entries)
 	}
@@ -86,7 +86,7 @@ func TestServerOverRemoteClient(t *testing.T) {
 		t.Fatalf("edit fixture: %v", err)
 	}
 
-	replayed := callTool[ReplayOut](t, cs, "ctx_replay", map[string]any{"target": "run-a", "include_content": true})
+	replayed := callTool[ReplayOut](t, cs, "readproof_replay", map[string]any{"target": "run-a", "include_content": true})
 	if !replayed.AllMatch {
 		t.Fatalf("replay over HTTP failed: %+v", replayed.Entries)
 	}
@@ -94,7 +94,7 @@ func TestServerOverRemoteClient(t *testing.T) {
 		t.Fatalf("replayed content over HTTP = %+v, want the original bytes", replayed.Entries[0].Content)
 	}
 
-	bundle := callTool[evidence.Bundle](t, cs, "ctx_evidence_export", map[string]any{"target": "run-a"})
+	bundle := callTool[evidence.Bundle](t, cs, "readproof_evidence_export", map[string]any{"target": "run-a"})
 	direct, err := evidence.Build(ctx, c, "run-a", evidence.Options{})
 	if err != nil {
 		t.Fatalf("evidence.Build over HTTP: %v", err)
@@ -106,10 +106,10 @@ func TestServerOverRemoteClient(t *testing.T) {
 		t.Fatalf("bundle over HTTP reports a failed replay: %+v", bundle.Predicate.Replay)
 	}
 
-	// The remote client flattens ctxd's 404 body into a plain error;
+	// The remote client flattens readproofd's 404 body into a plain error;
 	// isNotFound has to recognize it or unknown URIs would surface as
 	// generic failures instead of resource-not-found.
-	if _, err := cs.ReadResource(ctx, &mcpsdk.ReadResourceParams{URI: "ctx://demo/policies/missing"}); err == nil {
+	if _, err := cs.ReadResource(ctx, &mcpsdk.ReadResourceParams{URI: "readproof://demo/policies/missing"}); err == nil {
 		t.Fatalf("expected an error reading an unregistered resource over HTTP")
 	} else if !strings.Contains(strings.ToLower(err.Error()), "not found") {
 		t.Fatalf("unregistered resource over HTTP produced %v, want a not-found error", err)

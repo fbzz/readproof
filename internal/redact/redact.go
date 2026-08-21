@@ -1,8 +1,9 @@
 // Package redact identifies and masks header values that commonly carry
 // credentials, so they never round-trip back out through API responses,
-// `ctx inspect`, or `ctx resource list` — even if an operator pasted a raw
-// secret instead of using the "${VAR}" environment-reference form the http
-// source adapter resolves at fetch time (see internal/source/http).
+// `readproof inspect`, or `readproof resource list` — even if an operator
+// pasted a raw secret instead of using the "${VAR}" environment-reference
+// form the http source adapter resolves at fetch time (see
+// internal/source/http).
 package redact
 
 import "strings"

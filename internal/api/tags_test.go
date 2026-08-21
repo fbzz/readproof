@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"ctx/internal/api"
-	"ctx/internal/app"
-	"ctx/internal/client/remote"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/api"
+	"readproof/internal/app"
+	"readproof/internal/client/remote"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 // TestTagAPIRoundTrip drives PUT/GET/DELETE /v1/tags and a tagged resolve
@@ -39,7 +39,7 @@ func TestTagAPIRoundTrip(t *testing.T) {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	uri := "ctx://demo/policies/refunds"
+	uri := "readproof://demo/policies/refunds"
 	if err := c.RegisterResource(ctx, resource.Resource{
 		URI:       uri,
 		Namespace: "demo",
@@ -148,13 +148,13 @@ func TestTagAPIErrorStatuses(t *testing.T) {
 	if err := os.WriteFile(fixture, []byte("x\n"), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	uri := "ctx://demo/policies/refunds"
-	otherURI := "ctx://demo/policies/shipping"
+	uri := "readproof://demo/policies/refunds"
+	otherURI := "readproof://demo/policies/shipping"
 	for _, u := range []string{uri, otherURI} {
 		if err := c.RegisterResource(ctx, resource.Resource{
 			URI:       u,
 			Namespace: "demo",
-			Path:      strings.TrimPrefix(u, "ctx://demo/"),
+			Path:      strings.TrimPrefix(u, "readproof://demo/"),
 			SourceConfig: source.Config{
 				Kind:       source.KindFilesystem,
 				Filesystem: &source.FilesystemConfig{Path: fixture},

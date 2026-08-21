@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 func newResourceCmd() *cobra.Command {

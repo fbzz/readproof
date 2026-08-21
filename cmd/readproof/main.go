@@ -7,12 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"ctx/internal/app"
-	"ctx/internal/client"
-	"ctx/internal/client/local"
-	"ctx/internal/client/remote"
-	"ctx/internal/telemetry"
-	"ctx/internal/version"
+	"readproof/internal/app"
+	"readproof/internal/client"
+	"readproof/internal/client/local"
+	"readproof/internal/client/remote"
+	"readproof/internal/telemetry"
+	"readproof/internal/version"
 )
 
 var (
@@ -31,9 +31,9 @@ func run() int {
 	root := newRootCmd()
 
 	ctx := context.Background()
-	shutdownTelemetry, err := telemetry.Init(ctx, "ctx")
+	shutdownTelemetry, err := telemetry.Init(ctx, "readproof")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ctx:", err)
+		fmt.Fprintln(os.Stderr, "readproof:", err)
 		return 1
 	}
 	defer shutdownTelemetry(ctx)
@@ -41,7 +41,7 @@ func run() int {
 	if err := root.Execute(); err != nil {
 		// Cobra is silenced (see newRootCmd), so this is the one place an
 		// error reaches the user.
-		fmt.Fprintln(os.Stderr, "ctx:", err)
+		fmt.Fprintln(os.Stderr, "readproof:", err)
 		return 1
 	}
 	return 0
@@ -52,8 +52,8 @@ func run() int {
 // going through os.Exit.
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:     "ctx",
-		Short:   "Ctx — reliable, versioned, reproducible context for AI agents",
+		Use:     "readproof",
+		Short:   "Readproof — reliable, versioned, reproducible context for AI agents",
 		Version: version.String(),
 
 		// A failed replay, an unknown tag, or an unreachable server is a
@@ -68,10 +68,10 @@ func newRootCmd() *cobra.Command {
 			cmd.SilenceUsage = true
 		},
 	}
-	root.SetVersionTemplate("ctx {{.Version}}\n")
-	root.PersistentFlags().StringVar(&dataDir, "data-dir", "", "path to the local .ctx data directory (default: .ctx, or $CTX_HOME); ignored with --server")
-	root.PersistentFlags().StringVar(&serverURL, "server", os.Getenv("CTX_SERVER_URL"), "ctxd server URL (e.g. http://localhost:8080); when unset, runs against the local embedded data directory")
-	root.PersistentFlags().StringVar(&apiKey, "api-key", os.Getenv("CTX_API_KEY"), "API key to send to a --server that requires one")
+	root.SetVersionTemplate("readproof {{.Version}}\n")
+	root.PersistentFlags().StringVar(&dataDir, "data-dir", "", "path to the local .readproof data directory (default: .readproof, or $READPROOF_HOME); ignored with --server")
+	root.PersistentFlags().StringVar(&serverURL, "server", os.Getenv("READPROOF_SERVER_URL"), "readproofd server URL (e.g. http://localhost:8080); when unset, runs against the local embedded data directory")
+	root.PersistentFlags().StringVar(&apiKey, "api-key", os.Getenv("READPROOF_API_KEY"), "API key to send to a --server that requires one")
 
 	root.AddCommand(
 		newResourceCmd(),
@@ -91,9 +91,9 @@ func newRootCmd() *cobra.Command {
 }
 
 // openClient returns the local (embedded) client by default, or a remote
-// client talking to ctxd when --server / CTX_SERVER_URL is set. Every CLI
-// command is written against client.Client, so behavior is identical
-// either way.
+// client talking to readproofd when --server / READPROOF_SERVER_URL is set.
+// Every CLI command is written against client.Client, so behavior is
+// identical either way.
 func openClient() (client.Client, error) {
 	if serverURL != "" {
 		return remote.New(serverURL, apiKey), nil

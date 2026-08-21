@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"ctx/internal/diff"
+	"readproof/internal/diff"
 )
 
 func TestWhyLine(t *testing.T) {
@@ -12,7 +12,7 @@ func TestWhyLine(t *testing.T) {
 	b := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
 
 	base := diff.EntryDiff{
-		URI:             "ctx://demo/policies/refunds",
+		URI:             "readproof://demo/policies/refunds",
 		Status:          diff.StatusChanged,
 		SourceRevisionA: "8af92d1",
 		SourceRevisionB: "c31be07",

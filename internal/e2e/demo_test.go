@@ -9,12 +9,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ctx/internal/app"
-	"ctx/internal/diff"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
-	"ctx/internal/tag"
+	"readproof/internal/app"
+	"readproof/internal/diff"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
+	"readproof/internal/tag"
 )
 
 func TestRefundAgentDemoReplayInvariant(t *testing.T) {
@@ -36,7 +36,7 @@ func TestRefundAgentDemoReplayInvariant(t *testing.T) {
 	defer a.Close()
 
 	ctx := context.Background()
-	uri := "ctx://demo/policies/refunds"
+	uri := "readproof://demo/policies/refunds"
 
 	err = a.Resources.Create(ctx, resource.Resource{
 		URI:       uri,
@@ -52,7 +52,7 @@ func TestRefundAgentDemoReplayInvariant(t *testing.T) {
 		t.Fatalf("register resource: %v", err)
 	}
 
-	// Step 2 of the demo: a standalone `ctx get` before any run exists.
+	// Step 2 of the demo: a standalone `readproof get` before any run exists.
 	if _, err := a.Resolver.Resolve(ctx, uri); err != nil {
 		t.Fatalf("initial resolve: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestRefundAgentDemoReplayInvariant(t *testing.T) {
 	}
 
 	// Step 6c: the diff carries the provenance behind the change — what
-	// `ctx diff`'s "why" line prints.
+	// `readproof diff`'s "why" line prints.
 	diffResult, err := diff.Compute(ctx, manA, manB, a.Blobs, a.Snapshots)
 	if err != nil {
 		t.Fatalf("diff run-a run-b: %v", err)

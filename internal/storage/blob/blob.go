@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"ctx/internal/ids"
+	"readproof/internal/ids"
 )
 
 // Store is the content-addressable blob interface. Payloads are immutable

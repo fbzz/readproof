@@ -10,15 +10,15 @@ func TestParseURI(t *testing.T) {
 		wantNS   string
 		wantPath string
 	}{
-		{name: "valid", raw: "ctx://acme/policies/refunds", wantNS: "acme", wantPath: "policies/refunds"},
-		{name: "valid nested path", raw: "ctx://demo/a/b/c", wantNS: "demo", wantPath: "a/b/c"},
+		{name: "valid", raw: "readproof://acme/policies/refunds", wantNS: "acme", wantPath: "policies/refunds"},
+		{name: "valid nested path", raw: "readproof://demo/a/b/c", wantNS: "demo", wantPath: "a/b/c"},
 		{name: "missing scheme", raw: "acme/policies/refunds", wantErr: true},
-		{name: "missing path", raw: "ctx://acme", wantErr: true},
-		{name: "empty namespace", raw: "ctx:///policies/refunds", wantErr: true},
+		{name: "missing path", raw: "readproof://acme", wantErr: true},
+		{name: "empty namespace", raw: "readproof:///policies/refunds", wantErr: true},
 		{name: "empty", raw: "", wantErr: true},
 		// "@" is reserved for tag refs — ParseURI must never fold one into
 		// the path. Callers split first with SplitRef.
-		{name: "ref-bearing", raw: "ctx://acme/policies/refunds@prod", wantErr: true},
+		{name: "ref-bearing", raw: "readproof://acme/policies/refunds@prod", wantErr: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -50,12 +50,12 @@ func TestSplitRef(t *testing.T) {
 		wantURI string
 		wantRef string
 	}{
-		{name: "bare uri", raw: "ctx://acme/policies/refunds", wantURI: "ctx://acme/policies/refunds"},
-		{name: "tagged", raw: "ctx://acme/policies/refunds@prod", wantURI: "ctx://acme/policies/refunds", wantRef: "prod"},
-		{name: "tag with dots and dashes", raw: "ctx://acme/p/x@v1.2-rc", wantURI: "ctx://acme/p/x", wantRef: "v1.2-rc"},
-		{name: "empty ref", raw: "ctx://acme/policies/refunds@", wantErr: true},
-		{name: "double at", raw: "ctx://acme/policies/refunds@a@b", wantErr: true},
-		{name: "at in namespace", raw: "ctx://acme@x/policies", wantErr: true},
+		{name: "bare uri", raw: "readproof://acme/policies/refunds", wantURI: "readproof://acme/policies/refunds"},
+		{name: "tagged", raw: "readproof://acme/policies/refunds@prod", wantURI: "readproof://acme/policies/refunds", wantRef: "prod"},
+		{name: "tag with dots and dashes", raw: "readproof://acme/p/x@v1.2-rc", wantURI: "readproof://acme/p/x", wantRef: "v1.2-rc"},
+		{name: "empty ref", raw: "readproof://acme/policies/refunds@", wantErr: true},
+		{name: "double at", raw: "readproof://acme/policies/refunds@a@b", wantErr: true},
+		{name: "at in namespace", raw: "readproof://acme@x/policies", wantErr: true},
 		{name: "missing scheme", raw: "acme/policies@prod", wantErr: true},
 	}
 	for _, tc := range cases {

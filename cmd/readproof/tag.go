@@ -35,7 +35,7 @@ func newTagSetCmd() *cobra.Command {
 				return err
 			}
 			fmt.Printf("Tagged %s@%s -> %s\n", t.ResourceURI, t.Name, t.SnapshotID)
-			fmt.Printf("  resolve it with: ctx get %s@%s\n", t.ResourceURI, t.Name)
+			fmt.Printf("  resolve it with: readproof get %s@%s\n", t.ResourceURI, t.Name)
 			return nil
 		},
 	}

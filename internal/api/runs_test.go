@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"ctx/internal/api"
-	"ctx/internal/app"
-	"ctx/internal/client/remote"
-	"ctx/internal/wire"
+	"readproof/internal/api"
+	"readproof/internal/app"
+	"readproof/internal/client/remote"
+	"readproof/internal/wire"
 )
 
 // POST /v1/runs/commit used to answer 200 with an empty manifest for a run

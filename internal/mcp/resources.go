@@ -7,10 +7,10 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"ctx/internal/policy"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/policy"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 // methodResourcesList is the JSON-RPC method the list middleware claims.
@@ -19,20 +19,20 @@ const methodResourcesList = "resources/list"
 // registerResources wires the resource half of the server.
 //
 // The listing is served by receiving middleware rather than by
-// (*mcpsdk.Server).AddResource because Ctx's resource set is not static:
-// another process can register a resource against the same store while
-// this server is running, and a listing assembled at startup would go
+// (*mcpsdk.Server).AddResource because Readproof's resource set is not
+// static: another process can register a resource against the same store
+// while this server is running, and a listing assembled at startup would go
 // stale silently. Reads are served by a single resource template, which is
-// also what makes `ctx://ns/path@tag` readable — the SDK's read path only
-// accepts a URI that a registered resource or template matches, and no
+// also what makes `readproof://ns/path@tag` readable — the SDK's read path
+// only accepts a URI that a registered resource or template matches, and no
 // static registration can enumerate every tag.
 func (s *server) registerResources(srv *mcpsdk.Server) {
 	srv.AddResourceTemplate(&mcpsdk.ResourceTemplate{
-		Name:        "ctx-resource",
-		Title:       "Ctx resource",
+		Name:        "readproof-resource",
+		Title:       "Readproof resource",
 		URITemplate: uriTemplate,
-		Description: "Any registered Ctx resource, addressed as ctx://<namespace>/<path>. " +
-			"Append @<tag> (ctx://acme/policies/refunds@prod) to read exactly the snapshot that tag names, " +
+		Description: "Any registered Readproof resource, addressed as readproof://<namespace>/<path>. " +
+			"Append @<tag> (readproof://acme/policies/refunds@prod) to read exactly the snapshot that tag names, " +
 			"with no source fetch and no policy evaluation. Reading resolves through the resource's " +
 			"freshness policy and may record a new snapshot.",
 	}, s.readResource)
@@ -47,9 +47,9 @@ func (s *server) registerResources(srv *mcpsdk.Server) {
 	})
 }
 
-// listResources projects every registered Ctx resource into an MCP
-// resource. The whole set is returned in one page: Ctx namespaces hold
-// curated documents, not a filesystem, so paginating would cost a
+// listResources projects every registered Readproof resource into an MCP
+// resource. The whole set is returned in one page: Readproof namespaces
+// hold curated documents, not a filesystem, so paginating would cost a
 // round-trip per page for no benefit.
 func (s *server) listResources(ctx context.Context) (*mcpsdk.ListResourcesResult, error) {
 	resources, err := s.client.ListResources(ctx)
@@ -90,8 +90,8 @@ func (s *server) listResources(ctx context.Context) (*mcpsdk.ListResourcesResult
 
 // readResource resolves the requested reference and returns its bytes.
 // Policy and any "@<tag>" suffix are honored by client.Resolve, so an MCP
-// read is exactly the same operation as `ctx get` — including its side
-// effect of recording a snapshot when the policy says to fetch.
+// read is exactly the same operation as `readproof get` — including its
+// side effect of recording a snapshot when the policy says to fetch.
 func (s *server) readResource(ctx context.Context, req *mcpsdk.ReadResourceRequest) (*mcpsdk.ReadResourceResult, error) {
 	uri := req.Params.URI
 

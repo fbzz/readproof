@@ -1,6 +1,7 @@
-// Command ctxd is the Ctx HTTP server: it wraps the same resolution
-// pipeline the CLI uses in embedded mode behind a network API, so the CLI
-// (via --server) and future SDKs can talk to a shared, durable backend.
+// Command readproofd is the Readproof HTTP server: it wraps the same
+// resolution pipeline the CLI uses in embedded mode behind a network API,
+// so the CLI (via --server) and future SDKs can talk to a shared, durable
+// backend.
 package main
 
 import (
@@ -12,43 +13,43 @@ import (
 	"os"
 	"time"
 
-	"ctx/internal/api"
-	"ctx/internal/app"
-	"ctx/internal/telemetry"
-	"ctx/internal/version"
+	"readproof/internal/api"
+	"readproof/internal/app"
+	"readproof/internal/telemetry"
+	"readproof/internal/version"
 )
 
 func main() {
-	addr := flag.String("addr", envOr("CTXD_ADDR", ":8080"), "address to listen on")
-	dataDir := flag.String("data-dir", os.Getenv("CTXD_DATA_DIR"), "embedded-mode data directory (default: .ctx, or $CTX_HOME); ignored if --postgres-dsn is set")
+	addr := flag.String("addr", envOr("READPROOFD_ADDR", ":8080"), "address to listen on")
+	dataDir := flag.String("data-dir", os.Getenv("READPROOFD_DATA_DIR"), "embedded-mode data directory (default: .readproof, or $READPROOF_HOME); ignored if --postgres-dsn is set")
 
-	postgresDSN := flag.String("postgres-dsn", os.Getenv("CTXD_POSTGRES_DSN"), "PostgreSQL DSN; when set, ctxd runs against Postgres + S3 instead of embedded SQLite + local disk")
-	s3Endpoint := flag.String("s3-endpoint", envOr("CTXD_S3_ENDPOINT", "localhost:9000"), "S3-compatible endpoint (postgres mode only)")
-	s3AccessKey := flag.String("s3-access-key", os.Getenv("CTXD_S3_ACCESS_KEY"), "S3-compatible access key (postgres mode only)")
-	s3SecretKey := flag.String("s3-secret-key", os.Getenv("CTXD_S3_SECRET_KEY"), "S3-compatible secret key (postgres mode only)")
-	s3Bucket := flag.String("s3-bucket", envOr("CTXD_S3_BUCKET", "ctx-blobs"), "S3-compatible bucket name (postgres mode only)")
-	s3UseSSL := flag.Bool("s3-use-ssl", envBool("CTXD_S3_USE_SSL", false), "use TLS for the S3-compatible endpoint (postgres mode only)")
-	apiKey := flag.String("api-key", os.Getenv("CTXD_API_KEY"), "if set, require this value as a Bearer token on every request except /healthz (off by default)")
-	showVersion := flag.Bool("version", false, "print the ctxd version and exit")
+	postgresDSN := flag.String("postgres-dsn", os.Getenv("READPROOFD_POSTGRES_DSN"), "PostgreSQL DSN; when set, readproofd runs against Postgres + S3 instead of embedded SQLite + local disk")
+	s3Endpoint := flag.String("s3-endpoint", envOr("READPROOFD_S3_ENDPOINT", "localhost:9000"), "S3-compatible endpoint (postgres mode only)")
+	s3AccessKey := flag.String("s3-access-key", os.Getenv("READPROOFD_S3_ACCESS_KEY"), "S3-compatible access key (postgres mode only)")
+	s3SecretKey := flag.String("s3-secret-key", os.Getenv("READPROOFD_S3_SECRET_KEY"), "S3-compatible secret key (postgres mode only)")
+	s3Bucket := flag.String("s3-bucket", envOr("READPROOFD_S3_BUCKET", "readproof-blobs"), "S3-compatible bucket name (postgres mode only)")
+	s3UseSSL := flag.Bool("s3-use-ssl", envBool("READPROOFD_S3_USE_SSL", false), "use TLS for the S3-compatible endpoint (postgres mode only)")
+	apiKey := flag.String("api-key", os.Getenv("READPROOFD_API_KEY"), "if set, require this value as a Bearer token on every request except /healthz (off by default)")
+	showVersion := flag.Bool("version", false, "print the readproofd version and exit")
 	flag.Parse()
 
-	// `ctxd version` as well as `ctxd --version`: ctxd takes no positional
-	// arguments otherwise, and both spellings get typed.
+	// `readproofd version` as well as `readproofd --version`: readproofd takes
+	// no positional arguments otherwise, and both spellings get typed.
 	if *showVersion || flag.Arg(0) == "version" {
-		fmt.Printf("ctxd %s\n", version.String())
+		fmt.Printf("readproofd %s\n", version.String())
 		return
 	}
 
 	ctx := context.Background()
-	shutdownTelemetry, err := telemetry.Init(ctx, "ctxd")
+	shutdownTelemetry, err := telemetry.Init(ctx, "readproofd")
 	if err != nil {
-		log.Fatalf("ctxd: telemetry: %v", err)
+		log.Fatalf("readproofd: telemetry: %v", err)
 	}
 	defer shutdownTelemetry(ctx)
 
 	a, backend, err := openApp(ctx, *dataDir, *postgresDSN, *s3Endpoint, *s3AccessKey, *s3SecretKey, *s3Bucket, *s3UseSSL)
 	if err != nil {
-		log.Fatalf("ctxd: %v", err)
+		log.Fatalf("readproofd: %v", err)
 	}
 	defer a.Close()
 
@@ -63,9 +64,9 @@ func main() {
 	if *apiKey != "" {
 		authNote = "API key required"
 	}
-	log.Printf("ctxd listening on %s (backend: %s, %s)", *addr, backend, authNote)
+	log.Printf("readproofd listening on %s (backend: %s, %s)", *addr, backend, authNote)
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("ctxd: %v", err)
+		log.Fatalf("readproofd: %v", err)
 	}
 }
 

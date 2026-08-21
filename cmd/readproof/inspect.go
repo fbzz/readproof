@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"ctx/internal/redact"
-	"ctx/internal/resource"
-	"ctx/internal/source"
-	"ctx/internal/tag"
+	"readproof/internal/redact"
+	"readproof/internal/resource"
+	"readproof/internal/source"
+	"readproof/internal/tag"
 )
 
 func newInspectCmd() *cobra.Command {
@@ -62,7 +62,7 @@ func newInspectCmd() *cobra.Command {
 				fmt.Printf("  url: %s\n", res.SourceConfig.HTTP.URL)
 				// Applied even in embedded mode where this value was never
 				// sent over the wire: sensitive header values should never
-				// be echoed by `ctx inspect`, regardless of client mode.
+				// be echoed by `readproof inspect`, regardless of client mode.
 				headers := redact.Headers(res.SourceConfig.HTTP.Headers)
 				if len(headers) > 0 {
 					fmt.Println("  headers:")
@@ -124,7 +124,7 @@ func newInspectCmd() *cobra.Command {
 			}
 
 			if res.CurrentSnapshotID == "" {
-				fmt.Println("Current snapshot: none (never resolved — run `ctx get` first)")
+				fmt.Println("Current snapshot: none (never resolved — run `readproof get` first)")
 			} else {
 				snap, err := c.GetSnapshot(ctx, res.CurrentSnapshotID)
 				if err != nil {
@@ -138,7 +138,7 @@ func newInspectCmd() *cobra.Command {
 				fmt.Printf("  bytes:           %d\n", snap.Bytes)
 			}
 			fmt.Println()
-			fmt.Printf("Snapshot history: %d snapshot(s) (see `ctx history %s`)\n", len(history), uri)
+			fmt.Printf("Snapshot history: %d snapshot(s) (see `readproof history %s`)\n", len(history), uri)
 			return nil
 		},
 	}

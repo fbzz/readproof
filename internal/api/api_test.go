@@ -4,12 +4,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ctx/internal/api"
-	"ctx/internal/app"
-	"ctx/internal/client/remote"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/api"
+	"readproof/internal/app"
+	"readproof/internal/client/remote"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 func TestHTTPHeaderCredentialsAreRedactedInResponses(t *testing.T) {
@@ -26,7 +26,7 @@ func TestHTTPHeaderCredentialsAreRedactedInResponses(t *testing.T) {
 	defer c.Close()
 
 	ctx := t.Context()
-	uri := "ctx://demo/policies/secret-header"
+	uri := "readproof://demo/policies/secret-header"
 
 	err = c.RegisterResource(ctx, resource.Resource{
 		URI:       uri,

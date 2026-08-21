@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"ctx/internal/client"
-	"ctx/internal/manifest"
-	"ctx/internal/redact"
-	"ctx/internal/replay"
-	"ctx/internal/resource"
-	"ctx/internal/snapshot"
-	"ctx/internal/source"
+	"readproof/internal/client"
+	"readproof/internal/manifest"
+	"readproof/internal/redact"
+	"readproof/internal/replay"
+	"readproof/internal/resource"
+	"readproof/internal/snapshot"
+	"readproof/internal/source"
 )
 
 // Options controls what Build puts in the bundle.
@@ -36,7 +36,7 @@ func (o Options) now() time.Time {
 
 // Build assembles an evidence bundle for a manifest id or run id, using
 // only client.Client calls so the result is identical in embedded mode and
-// against a remote ctxd.
+// against a remote readproofd.
 func Build(ctx context.Context, c client.Client, target string, opts Options) (Bundle, error) {
 	man, err := c.GetManifest(ctx, target)
 	if err != nil {

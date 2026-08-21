@@ -1,10 +1,11 @@
 // Package http fetches content from a generic HTTP(S) endpoint.
 //
-// SECURITY NOTE: this adapter performs no SSRF protection (no restriction on
-// target IP ranges). That's acceptable while URLs are only ever configured
-// by the operator running the CLI against their own data. It becomes a real
-// requirement once a network-facing service (the future ctxd HTTP API)
-// accepts resource registration from less-trusted callers — see spec §39.
+// SECURITY NOTE: this adapter performs no SSRF protection (no restriction
+// on target IP ranges). That's acceptable while URLs are only ever
+// configured by the operator running the CLI against their own data. It
+// becomes a real requirement once a network-facing service (the future
+// readproofd HTTP API) accepts resource registration from less-trusted
+// callers — see spec §39.
 package http
 
 import (
@@ -15,15 +16,15 @@ import (
 	"os"
 	"regexp"
 
-	"ctx/internal/ids"
-	"ctx/internal/source"
+	"readproof/internal/ids"
+	"readproof/internal/source"
 )
 
 // envVarRef matches "${VAR_NAME}" references embedded anywhere in a header
 // value (e.g. "Bearer ${GITHUB_TOKEN}"). Matched references are resolved
-// from ctxd's own environment at fetch time — the referenced secret is
-// never persisted in a Resource's stored SourceConfig, only the reference
-// to it.
+// from readproofd's own environment at fetch time — the referenced secret
+// is never persisted in a Resource's stored SourceConfig, only the
+// reference to it.
 var envVarRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 
 func resolveHeaderValue(value string) (string, error) {
@@ -32,7 +33,7 @@ func resolveHeaderValue(value string) (string, error) {
 		name := envVarRef.FindStringSubmatch(match)[1]
 		v, ok := os.LookupEnv(name)
 		if !ok {
-			resolveErr = fmt.Errorf("header value references $%s, which is not set in ctxd's environment", name)
+			resolveErr = fmt.Errorf("header value references $%s, which is not set in readproofd's environment", name)
 			return match
 		}
 		return v

@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"ctx/internal/policy"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/source"
-	"ctx/internal/tag"
+	"readproof/internal/policy"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/source"
+	"readproof/internal/tag"
 )
 
 const (
@@ -20,16 +20,16 @@ const (
 	updatedPolicyText  = "Products can be refunded within 14 days.\n"
 )
 
-// registerFixture registers ctx://demo/policies/refunds against a temp file
-// under the strictest policy (require_fresh), so a tag ref bypassing policy
-// is unambiguous once the file changes.
+// registerFixture registers readproof://demo/policies/refunds against a
+// temp file under the strictest policy (require_fresh), so a tag ref
+// bypassing policy is unambiguous once the file changes.
 func registerFixture(t *testing.T, ctx context.Context, res *resolver.Resolver, content string) (uri, filePath string) {
 	t.Helper()
 	filePath = filepath.Join(t.TempDir(), "refunds.md")
 	if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	uri = "ctx://demo/policies/refunds"
+	uri = "readproof://demo/policies/refunds"
 	if err := res.Resources.Create(ctx, resource.Resource{
 		URI:       uri,
 		Namespace: "demo",

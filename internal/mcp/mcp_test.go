@@ -10,24 +10,24 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"ctx/internal/app"
-	"ctx/internal/client"
-	"ctx/internal/client/local"
-	"ctx/internal/evidence"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/app"
+	"readproof/internal/client"
+	"readproof/internal/client/local"
+	"readproof/internal/evidence"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 const (
-	demoURI         = "ctx://demo/policies/refunds"
+	demoURI         = "readproof://demo/policies/refunds"
 	originalContent = "Products can be refunded within 30 days.\n"
 	updatedContent  = "Products can be refunded within 14 days.\n"
 )
 
 // newDemoClient stands up the refund-agent demo (see internal/e2e) over an
 // embedded app in a temp data directory, and returns a client plus the
-// fixture path, so a test can change the document under Ctx's feet.
+// fixture path, so a test can change the document under Readproof's feet.
 func newDemoClient(t *testing.T) (client.Client, string) {
 	t.Helper()
 
@@ -83,7 +83,7 @@ func connect(t *testing.T, c client.Client) *mcpsdk.ClientSession {
 	}
 	t.Cleanup(func() { serverSession.Close() })
 
-	cs, err := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "ctx-test", Version: "0"}, nil).
+	cs, err := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "readproof-test", Version: "0"}, nil).
 		Connect(ctx, clientTransport, nil)
 	if err != nil {
 		t.Fatalf("connect client: %v", err)
@@ -149,10 +149,10 @@ func TestServerEndToEnd(t *testing.T) {
 	cs := connect(t, c)
 	ctx := context.Background()
 
-	// The instructions field is how a model learns what Ctx is; an empty
+	// The instructions field is how a model learns what Readproof is; an empty
 	// one would leave it guessing.
-	if instr := cs.InitializeResult().Instructions; !strings.Contains(instr, "ctx://") || !strings.Contains(instr, "manifest id") {
-		t.Fatalf("initialize instructions do not describe Ctx: %q", instr)
+	if instr := cs.InitializeResult().Instructions; !strings.Contains(instr, "readproof://") || !strings.Contains(instr, "manifest id") {
+		t.Fatalf("initialize instructions do not describe Readproof: %q", instr)
 	}
 
 	// --- resources/list, before anything has been resolved -------------
@@ -177,8 +177,9 @@ func TestServerEndToEnd(t *testing.T) {
 		t.Fatalf("mime type should be unknown before the first resolve, got %q", entry.MIMEType)
 	}
 
-	// The template is what makes ctx://ns/path and ctx://ns/path@tag
-	// readable at all, since no static registration can enumerate tags.
+	// The template is what makes readproof://ns/path and
+	// readproof://ns/path@tag readable at all, since no static registration
+	// can enumerate tags.
 	templates, err := cs.ListResourceTemplates(ctx, nil)
 	if err != nil {
 		t.Fatalf("list resource templates: %v", err)
@@ -237,7 +238,7 @@ func TestServerEndToEnd(t *testing.T) {
 	}
 
 	// --- pin the current bytes behind a tag ------------------------------
-	tagged := callTool[TagInfo](t, cs, "ctx_tag_set", map[string]any{
+	tagged := callTool[TagInfo](t, cs, "readproof_tag_set", map[string]any{
 		"uri": demoURI, "tag": "prod", "snapshot_id": firstSnapshot,
 	})
 	if tagged.SnapshotID != firstSnapshot || tagged.Reference != demoURI+"@prod" {
@@ -245,15 +246,15 @@ func TestServerEndToEnd(t *testing.T) {
 	}
 
 	// --- run A: mount + commit -------------------------------------------
-	callTool[RunStartOut](t, cs, "ctx_run_start", map[string]any{"run_id": "run-a"})
-	mounted := callTool[MountOut](t, cs, "ctx_run_mount", map[string]any{"run_id": "run-a", "uri": demoURI})
+	callTool[RunStartOut](t, cs, "readproof_run_start", map[string]any{"run_id": "run-a"})
+	mounted := callTool[MountOut](t, cs, "readproof_run_mount", map[string]any{"run_id": "run-a", "uri": demoURI})
 	if mounted.Position != 0 {
 		t.Fatalf("first mount position = %d, want 0", mounted.Position)
 	}
 	if mounted.Resolved.Content == nil || mounted.Resolved.Content.Text != originalContent {
 		t.Fatalf("mount did not return the mounted bytes: %+v", mounted.Resolved.Content)
 	}
-	manA := callTool[ManifestOut](t, cs, "ctx_run_commit", map[string]any{"run_id": "run-a"})
+	manA := callTool[ManifestOut](t, cs, "readproof_run_commit", map[string]any{"run_id": "run-a"})
 	if manA.ManifestID == "" || len(manA.Entries) != 1 {
 		t.Fatalf("unexpected manifest for run-a: %+v", manA)
 	}
@@ -283,21 +284,23 @@ func TestServerEndToEnd(t *testing.T) {
 	}
 
 	// --- run B: the same URI, the new bytes --------------------------------
-	callTool[RunStartOut](t, cs, "ctx_run_start", map[string]any{"run_id": "run-b"})
-	callTool[MountOut](t, cs, "ctx_run_mount", map[string]any{"run_id": "run-b", "uri": demoURI})
-	manB := callTool[ManifestOut](t, cs, "ctx_run_commit", map[string]any{"run_id": "run-b"})
+	callTool[RunStartOut](t, cs, "readproof_run_start", map[string]any{"run_id": "run-b"})
+	callTool[MountOut](t, cs, "readproof_run_mount", map[string]any{"run_id": "run-b", "uri": demoURI})
+	manB := callTool[ManifestOut](t, cs, "readproof_run_commit", map[string]any{"run_id": "run-b"})
 	if manA.Entries[0].ContentHash == manB.Entries[0].ContentHash {
 		t.Fatalf("expected the two runs to disagree after the source changed")
 	}
 
-	// --- ctx_manifest resolves a run id as well as a manifest id -----------
-	fetched := callTool[ManifestOut](t, cs, "ctx_manifest", map[string]any{"target": "run-a"})
+	// --- readproof_manifest resolves a run id as well as a manifest id
+	// -----------
+	fetched := callTool[ManifestOut](t, cs, "readproof_manifest", map[string]any{"target": "run-a"})
 	if fetched.ManifestID != manA.ManifestID {
-		t.Fatalf("ctx_manifest by run id returned %s, want %s", fetched.ManifestID, manA.ManifestID)
+		t.Fatalf("readproof_manifest by run id returned %s, want %s", fetched.ManifestID, manA.ManifestID)
 	}
 
-	// --- ctx_diff carries the why-fields and the unified diff --------------
-	diffed := callTool[DiffOut](t, cs, "ctx_diff", map[string]any{"a": "run-a", "b": "run-b"})
+	// --- readproof_diff carries the why-fields and the unified diff
+	// --------------
+	diffed := callTool[DiffOut](t, cs, "readproof_diff", map[string]any{"a": "run-a", "b": "run-b"})
 	if diffed.Changed != 1 || diffed.Added != 0 || diffed.Removed != 0 {
 		t.Fatalf("unexpected diff counts: %+v", diffed)
 	}
@@ -316,8 +319,9 @@ func TestServerEndToEnd(t *testing.T) {
 		t.Fatalf("unified diff does not show the change:\n%s", changed.UnifiedDiff)
 	}
 
-	// --- ctx_replay reconstructs run A from storage alone ------------------
-	replayed := callTool[ReplayOut](t, cs, "ctx_replay", map[string]any{"target": "run-a", "include_content": true})
+	// --- readproof_replay reconstructs run A from storage alone
+	// ------------------
+	replayed := callTool[ReplayOut](t, cs, "readproof_replay", map[string]any{"target": "run-a", "include_content": true})
 	if !replayed.AllMatch || len(replayed.Entries) != 1 {
 		t.Fatalf("replay of run-a failed: %+v", replayed)
 	}
@@ -328,13 +332,14 @@ func TestServerEndToEnd(t *testing.T) {
 		t.Fatalf("replayed content = %+v, want the original bytes", replayed.Entries[0].Content)
 	}
 	// Without include_content the bytes stay out of the result entirely.
-	quiet := callTool[ReplayOut](t, cs, "ctx_replay", map[string]any{"target": "run-a"})
+	quiet := callTool[ReplayOut](t, cs, "readproof_replay", map[string]any{"target": "run-a"})
 	if quiet.Entries[0].Content != nil {
 		t.Fatalf("replay returned content without include_content: %+v", quiet.Entries[0].Content)
 	}
 
-	// --- ctx_evidence_export matches evidence.Build exactly ----------------
-	bundle := callTool[evidence.Bundle](t, cs, "ctx_evidence_export", map[string]any{"target": "run-a"})
+	// --- readproof_evidence_export matches evidence.Build exactly
+	// ----------------
+	bundle := callTool[evidence.Bundle](t, cs, "readproof_evidence_export", map[string]any{"target": "run-a"})
 	direct, err := evidence.Build(ctx, c, "run-a", evidence.Options{})
 	if err != nil {
 		t.Fatalf("evidence.Build: %v", err)
@@ -354,15 +359,15 @@ func TestServerEndToEnd(t *testing.T) {
 	if bundle.Predicate.Entries[0].ContentB64 != "" {
 		t.Fatalf("bundle embedded content without with_content")
 	}
-	withContent := callTool[evidence.Bundle](t, cs, "ctx_evidence_export", map[string]any{"target": "run-a", "with_content": true})
+	withContent := callTool[evidence.Bundle](t, cs, "readproof_evidence_export", map[string]any{"target": "run-a", "with_content": true})
 	if withContent.Predicate.Entries[0].ContentB64 == "" {
 		t.Fatalf("with_content did not embed the bytes")
 	}
 
 	// --- history and tags --------------------------------------------------
-	history := callTool[HistoryOut](t, cs, "ctx_history", map[string]any{"uri": demoURI + "@prod"})
+	history := callTool[HistoryOut](t, cs, "readproof_history", map[string]any{"uri": demoURI + "@prod"})
 	if history.URI != demoURI {
-		t.Fatalf("ctx_history did not strip the ref: %q", history.URI)
+		t.Fatalf("readproof_history did not strip the ref: %q", history.URI)
 	}
 	if len(history.Snapshots) < 2 {
 		t.Fatalf("expected at least 2 snapshots in history, got %d", len(history.Snapshots))
@@ -381,15 +386,15 @@ func TestServerEndToEnd(t *testing.T) {
 		t.Fatalf("history does not report the prod tag on %s: %+v", firstSnapshot, history.Snapshots)
 	}
 
-	tags := callTool[TagListOut](t, cs, "ctx_tag_list", map[string]any{"uri": demoURI})
+	tags := callTool[TagListOut](t, cs, "readproof_tag_list", map[string]any{"uri": demoURI})
 	if len(tags.Tags) != 1 || tags.Tags[0].Tag != "prod" {
 		t.Fatalf("unexpected tag list: %+v", tags.Tags)
 	}
-	deleted := callTool[TagDeleteOut](t, cs, "ctx_tag_delete", map[string]any{"uri": demoURI, "tag": "prod"})
+	deleted := callTool[TagDeleteOut](t, cs, "readproof_tag_delete", map[string]any{"uri": demoURI, "tag": "prod"})
 	if !deleted.Deleted {
 		t.Fatalf("tag delete reported failure: %+v", deleted)
 	}
-	if after := callTool[TagListOut](t, cs, "ctx_tag_list", map[string]any{"uri": demoURI}); len(after.Tags) != 0 {
+	if after := callTool[TagListOut](t, cs, "readproof_tag_list", map[string]any{"uri": demoURI}); len(after.Tags) != 0 {
 		t.Fatalf("tag survived deletion: %+v", after.Tags)
 	}
 }
@@ -404,14 +409,14 @@ func TestUnknownReferences(t *testing.T) {
 
 	// resources/read of an unregistered URI: a protocol error, but a
 	// well-formed one — and the session survives it.
-	if _, err := cs.ReadResource(ctx, &mcpsdk.ReadResourceParams{URI: "ctx://demo/policies/missing"}); err == nil {
+	if _, err := cs.ReadResource(ctx, &mcpsdk.ReadResourceParams{URI: "readproof://demo/policies/missing"}); err == nil {
 		t.Fatalf("expected an error reading an unregistered resource")
 	}
 
-	// A URI that isn't a ctx:// reference at all matches no template, so
+	// A URI that isn't a readproof:// reference at all matches no template, so
 	// the SDK rejects it before any handler runs.
 	if _, err := cs.ReadResource(ctx, &mcpsdk.ReadResourceParams{URI: "file:///etc/passwd"}); err == nil {
-		t.Fatalf("expected an error reading a non-ctx URI")
+		t.Fatalf("expected an error reading a non-readproof URI")
 	}
 
 	// Tool failures come back as error *results*, so the model sees the
@@ -422,14 +427,14 @@ func TestUnknownReferences(t *testing.T) {
 		args map[string]any
 		want string
 	}{
-		{"unknown resource", "ctx_resolve", map[string]any{"uri": "ctx://demo/policies/missing"}, "not found"},
-		{"unknown tag", "ctx_resolve", map[string]any{"uri": demoURI + "@nope"}, "tag"},
-		{"malformed uri", "ctx_resolve", map[string]any{"uri": "not-a-uri"}, "ctx://"},
-		{"unknown run commit", "ctx_run_commit", map[string]any{"run_id": "run-nope"}, "not found"},
-		{"unknown manifest", "ctx_manifest", map[string]any{"target": "run-nope"}, "not found"},
-		{"unknown replay target", "ctx_replay", map[string]any{"target": "run-nope"}, "not found"},
-		{"unknown snapshot for tag", "ctx_tag_set", map[string]any{"uri": demoURI, "tag": "prod", "snapshot_id": "snap_nope"}, "not found"},
-		{"unknown evidence target", "ctx_evidence_export", map[string]any{"target": "run-nope"}, "not found"},
+		{"unknown resource", "readproof_resolve", map[string]any{"uri": "readproof://demo/policies/missing"}, "not found"},
+		{"unknown tag", "readproof_resolve", map[string]any{"uri": demoURI + "@nope"}, "tag"},
+		{"malformed uri", "readproof_resolve", map[string]any{"uri": "not-a-uri"}, "readproof://"},
+		{"unknown run commit", "readproof_run_commit", map[string]any{"run_id": "run-nope"}, "not found"},
+		{"unknown manifest", "readproof_manifest", map[string]any{"target": "run-nope"}, "not found"},
+		{"unknown replay target", "readproof_replay", map[string]any{"target": "run-nope"}, "not found"},
+		{"unknown snapshot for tag", "readproof_tag_set", map[string]any{"uri": demoURI, "tag": "prod", "snapshot_id": "snap_nope"}, "not found"},
+		{"unknown evidence target", "readproof_evidence_export", map[string]any{"target": "run-nope"}, "not found"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			res, err := cs.CallTool(ctx, &mcpsdk.CallToolParams{Name: tc.tool, Arguments: tc.args})
@@ -468,11 +473,11 @@ func TestToolsAreDiscoverable(t *testing.T) {
 	}
 
 	want := []string{
-		"ctx_resources_list", "ctx_resolve", "ctx_history",
-		"ctx_run_start", "ctx_run_mount", "ctx_run_commit",
-		"ctx_manifest", "ctx_diff", "ctx_replay",
-		"ctx_tag_set", "ctx_tag_list", "ctx_tag_delete",
-		"ctx_evidence_export",
+		"readproof_resources_list", "readproof_resolve", "readproof_history",
+		"readproof_run_start", "readproof_run_mount", "readproof_run_commit",
+		"readproof_manifest", "readproof_diff", "readproof_replay",
+		"readproof_tag_set", "readproof_tag_list", "readproof_tag_delete",
+		"readproof_evidence_export",
 	}
 	for _, name := range want {
 		tool, ok := byName[name]

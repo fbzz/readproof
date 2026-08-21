@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"ctx/internal/manifest"
-	"ctx/internal/run"
+	"readproof/internal/manifest"
+	"readproof/internal/run"
 )
 
 // A run id that was never started has no mounts, so committing it used to
@@ -40,8 +40,9 @@ func TestCommitUnknownRunFails(t *testing.T) {
 }
 
 // A run has exactly one manifest. A second commit must not mint a second
-// one: `ctx manifest run-a` and `ctx replay run-a` resolve a run id to a
-// manifest, and two candidates would make that answer arbitrary.
+// one: `readproof manifest run-a` and `readproof replay run-a` resolve a
+// run id to a manifest, and two candidates would make that answer
+// arbitrary.
 func TestCommitTwiceFails(t *testing.T) {
 	a := newDemoApp(t)
 	ctx := context.Background()

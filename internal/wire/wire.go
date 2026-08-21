@@ -1,6 +1,6 @@
-// Package wire defines the JSON request/response shapes for the Ctx HTTP
-// API, plus conversions to/from the domain types in internal/*. It has no
-// server or client logic of its own — internal/api encodes/decodes these
+// Package wire defines the JSON request/response shapes for the Readproof
+// HTTP API, plus conversions to/from the domain types in internal/*. It has
+// no server or client logic of its own — internal/api encodes/decodes these
 // types on the server side, internal/client/remote does the same on the
 // client side, so both sides of the wire agree on one definition.
 package wire
@@ -8,17 +8,17 @@ package wire
 import (
 	"time"
 
-	"ctx/internal/diff"
-	"ctx/internal/manifest"
-	"ctx/internal/materialization"
-	"ctx/internal/policy"
-	"ctx/internal/redact"
-	"ctx/internal/replay"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/snapshot"
-	"ctx/internal/source"
-	"ctx/internal/tag"
+	"readproof/internal/diff"
+	"readproof/internal/manifest"
+	"readproof/internal/materialization"
+	"readproof/internal/policy"
+	"readproof/internal/redact"
+	"readproof/internal/replay"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/snapshot"
+	"readproof/internal/source"
+	"readproof/internal/tag"
 )
 
 type ErrorResponse struct {
@@ -68,7 +68,7 @@ func SourceToWire(cfg source.Config) SourceWire {
 // masked — use this (never SourceToWire) when building an API *response*.
 // SourceToWire itself stays unredacted because it's also used to encode
 // *requests* (e.g. RegisterResourceRequest on the client side), which must
-// carry the real header values for ctxd to authenticate with.
+// carry the real header values for readproofd to authenticate with.
 func SourceToWireRedacted(cfg source.Config) SourceWire {
 	w := SourceToWire(cfg)
 	if w.HTTP != nil {
@@ -219,9 +219,9 @@ func MaterializationFromWire(w MaterializationWire) materialization.Materializat
 // --- Resolve ---
 
 type ResolveRequest struct {
-	// URI may carry a trailing "@<tag>" (ctx://ns/path@prod), which resolves
-	// to exactly that tagged snapshot with no source fetch and no policy
-	// evaluation.
+	// URI may carry a trailing "@<tag>" (readproof://ns/path@prod), which
+	// resolves to exactly that tagged snapshot with no source fetch and no
+	// policy evaluation.
 	URI string `json:"uri"`
 }
 

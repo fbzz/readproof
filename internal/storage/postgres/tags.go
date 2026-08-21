@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"ctx/internal/snapshot"
-	"ctx/internal/tag"
+	"readproof/internal/snapshot"
+	"readproof/internal/tag"
 )
 
 // ErrTagNotFound is an alias for tag.ErrNotFound, kept exported here for

@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"ctx/internal/evidence"
+	"readproof/internal/evidence"
 )
 
 func newEvidenceCmd() *cobra.Command {

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"ctx/internal/materialization"
+	"readproof/internal/materialization"
 )
 
 type MaterializationStore struct {

@@ -10,23 +10,23 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ctx/internal/app"
-	"ctx/internal/diff"
-	"ctx/internal/ids"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
-	"ctx/internal/tag"
+	"readproof/internal/app"
+	"readproof/internal/diff"
+	"readproof/internal/ids"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
+	"readproof/internal/tag"
 )
 
 func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {
-	dsn := os.Getenv("CTX_TEST_POSTGRES_DSN")
-	endpoint := os.Getenv("CTX_TEST_MINIO_ENDPOINT")
+	dsn := os.Getenv("READPROOF_TEST_POSTGRES_DSN")
+	endpoint := os.Getenv("READPROOF_TEST_MINIO_ENDPOINT")
 	if dsn == "" || endpoint == "" {
-		t.Skip("CTX_TEST_POSTGRES_DSN and CTX_TEST_MINIO_ENDPOINT not both set; skipping postgres+minio e2e test")
+		t.Skip("READPROOF_TEST_POSTGRES_DSN and READPROOF_TEST_MINIO_ENDPOINT not both set; skipping postgres+minio e2e test")
 	}
-	accessKey := envOrDefault("CTX_TEST_MINIO_ACCESS_KEY", "ctxadmin")
-	secretKey := envOrDefault("CTX_TEST_MINIO_SECRET_KEY", "ctx_dev_password_minio")
+	accessKey := envOrDefault("READPROOF_TEST_MINIO_ACCESS_KEY", "readproofadmin")
+	secretKey := envOrDefault("READPROOF_TEST_MINIO_SECRET_KEY", "readproof_dev_password_minio")
 
 	fixtureDir := t.TempDir()
 	fixturePath := filepath.Join(fixtureDir, "refunds.md")
@@ -45,7 +45,7 @@ func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {
 			Endpoint:        endpoint,
 			AccessKeyID:     accessKey,
 			SecretAccessKey: secretKey,
-			Bucket:          "ctx-blobs-e2e",
+			Bucket:          "readproof-blobs-e2e",
 			UseSSL:          false,
 		},
 	)
@@ -57,7 +57,7 @@ func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {
 	// Unique per run: resources/runs are durable rows in a shared live
 	// Postgres instance, unlike SQLite's per-test temp file.
 	suffix := ids.New("e2e")
-	uri := "ctx://demo-" + suffix + "/policies/refunds"
+	uri := "readproof://demo-" + suffix + "/policies/refunds"
 	runAID := "run-a-" + suffix
 	runBID := "run-b-" + suffix
 	runCID := "run-c-" + suffix

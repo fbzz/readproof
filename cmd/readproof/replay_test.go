@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"ctx/internal/app"
-	"ctx/internal/policy"
-	"ctx/internal/resource"
-	"ctx/internal/source"
+	"readproof/internal/app"
+	"readproof/internal/policy"
+	"readproof/internal/resource"
+	"readproof/internal/source"
 )
 
 // seedRun builds a data directory containing one committed run, and returns
@@ -30,7 +30,7 @@ func seedRun(t *testing.T, runID string) (dir, blobPath string) {
 		t.Fatalf("open app: %v", err)
 	}
 	ctx := context.Background()
-	uri := "ctx://demo/policies/refunds"
+	uri := "readproof://demo/policies/refunds"
 	if err := a.Resources.Create(ctx, resource.Resource{
 		URI:       uri,
 		Namespace: "demo",
@@ -55,8 +55,8 @@ func seedRun(t *testing.T, runID string) (dir, blobPath string) {
 	return dir, filepath.Join(dir, "blobs", hex[:2], hex)
 }
 
-// runReplayCmd executes `ctx replay <target>` against dir exactly as the CLI
-// would, and returns the error the command exits non-zero on.
+// runReplayCmd executes `readproof replay <target>` against dir exactly as
+// the CLI would, and returns the error the command exits non-zero on.
 func runReplayCmd(t *testing.T, dir, target string) error {
 	t.Helper()
 
@@ -93,10 +93,10 @@ func TestReplayCommandSucceedsOnIntactStore(t *testing.T) {
 	}
 }
 
-// Replay is strict by default: a blob whose bytes no longer hash to what the
-// manifest recorded is a verification failure, and `ctx replay` returns an
-// error (so the process exits non-zero) rather than printing a mismatch and
-// carrying on.
+// Replay is strict by default: a blob whose bytes no longer hash to what
+// the manifest recorded is a verification failure, and `readproof replay`
+// returns an error (so the process exits non-zero) rather than printing a
+// mismatch and carrying on.
 func TestReplayCommandFailsOnCorruptedBlob(t *testing.T) {
 	dir, blobPath := seedRun(t, "run-a")
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"ctx/internal/diff"
+	"readproof/internal/diff"
 )
 
 func newDiffCmd() *cobra.Command {
@@ -56,8 +56,9 @@ func printDiff(targetA, targetB string, result diff.Result) {
 }
 
 // whyLine summarises, in one line, the provenance behind a changed entry:
-// what the source itself called each revision and when Ctx observed it —
-// the question "why did the bytes change?" answered before showing how.
+// what the source itself called each revision and when Readproof observed
+// it — the question "why did the bytes change?" answered before showing
+// how.
 func whyLine(e diff.EntryDiff) string {
 	line := fmt.Sprintf("  why: source revision %s → %s; observed %s → %s",
 		orDash(e.SourceRevisionA), orDash(e.SourceRevisionB),

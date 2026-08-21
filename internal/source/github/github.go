@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"ctx/internal/source"
+	"readproof/internal/source"
 )
 
 // Fetcher reads content from the GitHub Contents API.

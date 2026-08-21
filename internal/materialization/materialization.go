@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"ctx/internal/snapshot"
+	"readproof/internal/snapshot"
 )
 
 type Strategy string

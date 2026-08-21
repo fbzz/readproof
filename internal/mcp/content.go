@@ -21,10 +21,10 @@ const (
 // hash the caller can replay against.
 const DefaultMaxInlineBytes = 1 << 20 // 1 MiB
 
-// textualTypes are the content types Ctx serves as MCP text content. The
-// list is deliberately narrow: anything outside it that is not obviously
-// text (see isTextual) goes out as a base64 blob, since a model reading
-// mangled binary is worse than a model told the bytes are binary.
+// textualTypes are the content types Readproof serves as MCP text content.
+// The list is deliberately narrow: anything outside it that is not
+// obviously text (see isTextual) goes out as a base64 blob, since a model
+// reading mangled binary is worse than a model told the bytes are binary.
 var textualTypes = map[string]bool{
 	"application/json":       true,
 	"application/xml":        true,
@@ -90,9 +90,9 @@ func normalizeContentType(contentType string) string {
 // result can tell it is holding a prefix, and knows the one identifier
 // (the content hash) that names the complete bytes.
 func truncationMarker(shown, total int, contentHash string) string {
-	return fmt.Sprintf("\n\n[ctx: content truncated — %d of %d bytes shown. "+
+	return fmt.Sprintf("\n\n[readproof: content truncated — %d of %d bytes shown. "+
 		"The full content is unchanged and content-addressed as %s; "+
-		"use ctx_replay or ctx_evidence_export --with-content to obtain all of it.]\n",
+		"use readproof_replay or readproof_evidence_export --with-content to obtain all of it.]\n",
 		shown, total, contentHash)
 }
 

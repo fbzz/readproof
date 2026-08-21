@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"ctx/internal/snapshot"
+	"readproof/internal/snapshot"
 )
 
 // ErrSnapshotNotFound is an alias for snapshot.ErrNotFound, kept exported

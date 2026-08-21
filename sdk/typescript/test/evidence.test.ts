@@ -36,30 +36,30 @@ const entryD = { position: 3, uri: "ctx://demo/tos", content_hash: "sha256:dddd"
 // pin the two exporters to one another rather than to their own code.
 test("merkleRoot matches the Go exporter's fixed vectors", () => {
   assert.equal(merkleRoot([]), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-  assert.equal(merkleRoot([entryA]), "70d55a88f1fbbf31b196930195a7a943b637d58c828ede07b76c444ba9177c43");
-  assert.equal(merkleRoot([entryA, entryB]), "f11999b8089a3ad1dc8090eca9e3dfe3e2b579354fb739c8ce1c4bf23e245399");
+  assert.equal(merkleRoot([entryA]), "70c844e26de1089a9d8386db4c8c4aa51e6a21202a0e857f5d51f92b496c4799");
+  assert.equal(merkleRoot([entryA, entryB]), "9f4a65f56078f8bbadbd8c2aaf697699ac14d7ada1e15e45a0af1a8b56c6f87a");
   assert.equal(
     merkleRoot([entryA, entryB, entryC]),
-    "8ce5f7d3589e166bdf8c13111c7ce1212f21297f4c5707074b15ec33da5c12bb",
+    "c56ea8ed87709d94dd208274e1865c78941d16bbbd14f7e09b6eeef96804a9b6",
   );
   assert.equal(
     merkleRoot([entryA, entryB, entryC, entryD]),
-    "a41de6697c3d1cf9f416fbf985c1acefacc339b23e6cc061b9c9d60775c96cfc",
+    "a5b64b93a399a39b411a31b4d5dd47adaef09272a9438649670d8ebe9459c99d",
   );
 });
 
 test("merkleLeaf matches the Go exporter and a single leaf is the root", () => {
   const leaf = merkleLeaf(entryA).toString("hex");
-  assert.equal(leaf, "70d55a88f1fbbf31b196930195a7a943b637d58c828ede07b76c444ba9177c43");
+  assert.equal(leaf, "70c844e26de1089a9d8386db4c8c4aa51e6a21202a0e857f5d51f92b496c4799");
   assert.equal(merkleRoot([entryA]), leaf);
 });
 
 test("merkleRoot is sensitive to entry order and to content hashes", () => {
   assert.notEqual(merkleRoot([entryA, entryB]), merkleRoot([entryB, entryA]));
-  assert.equal(merkleRoot([entryB, entryA]), "9f8a8a5aa906949eb82be3a087a7f92af5dabd43dd75fb2f2c355f97a003f03f");
+  assert.equal(merkleRoot([entryB, entryA]), "22fa08b5ca3cbcb085610c4b620fa8e8f05e1d01bf596bcdc43b175c3d5f4e88");
   assert.equal(
     merkleRoot([entryA, { ...entryB, content_hash: "sha256:bbbc" }]),
-    "ab225edface320414016f65d9e83ae4d4827fd6734f4f00c470dbd8b2e98855b",
+    "7f2132f24b570d6130a6aaeff85ce535a631daef70de4e17e58164aa90749e5d",
   );
 });
 

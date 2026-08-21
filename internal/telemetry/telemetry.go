@@ -1,4 +1,5 @@
-// Package telemetry wires OpenTelemetry tracing and metrics for ctx/ctxd.
+// Package telemetry wires OpenTelemetry tracing and metrics for
+// readproof/readproofd.
 //
 // otel.Tracer/otel.Meter return delegating implementations: code that grabs
 // a Tracer/Meter at package-init time (before Init runs) still starts
@@ -23,18 +24,18 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Tracer is used throughout the codebase for all ctx.* spans.
-var Tracer trace.Tracer = otel.Tracer("ctx")
+// Tracer is used throughout the codebase for all readproof.* spans.
+var Tracer trace.Tracer = otel.Tracer("readproof")
 
 // SetTracerProvider points Tracer at tp and returns a function restoring
-// the previous Tracer. It is the supported way for a test to capture ctx.*
-// spans with an in-memory exporter without going through Init (which
-// requires an OTLP endpoint and would export off-box). Init is unaffected:
-// production wiring still runs through it, and the no-op default stands
-// until one of the two is called.
+// the previous Tracer. It is the supported way for a test to capture
+// readproof.* spans with an in-memory exporter without going through Init
+// (which requires an OTLP endpoint and would export off-box). Init is
+// unaffected: production wiring still runs through it, and the no-op
+// default stands until one of the two is called.
 func SetTracerProvider(tp trace.TracerProvider) (restore func()) {
 	previous := Tracer
-	Tracer = tp.Tracer("ctx")
+	Tracer = tp.Tracer("readproof")
 	return func() { Tracer = previous }
 }
 
@@ -64,7 +65,7 @@ func Init(ctx context.Context, serviceName string) (Shutdown, error) {
 	}
 	tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(traceExporter), sdktrace.WithResource(res))
 	otel.SetTracerProvider(tp)
-	Tracer = tp.Tracer("ctx")
+	Tracer = tp.Tracer("readproof")
 
 	metricExporter, err := otlpmetrichttp.New(ctx)
 	if err != nil {

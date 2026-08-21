@@ -12,16 +12,16 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
-	"ctx/internal/materialization"
-	"ctx/internal/policy"
-	"ctx/internal/resolver"
-	"ctx/internal/resource"
-	"ctx/internal/source"
-	fsSource "ctx/internal/source/filesystem"
-	"ctx/internal/storage/blob"
-	"ctx/internal/storage/sqlite"
-	"ctx/internal/tag"
-	"ctx/internal/telemetry"
+	"readproof/internal/materialization"
+	"readproof/internal/policy"
+	"readproof/internal/resolver"
+	"readproof/internal/resource"
+	"readproof/internal/source"
+	fsSource "readproof/internal/source/filesystem"
+	"readproof/internal/storage/blob"
+	"readproof/internal/storage/sqlite"
+	"readproof/internal/tag"
+	"readproof/internal/telemetry"
 )
 
 // fixtureContent is the demo's refund policy. Tests below assert these
@@ -98,7 +98,7 @@ func newFixtureResolver(t *testing.T, strategy policy.Strategy) (*resolver.Resol
 	t.Helper()
 	dir := t.TempDir()
 
-	db, err := sqlite.Open(filepath.Join(dir, "ctx.db"))
+	db, err := sqlite.Open(filepath.Join(dir, "readproof.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
@@ -124,7 +124,7 @@ func newFixtureResolver(t *testing.T, strategy policy.Strategy) (*resolver.Resol
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	uri := "ctx://demo/policies/refunds"
+	uri := "readproof://demo/policies/refunds"
 	if err := res.Resources.Create(context.Background(), resource.Resource{
 		URI:       uri,
 		Namespace: "demo",
@@ -150,31 +150,31 @@ func TestResolveEmitsExpectedSpans(t *testing.T) {
 	spans := collect()
 
 	for _, want := range []string{
-		"ctx.resolve", "ctx.resource.lookup", "ctx.policy.evaluate",
-		"ctx.source.fetch", "ctx.snapshot.create", "ctx.materialize",
+		"readproof.resolve", "readproof.resource.lookup", "readproof.policy.evaluate",
+		"readproof.source.fetch", "readproof.snapshot.create", "readproof.materialize",
 	} {
 		if !hasSpan(spans, want) {
 			t.Errorf("expected a %q span, spans seen: %v", want, spanNames(spans))
 		}
 	}
 
-	// The root ctx.resolve span must be the parent of every child span
+	// The root readproof.resolve span must be the parent of every child span
 	// (proving pipeline stages are correctly nested, not siblings of
 	// whatever the caller's ambient span happened to be).
-	root := findSpan(t, spans, "ctx.resolve")
+	root := findSpan(t, spans, "readproof.resolve")
 	for _, s := range spans {
-		if s.Name == "ctx.resolve" {
+		if s.Name == "readproof.resolve" {
 			continue
 		}
 		if s.Parent.SpanID() != root.SpanContext.SpanID() {
-			t.Errorf("span %q is not a child of the ctx.resolve root span", s.Name)
+			t.Errorf("span %q is not a child of the readproof.resolve root span", s.Name)
 		}
 	}
 }
 
-// TestResolveSpanCarriesResultAttributes pins the ctx.resolve attribute set
-// an observability backend correlates on — identity of the bytes, never the
-// bytes — including the GenAI semconv data-source mapping.
+// TestResolveSpanCarriesResultAttributes pins the readproof.resolve
+// attribute set an observability backend correlates on — identity of the
+// bytes, never the bytes — including the GenAI semconv data-source mapping.
 func TestResolveSpanCarriesResultAttributes(t *testing.T) {
 	collect := recordSpans(t)
 	res, uri, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
@@ -183,49 +183,50 @@ func TestResolveSpanCarriesResultAttributes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
-	span := findSpan(t, collect(), "ctx.resolve")
+	span := findSpan(t, collect(), "readproof.resolve")
 
 	if result.Snapshot.SourceRevision == "" {
 		t.Fatal("fixture produced an empty source revision; the assertion below would be vacuous")
 	}
 
-	wantString(t, span, "ctx.resource.uri", uri)
-	wantString(t, span, "ctx.snapshot.id", result.Snapshot.SnapshotID)
-	wantString(t, span, "ctx.snapshot.content_hash", result.Snapshot.ContentHash)
-	wantString(t, span, "ctx.snapshot.source_revision", result.Snapshot.SourceRevision)
-	wantString(t, span, "ctx.materialization.id", result.Materialization.MaterializationID)
-	wantString(t, span, "ctx.source.type", string(source.KindFilesystem))
-	wantString(t, span, "ctx.policy.strategy", string(policy.StrategyRequireFresh))
-	wantString(t, span, "ctx.policy.decision", "fetch")
+	wantString(t, span, "readproof.resource.uri", uri)
+	wantString(t, span, "readproof.snapshot.id", result.Snapshot.SnapshotID)
+	wantString(t, span, "readproof.snapshot.content_hash", result.Snapshot.ContentHash)
+	wantString(t, span, "readproof.snapshot.source_revision", result.Snapshot.SourceRevision)
+	wantString(t, span, "readproof.materialization.id", result.Materialization.MaterializationID)
+	wantString(t, span, "readproof.source.type", string(source.KindFilesystem))
+	wantString(t, span, "readproof.policy.strategy", string(policy.StrategyRequireFresh))
+	wantString(t, span, "readproof.policy.decision", "fetch")
 	// Kept alongside decision for the dashboards v0.1 documented.
-	wantString(t, span, "ctx.freshness.status", "fetch")
-	wantString(t, span, "gen_ai.data_source.id", "ctx://demo")
+	wantString(t, span, "readproof.freshness.status", "fetch")
+	wantString(t, span, "gen_ai.data_source.id", "readproof://demo")
 
 	a := attrs(span)
-	if _, ok := a["ctx.resource.ref"]; ok {
-		t.Error("a plain (untagged) resolve must not set ctx.resource.ref")
+	if _, ok := a["readproof.resource.ref"]; ok {
+		t.Error("a plain (untagged) resolve must not set readproof.resource.ref")
 	}
-	if got, want := a["ctx.materialization.bytes"].AsInt64(), result.Materialization.Bytes; got != want {
-		t.Errorf("ctx.materialization.bytes = %d, want %d", got, want)
+	if got, want := a["readproof.materialization.bytes"].AsInt64(), result.Materialization.Bytes; got != want {
+		t.Errorf("readproof.materialization.bytes = %d, want %d", got, want)
 	}
-	if got, want := a["ctx.materialization.bytes"].AsInt64(), int64(len(fixtureContent)); got != want {
-		t.Errorf("ctx.materialization.bytes = %d, want %d (the fixture's length)", got, want)
+	if got, want := a["readproof.materialization.bytes"].AsInt64(), int64(len(fixtureContent)); got != want {
+		t.Errorf("readproof.materialization.bytes = %d, want %d (the fixture's length)", got, want)
 	}
-	observedAt, ok := a["ctx.snapshot.observed_at"]
+	observedAt, ok := a["readproof.snapshot.observed_at"]
 	if !ok {
-		t.Fatal("ctx.resolve is missing ctx.snapshot.observed_at")
+		t.Fatal("readproof.resolve is missing readproof.snapshot.observed_at")
 	}
 	parsed, err := time.Parse(time.RFC3339, observedAt.AsString())
 	if err != nil {
-		t.Fatalf("ctx.snapshot.observed_at %q is not RFC3339: %v", observedAt.AsString(), err)
+		t.Fatalf("readproof.snapshot.observed_at %q is not RFC3339: %v", observedAt.AsString(), err)
 	}
 	if !parsed.Equal(result.Snapshot.ObservedAt.Truncate(time.Second)) {
-		t.Errorf("ctx.snapshot.observed_at = %s, want %s", parsed, result.Snapshot.ObservedAt)
+		t.Errorf("readproof.snapshot.observed_at = %s, want %s", parsed, result.Snapshot.ObservedAt)
 	}
 }
 
 // A tag resolve names one exact snapshot: policy is never consulted, so
-// there must be no ctx.policy.evaluate span and the decision is use_tag.
+// there must be no readproof.policy.evaluate span and the decision is
+// use_tag.
 func TestTagResolveSpanAttributes(t *testing.T) {
 	res, uri, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
 	ctx := context.Background()
@@ -244,27 +245,27 @@ func TestTagResolveSpanAttributes(t *testing.T) {
 		t.Fatalf("tagged resolve: %v", err)
 	}
 	spans := collect()
-	span := findSpan(t, spans, "ctx.resolve")
+	span := findSpan(t, spans, "readproof.resolve")
 
-	wantString(t, span, "ctx.resource.uri", uri)
-	wantString(t, span, "ctx.resource.ref", "prod")
-	wantString(t, span, "ctx.policy.decision", "use_tag")
-	wantString(t, span, "ctx.freshness.status", "use_tag")
-	wantString(t, span, "ctx.snapshot.id", seed.Snapshot.SnapshotID)
-	wantString(t, span, "ctx.snapshot.content_hash", result.Snapshot.ContentHash)
-	wantString(t, span, "gen_ai.data_source.id", "ctx://demo")
+	wantString(t, span, "readproof.resource.uri", uri)
+	wantString(t, span, "readproof.resource.ref", "prod")
+	wantString(t, span, "readproof.policy.decision", "use_tag")
+	wantString(t, span, "readproof.freshness.status", "use_tag")
+	wantString(t, span, "readproof.snapshot.id", seed.Snapshot.SnapshotID)
+	wantString(t, span, "readproof.snapshot.content_hash", result.Snapshot.ContentHash)
+	wantString(t, span, "gen_ai.data_source.id", "readproof://demo")
 
-	if hasSpan(spans, "ctx.policy.evaluate") {
+	if hasSpan(spans, "readproof.policy.evaluate") {
 		t.Error("a tag resolve must not evaluate policy")
 	}
-	if hasSpan(spans, "ctx.source.fetch") {
+	if hasSpan(spans, "readproof.source.fetch") {
 		t.Error("a tag resolve must never contact the source")
 	}
-	if !hasSpan(spans, "ctx.tag.lookup") {
-		t.Errorf("expected a ctx.tag.lookup span, spans seen: %v", spanNames(spans))
+	if !hasSpan(spans, "readproof.tag.lookup") {
+		t.Errorf("expected a readproof.tag.lookup span, spans seen: %v", spanNames(spans))
 	}
-	tagSpan := findSpan(t, spans, "ctx.tag.lookup")
-	wantString(t, tagSpan, "ctx.resource.ref", "prod")
+	tagSpan := findSpan(t, spans, "readproof.tag.lookup")
+	wantString(t, tagSpan, "readproof.resource.ref", "prod")
 }
 
 func TestResolveCacheHitEmitsCacheLookupSpan(t *testing.T) {
@@ -281,13 +282,13 @@ func TestResolveCacheHitEmitsCacheLookupSpan(t *testing.T) {
 	}
 	spans := collect()
 
-	if !hasSpan(spans, "ctx.cache.lookup") {
-		t.Error("expected a ctx.cache.lookup span on the second (cached) resolve")
+	if !hasSpan(spans, "readproof.cache.lookup") {
+		t.Error("expected a readproof.cache.lookup span on the second (cached) resolve")
 	}
-	if hasSpan(spans, "ctx.source.fetch") {
-		t.Error("did not expect a ctx.source.fetch span on a cache hit")
+	if hasSpan(spans, "readproof.source.fetch") {
+		t.Error("did not expect a readproof.source.fetch span on a cache hit")
 	}
-	wantString(t, findSpan(t, spans, "ctx.resolve"), "ctx.policy.decision", "use_current")
+	wantString(t, findSpan(t, spans, "readproof.resolve"), "readproof.policy.decision", "use_current")
 }
 
 // A failed resolve must still be a legible span: the error is recorded and
@@ -296,24 +297,25 @@ func TestResolveRecordsErrorOnSpan(t *testing.T) {
 	collect := recordSpans(t)
 	res, _, _ := newFixtureResolver(t, policy.StrategyRequireFresh)
 
-	if _, err := res.Resolve(context.Background(), "ctx://demo/does/not/exist"); err == nil {
+	if _, err := res.Resolve(context.Background(), "readproof://demo/does/not/exist"); err == nil {
 		t.Fatal("expected an error resolving an unregistered uri")
 	}
-	span := findSpan(t, collect(), "ctx.resolve")
+	span := findSpan(t, collect(), "readproof.resolve")
 
 	if span.Status.Code.String() != "Error" {
-		t.Errorf("ctx.resolve status = %s, want Error", span.Status.Code)
+		t.Errorf("readproof.resolve status = %s, want Error", span.Status.Code)
 	}
 	if len(span.Events) == 0 {
 		t.Error("expected the error to be recorded as a span event")
 	}
-	if _, ok := attrs(span)["ctx.snapshot.id"]; ok {
+	if _, ok := attrs(span)["readproof.snapshot.id"]; ok {
 		t.Error("a failed resolve must not claim a snapshot id")
 	}
 }
 
-// Content is what Ctx stores, never what it exports: no span attribute or
-// event may carry resolved bytes, however convenient that would be.
+// Content is what Readproof stores, never what it exports: no span
+// attribute or event may carry resolved bytes, however convenient that
+// would be.
 func TestSpansNeverCarryContent(t *testing.T) {
 	collect := recordSpans(t)
 	res, uri, _ := newFixtureResolver(t, policy.StrategyRequireFresh)

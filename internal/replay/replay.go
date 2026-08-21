@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"ctx/internal/ids"
-	"ctx/internal/manifest"
-	"ctx/internal/materialization"
-	"ctx/internal/storage/blob"
+	"readproof/internal/ids"
+	"readproof/internal/manifest"
+	"readproof/internal/materialization"
+	"readproof/internal/storage/blob"
 )
 
 // EntryResult verifies one manifest entry by recomputing the content hash
