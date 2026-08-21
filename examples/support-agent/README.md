@@ -1,5 +1,9 @@
 # Support Agent — a real agent on Ctx, with an open model
 
+> Prefer a web page? [`guide.html`](guide.html) explains everything on this
+> page — architecture, every file and command, the real transcript, tests —
+> as one self-contained HTML file.
+
 A customer-support agent that answers tickets from three policy documents,
 with an open model served by [Ollama](https://ollama.com) — no Claude, no
 Anthropic SDK, no API key. Every ticket is one **Ctx run**: the agent mounts
