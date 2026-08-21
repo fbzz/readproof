@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-label="Sources are resolved under a freshness policy into content-addressed snapshots; each run records a manifest; diff, replay and evidence read from the store, never the live source.">
+  <rect width="1200" height="420" fill="#000000"/>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9B9B9B"/></marker></defs>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">
+    <!-- sources -->
+    <g fill="#181818" stroke="#313131"><rect x="40" y="70" width="190" height="46" rx="10"/><rect x="40" y="132" width="190" height="46" rx="10"/><rect x="40" y="194" width="190" height="46" rx="10"/></g>
+    <g fill="#FFFFFF" text-anchor="middle"><text x="135" y="99">filesystem</text><text x="135" y="161">GitHub</text><text x="135" y="223">HTTP</text></g>
+    <text x="135" y="48" text-anchor="middle" font-size="12" fill="#9B9B9B" letter-spacing="1">SOURCES (LIVE)</text>
+    <!-- resolve -->
+    <rect x="310" y="108" width="220" height="96" rx="12" fill="#181818" stroke="#313131"/>
+    <text x="420" y="140" text-anchor="middle" fill="#FFFFFF" font-weight="700">resolve</text>
+    <text x="420" y="164" text-anchor="middle" fill="#9B9B9B" font-size="13">require_fresh · allow_stale</text>
+    <text x="420" y="184" text-anchor="middle" fill="#9B9B9B" font-size="13">or pinned by @tag</text>
+    <g stroke="#9B9B9B" stroke-width="1.5" fill="none" marker-end="url(#a)"><line x1="230" y1="93" x2="306" y2="130"/><line x1="230" y1="155" x2="306" y2="156"/><line x1="230" y1="217" x2="306" y2="182"/></g>
+    <!-- snapshot -->
+    <rect x="610" y="108" width="220" height="96" rx="12" fill="#181818" stroke="#4ADE80" stroke-width="1.5"/>
+    <text x="720" y="140" text-anchor="middle" fill="#FFFFFF" font-weight="700">snapshot</text>
+    <text x="720" y="164" text-anchor="middle" fill="#9B9B9B" font-size="13">sha256 of the bytes</text>
+    <text x="720" y="184" text-anchor="middle" fill="#9B9B9B" font-size="13">source revision · observed at</text>
+    <line x1="530" y1="156" x2="606" y2="156" stroke="#9B9B9B" stroke-width="1.5" marker-end="url(#a)"/>
+    <!-- tag -->
+    <rect x="662" y="230" width="116" height="30" rx="15" fill="#4ADE80"/>
+    <text x="720" y="250" text-anchor="middle" fill="#000000" font-weight="700" font-size="13">@prod</text>
+    <line x1="720" y1="230" x2="720" y2="208" stroke="#4ADE80" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="790" y="250" fill="#9B9B9B" font-size="12">movable pointer</text>
+    <!-- manifest -->
+    <rect x="910" y="108" width="250" height="96" rx="12" fill="#181818" stroke="#313131"/>
+    <text x="1035" y="140" text-anchor="middle" fill="#FFFFFF" font-weight="700">manifest (per run)</text>
+    <text x="1035" y="164" text-anchor="middle" fill="#9B9B9B" font-size="13">ordered · immutable</text>
+    <text x="1035" y="184" text-anchor="middle" fill="#9B9B9B" font-size="13">uri · @ref · snapshot · hash</text>
+    <line x1="830" y1="156" x2="906" y2="156" stroke="#9B9B9B" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="868" y="146" text-anchor="middle" fill="#9B9B9B" font-size="12">mount</text>
+    <!-- outcomes -->
+    <g fill="#181818" stroke="#313131"><rect x="310" y="320" width="250" height="70" rx="12" stroke="#4ADE80" stroke-width="1.5"/><rect x="600" y="320" width="250" height="70" rx="12"/><rect x="890" y="320" width="270" height="70" rx="12"/></g>
+    <text x="435" y="348" text-anchor="middle" fill="#4ADE80" font-weight="700">replay run-a</text>
+    <text x="435" y="370" text-anchor="middle" fill="#9B9B9B" font-size="12">bytes from the store · never the source</text>
+    <text x="725" y="348" text-anchor="middle" fill="#FFFFFF" font-weight="700">diff run-a run-b</text>
+    <text x="725" y="370" text-anchor="middle" fill="#9B9B9B" font-size="12">why: revision X → Y, observed when</text>
+    <text x="1025" y="348" text-anchor="middle" fill="#FFFFFF" font-weight="700">evidence export · verify</text>
+    <text x="1025" y="370" text-anchor="middle" fill="#9B9B9B" font-size="12">in-toto statement · Merkle root</text>
+    <g stroke="#9B9B9B" stroke-width="1.5" fill="none" marker-end="url(#a)"><path d="M985,204 C985,290 435,270 435,316"/><path d="M1035,204 C1035,290 725,270 725,316"/><line x1="1085" y1="204" x2="1025" y2="316"/></g>
+  </g>
+</svg>

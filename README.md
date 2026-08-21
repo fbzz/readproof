@@ -34,31 +34,44 @@
 
 It is not a vector database, not an observability tool, not a prompt registry, not a memory system. It sits underneath those and makes their inputs reproducible. Install-time lockfiles (Microsoft APM, `skills-lock.json`) pin an agent's *static* configuration; Readproof pins the *runtime documents, per run*.
 
-## The invariant, in one terminal
+## Sixty seconds, end to end
 
-```console
-$ readproof resource add readproof://demo/policies/refunds \
-    --source-type filesystem --path policies/refunds.md --policy require_fresh
-$ readproof run --id run-a readproof://demo/policies/refunds
-Mounted readproof://demo/policies/refunds -> snapshot snap_01M0GQH8K6… (position 0)
+**1. Give a document an identity and a freshness policy, then record a run.**
+
+```bash
+readproof resource add readproof://demo/policies/refunds \
+  --source-type filesystem --path policies/refunds.md --policy require_fresh
+readproof run --id run-a readproof://demo/policies/refunds
+```
+```text
 Committed manifest manifest_01M0GQH8K8… for run run-a (1 entry)
+```
 
-$ readproof tag set readproof://demo/policies/refunds prod snap_01M0GQH8K6…     # promote what run-a saw
-$ printf 'Products can be refunded within 14 days.\n' > policies/refunds.md    # the source changes
-$ readproof run --id run-b readproof://demo/policies/refunds
+**2. The source changes. A later run picks it up — and the diff says exactly why.**
 
-$ readproof diff run-a run-b
-~ readproof://demo/policies/refunds  (snap_01M0GQH8K6… -> snap_01M0GQHP7V…)
-  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 2026-08-20T23:19:09Z → 2026-08-20T23:19:23Z
+```bash
+printf 'Products can be refunded within 14 days.\n' > policies/refunds.md
+readproof run --id run-b readproof://demo/policies/refunds
+readproof diff run-a run-b
+```
+```text
+~ readproof://demo/policies/refunds
+  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456
   -Products can be refunded within 30 days.
   +Products can be refunded within 14 days.
+```
 
-$ readproof replay run-a                                   # reads the store, never the file
+**3. Replay the first run from the store — the file is gone or changed, the bytes are not — and prove it.**
+
+```bash
+readproof replay run-a
+readproof evidence export run-a --with-content --out bundle.json
+readproof evidence verify bundle.json
+```
+```text
 Products can be refunded within 30 days.
 Replay verified: SHA256 match for 1/1 entries.
-
-$ readproof evidence export run-a --with-content --out bundle.json && readproof evidence verify bundle.json
-evidence verified: 1 entry, merkle root a9b73469f1a6…, embedded content 1/1 re-hashed, replay match 1/1
+evidence verified: 1 entry, merkle root a9b73469f1a6…, replay match 1/1
 ```
 
 `SHA256(original) == SHA256(replay)` is a test, not a slogan: the reference demo asserts it over SQLite, over Postgres + MinIO, and over a real HTTP round trip ([`examples/refund-agent`](examples/refund-agent)).
@@ -73,16 +86,12 @@ evidence verified: 1 entry, merkle root a9b73469f1a6…, embedded content 1/1 re
 
 ## How it works
 
-```mermaid
-flowchart LR
-  S[(filesystem · GitHub · HTTP)] -->|fetch under policy| R[resolve<br/>require_fresh · allow_stale · @tag]
-  R --> N[snapshot<br/>sha256 · source revision · observed at]
-  N -->|mount| M[manifest per run<br/>ordered · immutable · ref]
-  M --> D[diff<br/>why: revision, observed, ref]
-  M --> P[replay<br/>store only, strict]
-  M --> E[evidence<br/>in-toto · Merkle root]
-  T{{@prod tag}} -.movable pointer.-> N
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
+    <img alt="Sources are resolved under a freshness policy into content-addressed snapshots; each run records a manifest; diff, replay and evidence read from the store, never the live source." src="docs/assets/how-it-works-light.svg" width="100%">
+  </picture>
+</p>
 
 - **Identity** — `readproof://<namespace>/<path>`, independent of where the bytes live.
 - **Policy** — `require_fresh` (re-verify every resolve), `allow_stale --max-age` (reuse within a TTL), or pin a reviewed snapshot by **tag**: `…@prod` delivers exactly that snapshot, no fetch, policy not consulted. Promotion is one pointer move; it is recorded and revertible.
