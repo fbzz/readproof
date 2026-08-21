@@ -6,3 +6,17 @@
 .env.*
 !.env.example
 dist/
+
+# Dependencies are resolved from a lockfile, never committed. Without this
+# rule a subproject that lacks its own .gitignore vendors its whole
+# node_modules tree into the repository, where npm audit never sees it and
+# nothing ever patches it.
+node_modules/
+
+# Evidence bundles are run artifacts, and `--with-content` embeds the bytes
+# the agent read — which may be exactly the material that must not be
+# published.
+*.bundle.json
+
+# Local scratch data from the examples.
+last-run.json
