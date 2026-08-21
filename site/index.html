@@ -18,7 +18,7 @@
 <style>
   :root {
     --bg: #000000; --surface: #181818; --raised: #1F1F1F; --hover: #272727; --rule: #313131;
-    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #737373;
+    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #7E7E7E; --comment: #8C8C8C;
     --accent: #4ADE80; --accent-contrast: #000000;
     --amber: #FBBF24;
     --glass: rgba(24,24,24,.72);
@@ -29,7 +29,7 @@
   @media (prefers-color-scheme: light) {
     :root {
       --bg: #FFFFFF; --surface: #FAFAFA; --raised: #F5F5F5; --hover: #EFEFEF; --rule: #E5E5E5;
-      --ink: #000000; --ink-2: #666666; --muted: #8A8A8A;
+      --ink: #000000; --ink-2: #666666; --muted: #7A7A7A; --comment: #6F6F6F;
       --accent: #15803D; --accent-contrast: #FFFFFF;
       --amber: #8A5800;
       --glass: rgba(255,255,255,.72);
@@ -116,10 +116,10 @@
   .term .bar i:first-child { background: var(--accent); }
   .term .body { padding: 16px; overflow-x: auto; white-space: pre; }
   .term .p { color: var(--accent); font-weight: 600; }
-  .term .am { color: var(--amber); }
+  .term .pin { color: var(--amber); }
   .term .m { color: var(--ink-2); }
   .term .ok { color: var(--accent); }
-  .term .c { color: var(--muted); }
+  .term .c { color: var(--comment); }
   .term .hl { color: var(--ink); font-weight: 600; }
 
   /* Tagline reveal */
@@ -138,8 +138,9 @@
   .card p { font-size: 16px; line-height: 24px; color: var(--ink-2); margin: 0; }
   .card .tag { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--amber); border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; margin-bottom: 16px; }
   .card .tag.ok { color: var(--accent); } .card .tag.acc { color: var(--ink-2); }
-  .inner { background: var(--bg); border: 1px solid var(--rule); padding: 12px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 0; color: var(--ink-2); white-space: pre; }
-  .inner .m { color: var(--muted); } .inner .ok { color: var(--accent); }
+  .inner { background: var(--bg); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 12px; line-height: 18px; overflow-x: auto; margin: 16px 0 0; color: var(--ink); white-space: pre; }
+  .inner .m { color: var(--ink-2); } .inner .ok { color: var(--accent); } .inner .c { color: var(--comment); }
+  .inner .p { color: var(--accent); font-weight: 600; }
 
   /* Steps */
   .steps { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
@@ -164,7 +165,8 @@
   .code { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; font-family: var(--mono); font-size: 14px; line-height: 20px; margin: 0; }
   .code .t { display: block; font-family: var(--sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--rule); }
   .code .body { padding: 16px; overflow-x: auto; white-space: pre; }
-  .code .k { color: var(--ink); font-weight: 600; } .code .s { color: var(--accent); } .code .c { color: var(--muted); }
+  .code .k { color: var(--ink); font-weight: 600; } .code .s { color: var(--accent); } .code .c { color: var(--comment); }
+  .code .p { color: var(--accent); font-weight: 600; } .code .m { color: var(--ink-2); }
 
   /* FAQ */
   .faq { display: grid; gap: 12px; max-width: 800px; }
@@ -255,18 +257,34 @@
         <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>in-toto evidence bundles</span></li>
       </ul>
     </div>
-    <pre class="term rv" style="--d:.15s" aria-label="Terminal session: a run is recorded, the source changes, the diff explains why, and replay returns the original bytes"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>readproof — session</span><span class="body"><span class="p">$</span> readproof run --id run-a readproof://demo/policies/refunds
-<span class="m">Committed manifest manifest_01M0HRB5KJ… for run run-a (1 entry)</span>
-<span class="p">$</span> readproof tag set readproof://demo/policies/refunds prod snap_01M0HRB5KJ…
-<span class="c"># weeks later, someone edits the policy</span>
+    <pre class="term rv" style="--d:.15s" aria-label="Terminal session: a policy is registered and pinned, the file changes underneath, the diff names the revision that moved, replay returns the original bytes, and the evidence bundle verifies"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>readproof — the whole idea</span><span class="body"><span class="c"># 1. give the document an identity and a freshness rule</span>
+<span class="p">$</span> readproof resource add readproof://demo/policies/refunds \
+            --source-type filesystem --path policies/refunds.md \
+            --policy require_fresh
+
+<span class="c"># 2. record one agent run, then pin what it read as @prod</span>
+<span class="p">$</span> readproof run --id run-a readproof://demo/policies/refunds
+<span class="m">  Committed manifest manifest_01M0JED936… for run run-a (1 entry)</span>
+<span class="p">$</span> readproof tag set readproof://demo/policies/refunds prod snap_01M0JED935…
+
+<span class="c"># 3. weeks later the policy is edited; a later run records it</span>
+<span class="p">$</span> printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
 <span class="p">$</span> readproof run --id run-b readproof://demo/policies/refunds
+
+<span class="c"># 4. the diff names the revision that moved, not just the text</span>
 <span class="p">$</span> readproof diff run-a run-b
-<span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456</span>
-<span class="m">  -Products can be refunded within 30 days.</span>
-<span class="m">  +Products can be refunded within 14 days.</span>
-<span class="p">$</span> readproof replay run-a         <span class="c"># reads the store, never the file</span>
-<span class="hl">Products can be refunded within 30 days.</span>
-<span class="ok">Replay verified: SHA256 match for 1/1 entries.</span></span></pre>
+<span class="pin">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456</span>
+<span class="m">  -Products can be refunded within 30 days.
+  +Products can be refunded within 14 days.</span>
+
+<span class="c"># 5. replay rebuilds run-a from the store, never from the file</span>
+<span class="p">$</span> readproof replay run-a
+<span class="hl">  Products can be refunded within 30 days.</span>
+<span class="ok">  Replay verified: SHA256 match for 1/1 entries.</span>
+
+<span class="c"># 6. the evidence bundle verifies anywhere, years later</span>
+<span class="p">$</span> readproof evidence verify bundle.json
+<span class="ok">  evidence verified: 1 entry, merkle root a9b73469f1a6…</span></span></pre>
   </div>
 </section>
 
@@ -314,19 +332,29 @@
     </div>
     <div class="steps">
       <div class="card rv"><p class="n">01 · register</p><h3>Give the document an identity</h3><p>A source (file, GitHub path, or HTTP URL) plus a freshness policy. The URI survives the bytes changing.</p>
-        <pre class="inner">$ readproof resource add readproof://demo/policies/refunds \
-    --source-type filesystem --path policies/refunds.md \
+        <pre class="inner"><span class="c"># 1. identity + source + freshness rule</span>
+<span class="p">$</span> readproof resource add \
+    readproof://demo/policies/refunds \
+    --source-type filesystem \
+    --path policies/refunds.md \
     --policy require_fresh
-<span class="m">Registered resource readproof://demo/policies/refunds</span></pre></div>
+<span class="m">  Registered resource …/policies/refunds
+    source: filesystem
+    policy: require_fresh</span></pre></div>
       <div class="card rv" style="--d:.1s"><p class="n">02 · record</p><h3>Mount it into a run</h3><p>Mount resolves and records at the next position; commit freezes the run into a manifest.</p>
-        <pre class="inner">$ readproof run --id run-a readproof://demo/policies/refunds
-<span class="m">Mounted … -> snapshot snap_01M0HRB5KJ… (position 0)
-Committed manifest manifest_01M0HRB5KJ… (1 entry)</span></pre></div>
+        <pre class="inner"><span class="c"># 2. mount and commit in one shot</span>
+<span class="p">$</span> readproof run --id run-a \
+    readproof://demo/policies/refunds
+<span class="m">  Mounted …/refunds -&gt; snap_01M0JED935…
+  Committed manifest manifest_01M0JED936…</span></pre></div>
       <div class="card rv" style="--d:.2s"><p class="n">03 · prove</p><h3>Diff, replay, export</h3><p>Compare runs with the why, rebuild bytes from the store, or export the evidence bundle.</p>
-        <pre class="inner">$ readproof replay run-a
-<span class="ok">Replay verified: SHA256 match for 1/1 entries.</span>
-$ readproof evidence export run-a --out bundle.json
-<span class="ok">merkle root 8482a767…  replay match 1/1</span></pre></div>
+        <pre class="inner"><span class="c"># 3. prove — replay, then export evidence</span>
+<span class="p">$</span> readproof replay run-a
+<span class="ok">  Replay verified: SHA256 match for 1/1
+  entries.</span>
+<span class="p">$</span> readproof evidence verify bundle.json
+<span class="ok">  evidence verified: 1 entry, merkle root
+  a9b73469f1a6…</span></pre></div>
     </div>
   </div>
 </section>
@@ -345,12 +373,18 @@ $ readproof evidence export run-a --out bundle.json
         <li><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><b>CI runs on every push:</b> Go build, vet, and tests, the SDK tests, and a Docker Compose integration run that replays the demo against the built image.</span></li>
       </ul>
     </div>
-    <pre class="term rv" style="--d:.15s" aria-label="Output of readproof evidence verify"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>verify</span><span class="body"><span class="p">$</span> readproof evidence verify bundle.json
-<span class="ok">evidence verified: 1 entry,</span>
-<span class="ok">  merkle root 8482a7671b1d7ba1…,</span>
-<span class="ok">  embedded content 1/1 re-hashed,</span>
-<span class="ok">  replay match 1/1</span>
-<span class="c"># flip one byte in the bundle and this exits 1</span></span></pre>
+    <pre class="term rv" style="--d:.15s" aria-label="Terminal session: exporting a run as an in-toto evidence bundle and verifying it offline"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>readproof — evidence</span><span class="body"><span class="c"># 1. export the run as an in-toto Statement</span>
+<span class="p">$</span> readproof evidence export run-a \
+            --with-content --out bundle.json
+<span class="m">  evidence bundle written to bundle.json:
+  1 entry, merkle root a9b73469f1a6…</span>
+
+<span class="c"># 2. re-check it anywhere — flip a byte and it exits 1</span>
+<span class="p">$</span> readproof evidence verify bundle.json --offline
+<span class="ok">  evidence verified: 1 entry,
+  merkle root a9b73469f1a6…,
+  embedded content 1/1 re-hashed,
+  replay cross-check skipped (--offline)</span></span></pre>
   </div>
 </section>
 
@@ -371,13 +405,28 @@ $ readproof evidence export run-a --out bundle.json
       <li><svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg><b>Open models via Ollama</b> support agent example, no API key</li>
     </ul>
     <div class="codes">
-      <pre class="code rv"><span class="t">Claude Code, one line</span><span class="body"><span class="k">claude</span> mcp add readproof -- /abs/path/readproof mcp --data-dir ~/.readproof
-<span class="c"># then: "Read readproof://demo/policies/refunds@prod and tell me the refund window."</span></span></pre>
-      <pre class="code rv" style="--d:.1s"><span class="t">TypeScript, record a turn</span><span class="body"><span class="k">const</span> run = readproof.run({ id: <span class="s">`turn-${id}`</span> });
-<span class="k">await</span> run.mount(<span class="s">"readproof://acme/policies/refunds@prod"</span>);
+      <pre class="code rv"><span class="t">Claude Code, one line</span><span class="body"><span class="c"># register the MCP server against a local store</span>
+<span class="p">$</span> claude mcp add readproof -- \
+      /abs/path/readproof mcp \
+      --data-dir ~/.readproof
+
+<span class="c"># then, in the session: "Read
+#   readproof://demo/policies/refunds@prod
+#   and tell me the refund window."</span></span></pre>
+      <pre class="code rv" style="--d:.1s"><span class="t">TypeScript, record a turn</span><span class="body"><span class="c">// mount = resolve + append to the manifest</span>
+<span class="k">const</span> run = readproof.run({ id: <span class="s">`turn-${id}`</span> });
+<span class="k">await</span> run.mount(
+  <span class="s">"readproof://acme/policies/refunds@prod"</span>);
+
+<span class="c">// commit freezes the run; keep the id</span>
 <span class="k">const</span> { manifest_id } = <span class="k">await</span> run.commit();</span></pre>
-      <pre class="code rv" style="--d:.2s"><span class="t">DeepSeek Harness, one line</span><span class="body"><span class="k">dsh</span> plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof &amp;&amp; dsh web
-<span class="c"># the 13 tools as readproof_*, one Readproof run per DSH session, or a zero-code MCP overlay</span></span></pre>
+      <pre class="code rv" style="--d:.2s"><span class="t">DeepSeek Harness, one line</span><span class="body"><span class="c"># install the native bundle into the web profile</span>
+<span class="p">$</span> dsh plugin --profile web add \
+      ./integrations/deepseek-harness/dsh-plugin-readproof
+<span class="p">$</span> dsh web
+
+<span class="c"># the same 13 readproof_* tools, plus one
+# Readproof run per DSH session</span></span></pre>
     </div>
     <p class="rv" style="margin-top:24px"><a href="docs/#mcp">MCP setup</a> · <a href="docs/#sdk">SDK</a> · <a href="docs/#langgraph">LangGraph</a> · <a href="docs/#dsh">DeepSeek Harness</a> · <a href="docs/#support-agent">Support agent example</a> · <a href="docs/#otel">Observability</a> · <a href="docs/#server">HTTP API</a></p>
   </div>
@@ -390,7 +439,7 @@ $ readproof evidence export run-a --out bundle.json
       <h2>Questions engineers ask first.</h2>
     </div>
     <div class="faq">
-      <details class="rv"><summary>Is Readproof a vector database or a RAG tool? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>No. Readproof is about the source documents and what a run actually received. Keep retrieving however you do; mount what you retrieved so the run is reproducible. Derived chunk materializations are on the roadmap, and v0.2 delivers raw bytes only.</p></details>
+      <details class="rv"><summary>Is Readproof a vector database or a RAG tool? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>No. Readproof is about the source documents and what a run actually received. Keep retrieving however you do; mount what you retrieved so the run is reproducible. Derived chunk materializations are on the roadmap, and v0.3 delivers raw bytes only.</p></details>
       <details class="rv"><summary>Does it replace my tracing or observability tool? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>No, it complements it. Traces key on spans; Readproof keys on source identity, adds freshness policy, run to run input diffs, and byte exact replay. The run's Merkle root appears in your trace and in the evidence bundle, so the two join on one field.</p></details>
       <details class="rv"><summary>Do I need to run a server? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>No. Embedded mode keeps everything in a local <code>.readproof</code> directory with SQLite and blobs. <code>readproofd</code> with Postgres and S3 is there when a team, a service, or the MCP server should share one history.</p></details>
       <details class="rv"><summary>Which sources are supported? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Filesystem, GitHub (a path at a branch or ref, the commit SHA becomes the source revision), and HTTP (any URL, headers may reference environment variables). S3, Confluence or Notion, and generic git are on the roadmap.</p></details>
