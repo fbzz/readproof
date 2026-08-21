@@ -18,6 +18,17 @@ registering a resource is equivalent to shell access. One real
 memory-safety-class bug was found and fixed (arbitrary file read via an
 unvalidated content hash). Dependency scanning is clean.
 
+> **Update — remediation on `security-hardening`.** Everything in the table
+> below except RP-07 and RP-15 has since been fixed; the Status column is
+> current, the prose that follows is the report as written and still describes
+> each finding as it was found. RP-01, RP-02 and RP-04 were implemented along
+> the lines the recommendations set out, and the trust boundary is now
+> enforced rather than only documented: `readproofd` refuses filesystem
+> sources, `${VAR}` header expansion and private network targets by default,
+> each opened by one flag (`--filesystem-root`, `--header-env-allow`,
+> `--allow-private-sources`). See "Remediation" at the end of this document,
+> and [`SECURITY.md`](../SECURITY.md).
+
 ---
 
 ## Findings
@@ -27,31 +38,31 @@ worst-case impact in a deployment the project warns against.
 
 | ID | Severity | Component | Finding | Status |
 | --- | --- | --- | --- | --- |
-| RP-01 | **High** | `source/filesystem`, `api` | A registered resource reads any file on the `readproofd` host — verified against `/etc/hosts`. No root restriction exists | Open (design) |
-| RP-02 | **High** | `source/http`, `api` | `${VAR}` header expansion discloses any environment variable of `readproofd` to an attacker-chosen URL | Partly fixed |
+| RP-01 | **High** | `source/filesystem`, `api` | A registered resource reads any file on the `readproofd` host — verified against `/etc/hosts`. No root restriction exists | **Fixed** |
+| RP-02 | **High** | `source/http`, `api` | `${VAR}` header expansion discloses any environment variable of `readproofd` to an attacker-chosen URL | **Fixed** |
 | RP-03 | **High** | `storage/blob`, `storage/s3blob` | Content hashes were not validated before path construction — arbitrary file read via `sha256:../../…`, plus a panic on short digests | **Fixed** |
-| RP-04 | Medium | `source/http` | No SSRF address restriction: loopback, link-local and `169.254.169.254` are reachable, and redirects into them are followed | Open (design) |
+| RP-04 | Medium | `source/http` | No SSRF address restriction: loopback, link-local and `169.254.169.254` are reachable, and redirects into them are followed | **Fixed** |
 | RP-05 | Medium | `api` | Request bodies were read unbounded into memory on an unauthenticated-by-default server | **Fixed** |
 | RP-06 | Medium | `source/http` | Response bodies were read unbounded, with no per-fetch timeout | **Fixed** |
 | RP-07 | Medium | repo hygiene | 583 tracked files of vendored `node_modules/` and stale `dist/` under a pre-rename directory | Ignore rule added; removal open |
-| RP-08 | Medium | DSH plugin | `readproof_evidence_export --with-content` bypasses the 1 MiB inline content cap | Open |
-| RP-09 | Medium | `Dockerfile` | The `readproofd` container runs as root | Open |
+| RP-08 | Medium | DSH plugin | `readproof_evidence_export --with-content` bypasses the 1 MiB inline content cap | **Fixed** |
+| RP-09 | Medium | `Dockerfile` | The `readproofd` container runs as root | **Fixed** |
 | RP-10 | Low | `cmd/readproofd` | Only `ReadHeaderTimeout` was set; slow-read/slow-write peers pinned goroutines | **Fixed** |
-| RP-11 | Low | `api` | 500 responses return raw internal error text, disclosing host paths and driver detail | Open |
-| RP-12 | Low | `cmd/readproofd` | A startup failure can log the Postgres DSN, password included | Open |
-| RP-13 | Low | `cmd/readproof`, `cmd/readproofd` | `--api-key` on argv is visible in process listings | Open (documented) |
-| RP-14 | Low | `app`, `storage/blob` | Data dir `0755` and blobs `0644` are world-readable on a shared host | Open |
+| RP-11 | Low | `api` | 500 responses return raw internal error text, disclosing host paths and driver detail | **Fixed** |
+| RP-12 | Low | `cmd/readproofd` | A startup failure can log the Postgres DSN, password included | **Fixed** |
+| RP-13 | Low | `cmd/readproof`, `cmd/readproofd` | `--api-key` on argv is visible in process listings | **Fixed** |
+| RP-14 | Low | `app`, `storage/blob` | Data dir `0755` and blobs `0644` are world-readable on a shared host | **Fixed** |
 | RP-15 | Low | `api` | No rate limiting and no TLS termination | Open (documented) |
-| RP-16 | Low | CI | `ci.yml` and `dsh-plugin.yml` declare no `permissions:` block | Open |
-| RP-17 | Low | CI | Actions are pinned to mutable tags (`@v4`), not commit SHAs | Open |
+| RP-16 | Low | CI | `ci.yml` and `dsh-plugin.yml` declare no `permissions:` block | **Fixed** |
+| RP-17 | Low | CI | Actions are pinned to mutable tags (`@v4`), not commit SHAs | **Fixed** |
 | RP-18 | Low | DSH plugin | `package-lock.json` was missing for part of this audit | Resolved on `main` |
-| RP-19 | Low | SDK | No fetch timeout, no response size limit, redirects followed silently | Open |
-| RP-20 | Low | SDK | An unbounded raw response body is echoed into an error the model reads | Open |
-| RP-21 | Low | `examples/support-agent` | A CLI ticket id reaches a filesystem path unvalidated | Open |
-| RP-22 | Info | DSH plugin | The spawned `readproofd` inherits the full parent environment | Open |
-| RP-23 | Info | docs | "tamper-evident" is used without the offline caveat `docs/evidence.md` states well | Open |
-| RP-24 | Info | SDK | `endpoint` is not URL-validated | Open |
-| RP-25 | Info | `Dockerfile` | `alpine:3.20` is behind the current stable base | Open |
+| RP-19 | Low | SDK | No fetch timeout, no response size limit, redirects followed silently | **Fixed** |
+| RP-20 | Low | SDK | An unbounded raw response body is echoed into an error the model reads | **Fixed** |
+| RP-21 | Low | `examples/support-agent` | A CLI ticket id reaches a filesystem path unvalidated | **Fixed** |
+| RP-22 | Info | DSH plugin | The spawned `readproofd` inherits the full parent environment | **Fixed** |
+| RP-23 | Info | docs | "tamper-evident" is used without the offline caveat `docs/evidence.md` states well | **Fixed** |
+| RP-24 | Info | SDK | `endpoint` is not URL-validated | **Fixed** |
+| RP-25 | Info | `Dockerfile` | `alpine:3.20` is behind the current stable base | **Fixed** |
 
 ---
 
@@ -476,3 +487,45 @@ $ go build ./... && go vet ./... && gofmt -l . && go test ./...   # all green
 4. **RP-09, RP-16, RP-17** — non-root container, `permissions:` blocks,
    SHA-pinned actions. All small.
 5. **RP-04** — SSRF allow-list, per-hop, scoped with RP-01.
+
+---
+
+## Remediation
+
+Landed on `security-hardening`, one commit per finding, each with tests.
+
+**The trust boundary is now enforced, not just described.** A resource
+definition names a file to read, an address to connect to, and environment
+variables to send; on `readproofd` all three default to deny.
+
+| Control | Default on `readproofd` | Opt in | Embedded CLI |
+| --- | --- | --- | --- |
+| Filesystem sources (RP-01) | refused | `--filesystem-root <dir>`, `READPROOFD_FILESYSTEM_ROOTS` | unrestricted, deliberately |
+| `${VAR}` header expansion (RP-02) | nothing expands | `--header-env-allow NAME`, `READPROOFD_HEADER_ENV_ALLOWLIST` | permissive; deny-list still applies |
+| Private network targets (RP-04) | refused | `--allow-private-sources`, `READPROOFD_ALLOW_PRIVATE_SOURCES=1` | allowed (localhost development) |
+
+Enforcement lives in the source adapters
+(`internal/source/filesystem`, `internal/source/http`) through a new
+`source.Validator` hook, so a row registered under a wider policy is refused
+at fetch as well as at registration; `source.DeniedError` maps a policy
+refusal to a 400 carrying the flag that would allow it, rather than to a
+generic 500. Filesystem containment resolves symlinks — including through a
+path's deepest existing ancestor — before comparing against a root. The SSRF
+check runs in the dialer's `Control` hook, on the address the resolver
+returned, so it survives DNS rebinding, and again per redirect hop with the
+chain capped at 5.
+
+Also fixed: the plugin's `--with-content` inline cap (RP-08, refused rather
+than truncated — a cut bundle no longer matches its own Merkle root), non-root
+container on Alpine 3.24 (RP-09/RP-25), generic 500s with a logged request id
+(RP-11), DSN scrubbing in startup logs (RP-12), an argv-API-key warning
+(RP-13), `0700`/`0600` on the store (RP-14), `permissions: contents: read` and
+SHA-pinned actions across all five workflows (RP-16/RP-17), SDK timeout /
+response cap / endpoint validation / error truncation (RP-19/RP-20/RP-24), a
+validated ticket id in the support-agent example (RP-21), a minimal child
+environment for the spawned `readproofd` (RP-22), and "integrity-checked"
+wording wherever "tamper-evident" stood unqualified (RP-23).
+
+**Still open.** RP-07 (removing the tracked `dsh-plugin-ctx` tree — repository
+hygiene, no behaviour) and RP-15 (no in-process TLS or rate limiting, now
+documented as a reverse-proxy deployment in `docs/api.md`).

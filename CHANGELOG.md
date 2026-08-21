@@ -6,6 +6,76 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+Remediation of the August 2026 pre-launch audit
+([`docs/security-audit-2026-08.md`](docs/security-audit-2026-08.md)). Every
+finding is closed except RP-07 (repository hygiene) and RP-15 (no in-process
+TLS or rate limiting — now documented as a reverse-proxy deployment).
+
+**⚠️ Breaking defaults for `readproofd`.** A resource definition tells the
+server which file to read, which address to connect to, and which of its own
+environment variables to send. All three now default to **deny**, and each is
+opened by one explicit flag. Existing resources of these kinds stop resolving
+on an upgraded server until the matching flag is set — the refusal is a `400`
+naming the flag, at registration and at resolve. **The embedded `readproof`
+CLI is unchanged**: it reads the operator's own files, with the operator's own
+environment, as the operator.
+
+- **`--filesystem-root <dir>`** (repeatable; env
+  `READPROOFD_FILESYSTEM_ROOTS`, `,`- or path-separator-separated) —
+  filesystem sources resolve only for files inside an allow-listed root, with
+  symlinks resolved *before* the containment check. **With no root configured,
+  filesystem sources are refused outright** (RP-01, High: previously a
+  registered resource could read any file on the host).
+- **`--header-env-allow NAME`** (repeatable; env
+  `READPROOFD_HEADER_ENV_ALLOWLIST`, comma-separated) — `"${VAR}"` in an HTTP
+  source header expands only for allow-listed names. **With none configured,
+  no variable expands** (RP-02, High). `readproofd`'s own credentials stay
+  refused even if allow-listed.
+- **`--allow-private-sources`** (env `READPROOFD_ALLOW_PRIVATE_SOURCES=1`) —
+  HTTP sources may not reach loopback, link-local (`169.254.169.254`
+  included), private, CGNAT, unique-local, multicast or unspecified addresses.
+  Checked at dial time on the resolved address (so DNS rebinding does not get
+  past it) and on every redirect hop, chain capped at 5 (RP-04). Set this to
+  restore the old behaviour on a trusted network; `docker-compose.yml` sets it,
+  because that stack fetches from the host via `host.docker.internal`.
+
+Also fixed:
+
+- **RP-08** — the DSH plugin's `readproof_evidence_export --with-content` now
+  respects `maxInlineBytes`, refusing past the cap rather than truncating (a
+  cut bundle no longer matches its own Merkle root) and naming the CLI export
+  in the error. New plugin config `filesystemRoots: string[]` passes
+  `--filesystem-root` to a spawned `readproofd`.
+- **RP-09 / RP-25** — the container runs as a non-root user (uid 65532) on
+  `alpine:3.24`; `/var/lib/readproof` is created and chowned in the image so a
+  mounted volume comes up writable.
+- **RP-11** — `500` responses return a generic message plus a request id; the
+  detail is logged server-side under the same id instead of being returned.
+- **RP-12** — the Postgres DSN, and the password inside it, are scrubbed from
+  startup errors; `readproofd` logs only host and database name.
+- **RP-13** — `readproof` and `readproofd` warn when `--api-key` arrives on
+  argv (visible in `ps`); prefer `READPROOF_API_KEY` / `READPROOFD_API_KEY`.
+- **RP-14** — the data directory is created `0700`, and blobs, the SQLite
+  database and exported evidence bundles `0600`.
+- **RP-16 / RP-17** — `permissions: contents: read` on `ci.yml` and
+  `dsh-plugin.yml`; every `uses:` in all five workflows pinned to a full
+  commit SHA with the version in a comment.
+- **RP-19 / RP-20 / RP-24** — `@readproof/sdk` gains a request timeout
+  (`timeoutMs`, default 30s), a response size cap (`maxResponseBytes`, default
+  16 MiB, refused not truncated), constructor validation of `endpoint`
+  (absolute http/https), and error messages that truncate echoed bodies to
+  ~512 characters.
+- **RP-21** — the support-agent example validates a ticket id
+  (`^[A-Za-z0-9._-]{1,64}$`) before it reaches a path or a run id.
+- **RP-22** — the DSH plugin spawns `readproofd` with a minimal environment
+  (process basics plus `READPROOF*`/`READPROOFD*`) instead of the full parent
+  environment.
+- **RP-23** — "tamper-evident" is qualified wherever it appeared unqualified:
+  bundles are unsigned, so they are integrity-checked, and tamper-evident
+  against the store rather than offline.
+
 ### Fixed
 
 - `dsh-plugin-readproof` 0.3.2: the published manifest now depends on

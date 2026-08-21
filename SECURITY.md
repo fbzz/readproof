@@ -43,15 +43,24 @@ Readproof 0.3.x is a security **baseline**, not enterprise IAM:
   verify cannot detect a forgery whose root was recomputed — see
   [`docs/evidence.md`](docs/evidence.md).
 
-## Known limitations
+- **Least privilege at rest and at runtime.** The data directory is created
+  `0700` and its blobs, SQLite database and exported bundles `0600`; the
+  container image runs as a non-root user. `500` responses carry a request id
+  rather than internal error text, which is logged server-side under the same
+  id.
 
-From the August 2026 pre-launch audit
-([`docs/security-audit-2026-08.md`](docs/security-audit-2026-08.md)), which
-lists every finding, its status, and a concrete fix design.
+## The trust boundary: registering a resource is privileged
 
-**Registering a resource is a privileged action.** Treat it as equivalent
-to shell access on the `readproofd` host, and never expose `readproofd`
-without `--api-key` plus a network boundary:
+A resource definition tells `readproofd` **which file to read, which address
+to connect to, and which of its own environment variables to send**. All three
+therefore default to deny on the server, and each is opened by one explicit
+flag. Registration is still a privileged action — it decides what the server
+reads on a caller's behalf, within those bounds — so keep `--api-key` on and a
+network boundary in front of it.
+
+Every refusal below is enforced in the source adapter, so a resource row that
+predates the policy is refused at fetch time too; registration only reports it
+earlier, as a 400 naming the flag.
 
 - **Filesystem sources are refused unless a root is allow-listed.**
   `readproofd --filesystem-root <dir>` (repeatable; env
@@ -84,7 +93,11 @@ without `--api-key` plus a network boundary:
   `docker-compose.yml` sets it because that stack fetches from the host via
   `host.docker.internal`.
 
-Operational gaps, all tracked in the report:
+## Known limitations
+
+What is still open after the August 2026 pre-launch audit
+([`docs/security-audit-2026-08.md`](docs/security-audit-2026-08.md), which
+lists every finding and its status):
 
 - **No TLS and no rate limiting in-process.** `readproofd` speaks plaintext
   HTTP. The supported deployment is behind a reverse proxy that terminates
