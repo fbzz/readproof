@@ -271,6 +271,145 @@ func TestFetchEnvAllowlistRestrictsExpansion(t *testing.T) {
 	}
 }
 
+// readproofd's default: no ${VAR} expands at all, and the refusal names the
+// flag that would allow it. Registering such a header is refused up front by
+// Validate, which is what turns it into a 400 rather than a later fetch error.
+func TestRestrictedEnvRefusesEverythingByDefault(t *testing.T) {
+	t.Setenv("READPROOF_TEST_TOKEN", "the-real-secret")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("the endpoint was reached with headers %v", r.Header)
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	f := NewWithOptions(Options{RestrictEnv: true})
+	cfg := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"Authorization": "Bearer ${READPROOF_TEST_TOKEN}"},
+	}}
+
+	err := f.Validate(cfg)
+	if err == nil {
+		t.Fatalf("Validate accepted a ${VAR} header with an empty allow-list")
+	}
+	if !source.IsDenied(err) {
+		t.Fatalf("Validate error %v is not a source.DeniedError", err)
+	}
+	for _, want := range []string{"READPROOF_TEST_TOKEN", "--header-env-allow"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %q does not mention %q", err, want)
+		}
+	}
+
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: cfg}); err == nil {
+		t.Fatalf("fetch expanded a ${VAR} with an empty allow-list")
+	}
+}
+
+// With an allow-list, exactly the named variables expand and nothing else —
+// including a variable that is set in the environment but unlisted, and one
+// that is listed but unset.
+func TestRestrictedEnvHonoursItsAllowlist(t *testing.T) {
+	t.Setenv("READPROOF_TEST_ALLOWED", "allowed-value")
+	t.Setenv("READPROOF_TEST_DENIED", "denied-value")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Allowed"); got != "allowed-value" {
+			t.Errorf("X-Allowed = %q, want %q", got, "allowed-value")
+		}
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	f := NewWithOptions(Options{RestrictEnv: true, EnvAllowlist: []string{"READPROOF_TEST_ALLOWED"}})
+
+	allowed := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"X-Allowed": "${READPROOF_TEST_ALLOWED}"},
+	}}
+	if err := f.Validate(allowed); err != nil {
+		t.Fatalf("Validate refused an allow-listed variable: %v", err)
+	}
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: allowed}); err != nil {
+		t.Fatalf("fetch refused an allow-listed variable: %v", err)
+	}
+
+	denied := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"X-Denied": "${READPROOF_TEST_DENIED}"},
+	}}
+	if err := f.Validate(denied); err == nil {
+		t.Fatalf("Validate accepted a variable outside the allow-list")
+	}
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: denied}); err == nil {
+		t.Fatalf("fetch expanded a variable outside the allow-list")
+	}
+
+	// An allow-listed name that is not set is a different failure — the
+	// server's environment does not have it — and must not be silently
+	// treated as an empty value.
+	unknown := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"X-Unknown": "${READPROOF_TEST_ALLOWED_BUT_UNSET}"},
+	}}
+	f.EnvAllowlist = append(f.EnvAllowlist, "READPROOF_TEST_ALLOWED_BUT_UNSET")
+	if err := f.Validate(unknown); err != nil {
+		t.Fatalf("Validate refused an allow-listed name that happens to be unset: %v", err)
+	}
+	_, err := f.Fetch(context.Background(), source.FetchRequest{Config: unknown})
+	if err == nil {
+		t.Fatalf("fetch succeeded for an unset variable")
+	}
+	if !strings.Contains(err.Error(), "not set") {
+		t.Fatalf("error %q does not say the variable is unset", err)
+	}
+}
+
+// readproofd's own credentials stay refused even when the allow-list names
+// them: reading the key that gates registration would defeat the control.
+func TestRestrictedEnvStillRefusesOwnCredentials(t *testing.T) {
+	t.Setenv("READPROOFD_API_KEY", "the-servers-own-secret")
+
+	f := NewWithOptions(Options{RestrictEnv: true, EnvAllowlist: []string{"READPROOFD_API_KEY"}})
+	err := f.Validate(source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     "https://example.invalid/x",
+		Headers: map[string]string{"X-Steal": "${READPROOFD_API_KEY}"},
+	}})
+	if err == nil {
+		t.Fatalf("an allow-list entry overrode the deny-list")
+	}
+	if !strings.Contains(err.Error(), "credentials") {
+		t.Fatalf("error %q does not explain the refusal", err)
+	}
+}
+
+// The embedded CLI is unrestricted on purpose: that environment belongs to
+// the person typing the command.
+func TestUnrestrictedEnvStillExpands(t *testing.T) {
+	t.Setenv("READPROOF_TEST_TOKEN", "the-real-secret")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Authorization"), "Bearer the-real-secret"; got != want {
+			t.Errorf("Authorization = %q, want %q", got, want)
+		}
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	f := New()
+	cfg := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"Authorization": "Bearer ${READPROOF_TEST_TOKEN}"},
+	}}
+	if err := f.Validate(cfg); err != nil {
+		t.Fatalf("the unrestricted fetcher refused a ${VAR} header: %v", err)
+	}
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: cfg}); err != nil {
+		t.Fatalf("fetch: %v", err)
+	}
+}
+
 func TestFetchRejectsNonHTTPSchemes(t *testing.T) {
 	f := New()
 	for _, raw := range []string{

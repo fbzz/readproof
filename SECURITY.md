@@ -13,9 +13,10 @@ Readproof 0.3.x is a security **baseline**, not enterprise IAM:
 
 - **No plaintext credentials at rest.** `GITHUB_TOKEN` and HTTP source
   headers of the form `"${VAR_NAME}"` are resolved from the `readproofd`
-  process environment at fetch time and never stored. Raw header values are
-  masked by `internal/redact` in every API response, in `readproof inspect`,
-  and in evidence bundles — including in embedded mode.
+  process environment at fetch time and never stored — and on a server, only
+  for variables named by `--header-env-allow`. Raw header values are masked
+  by `internal/redact` in every API response, in `readproof inspect`, and in
+  evidence bundles — including in embedded mode.
 - **Optional API auth.** `readproofd --api-key` (`READPROOFD_API_KEY`)
   requires `Authorization: Bearer <key>` on every request except `/healthz`.
   Off by default.
@@ -60,15 +61,20 @@ without `--api-key` plus a network boundary:
   operator, and an allow-list there would restrict a user's access to their
   own documents and protect nobody. With `--server`, the server's policy is
   what applies.
-- **HTTP source headers can read the server's environment.** A `"${VAR}"`
-  header value is resolved from `readproofd`'s environment and sent to
-  whatever URL that resource names. `readproofd`'s *own* credentials
-  (`READPROOFD_API_KEY`, `READPROOF_API_KEY`, `READPROOFD_POSTGRES_DSN`,
-  `READPROOFD_S3_ACCESS_KEY`, `READPROOFD_S3_SECRET_KEY`) are refused, and
-  setting `READPROOF_HTTP_HEADER_ENV_ALLOWLIST` to a comma-separated list
-  of variable names restricts expansion to exactly those — **recommended
-  for any deployment whose registrations are not fully trusted.** Every
-  other variable is readable by default.
+- **`${VAR}` headers expand only what you allow-list.** A `"${VAR}"` header
+  value is resolved from `readproofd`'s own environment and sent to whatever
+  URL that resource names, so `readproofd` expands **nothing** by default:
+  `--header-env-allow NAME` (repeatable; env
+  `READPROOFD_HEADER_ENV_ALLOWLIST`, comma-separated) names the variables a
+  source header may reference. Anything else is refused at registration
+  (400, naming the variable and the flag) and at fetch. `readproofd`'s *own*
+  credentials (`READPROOFD_API_KEY`, `READPROOF_API_KEY`,
+  `READPROOFD_POSTGRES_DSN`, `READPROOFD_S3_ACCESS_KEY`,
+  `READPROOFD_S3_SECRET_KEY`) stay refused even if allow-listed.
+  `READPROOF_HTTP_HEADER_ENV_ALLOWLIST` is a second, process-level
+  allow-list that narrows every Readproof process, the embedded CLI
+  included — the CLI is otherwise permissive, because that environment
+  belongs to the person typing the command.
 - **No SSRF address restriction.** A resource can reach loopback,
   link-local and cloud metadata addresses, and redirects into them are
   followed.
