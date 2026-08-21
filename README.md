@@ -357,6 +357,7 @@ compose up -d` already wires `ctxd` to one.
 | [`docs/mvp.md`](docs/mvp.md) | The v0.2 work-package plan and its status |
 | [`examples/refund-agent`](examples/refund-agent) | Reference walkthrough of the replay invariant |
 | [`examples/langgraph-ts`](examples/langgraph-ts) | LangGraph.js: manifest id in the checkpoint, replay from it |
+| [`integrations/deepseek-harness`](integrations/deepseek-harness/dsh-plugin-ctx/README.md) | DeepSeek Harness plugin: the 13 Ctx tools as a DSH bundle, per-session runs, plus a zero-code MCP overlay |
 | [`examples/support-agent`](examples/support-agent) | A support agent on an open model (Ollama): ask → diff → replay → evidence |
 
 ## Testing
