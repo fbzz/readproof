@@ -142,6 +142,7 @@
   /* Tagline reveal */
   .tagline { padding: 96px 0; }
   .tagline p { font-size: 48px; line-height: 1; font-weight: 600; letter-spacing: -.02em; max-width: 680px; margin: 0; }
+  .tagline .ln { display: block; }
   .tagline .w { display: inline-block; opacity: .3; transition: opacity .7s var(--ease); margin-right: .28em; }
   .tagline .w.on { opacity: 1; }
   @media (max-width: 720px) { .tagline p { font-size: 36px; line-height: 40px; } .tagline { padding: 64px 0; } }
@@ -266,7 +267,7 @@
 
 <section class="tagline" id="tagline">
   <div class="wrap">
-    <p data-words>A manifest for every run. A hash for every byte. A replay that needs nothing but the store.</p>
+    <p data-words><span class="ln">A manifest for every run.</span><span class="ln">A hash for every byte.</span><span class="ln">A replay that needs</span><span class="ln">nothing but the store.</span></p>
   </div>
 </section>
 
@@ -414,8 +415,10 @@ $ ctx evidence export run-a --out bundle.json
   // Tagline: split into words, light each one as it crosses the trigger line
   var tl = document.querySelector('[data-words]');
   if (tl) {
-    var words = tl.textContent.trim().split(/\s+/); tl.textContent = '';
-    words.forEach(function (w) { var s = document.createElement('span'); s.className = 'w'; s.textContent = w; tl.appendChild(s); });
+    tl.querySelectorAll('.ln').forEach(function (ln) {
+      var words = ln.textContent.trim().split(/\s+/); ln.textContent = '';
+      words.forEach(function (w) { var s = document.createElement('span'); s.className = 'w'; s.textContent = w; ln.appendChild(s); });
+    });
     var ws = tl.querySelectorAll('.w');
     if (reduce || !('IntersectionObserver' in window)) { ws.forEach(function (w) { w.classList.add('on'); }); }
     else {
