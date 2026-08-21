@@ -7,7 +7,17 @@ exception: it composes an evidence bundle client-side out of those calls.
 
 ## Install
 
-Not yet published to a registry. Install locally from this repo:
+```bash
+npm install @readproof/sdk
+```
+
+Node 18+; no runtime dependencies. The package version tracks the Readproof
+release it was cut from, so `@readproof/sdk@0.3.0` speaks to a `readproofd`
+0.3.x.
+
+Working inside this repository instead — the examples and the DeepSeek
+Harness plugin all consume the SDK as a `file:` dependency, so the built
+`dist/` has to exist before anything that depends on it will resolve:
 
 ```bash
 cd sdk/typescript

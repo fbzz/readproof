@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"readproof/internal/ids"
-	"readproof/internal/run"
-	"readproof/internal/snapshot"
-	"readproof/internal/storage/postgres"
-	"readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/run"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/storage/postgres"
+	"github.com/fbzz/readproof/internal/tag"
 )
 
 // These mirror internal/storage/sqlite/tags_test.go exactly — same

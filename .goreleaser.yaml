@@ -1,0 +1,159 @@
+# GoReleaser builds the release artifacts for a `v*` tag: cross-compiled
+# `readproof` and `readproofd` binaries, checksums, a grouped changelog, and
+# the Homebrew formula in fbzz/homebrew-tap.
+#
+# Driven by .github/workflows/release.yml. To try it without publishing:
+#
+#	go run github.com/goreleaser/goreleaser/v2@latest check
+#	go run github.com/goreleaser/goreleaser/v2@latest release --snapshot --clean --skip=publish
+#
+# See docs/releasing.md for the whole procedure.
+version: 2
+
+project_name: readproof
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  # Two binaries, one release: `readproof` is what a user installs, and
+  # `readproofd` is the server the same archive should carry so that
+  # `brew install readproof` gives you both halves of client/server mode.
+  - id: readproof
+    main: ./cmd/readproof
+    binary: readproof
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    # Only Commit is stamped; Version is a constant in internal/version so
+    # that the version a bundle records stays reproducible across builds of
+    # the same source.
+    ldflags:
+      - -s -w -X github.com/fbzz/readproof/internal/version.Commit={{ .ShortCommit }}
+    # Build output timestamps come from the commit, not from the clock, so
+    # two builds of the same tag produce identical archives.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+  - id: readproofd
+    main: ./cmd/readproofd
+    binary: readproofd
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/fbzz/readproof/internal/version.Commit={{ .ShortCommit }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    ids:
+      - readproof
+      - readproofd
+    name_template: "readproof_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^chore"
+      - "^ci"
+      - "^Merge pull request"
+      - "^Merge branch"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Documentation
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Other
+      order: 999
+
+release:
+  draft: false
+  prerelease: auto
+  footer: |
+    ---
+
+    **Install**
+
+    ```bash
+    brew install fbzz/tap/readproof
+    go install github.com/fbzz/readproof/cmd/readproof@{{ .Tag }}
+    ```
+
+    Or download the archive for your platform above — each one contains both
+    `readproof` and `readproofd`.
+
+    **Docs** — [website](https://fbzz.github.io/readproof/) ·
+    [documentation](https://fbzz.github.io/readproof/docs/) ·
+    [MCP setup](https://github.com/fbzz/readproof/blob/main/docs/mcp.md) ·
+    [evidence format](https://github.com/fbzz/readproof/blob/main/docs/evidence.md) ·
+    [CHANGELOG](https://github.com/fbzz/readproof/blob/main/CHANGELOG.md)
+
+# A Cask, not a Formula: GoReleaser deprecated `brews` in v2.10 in favour of
+# `homebrew_casks`, because Homebrew wants pre-compiled binaries distributed
+# as casks and formulae reserved for source builds. `brew install
+# fbzz/tap/readproof` resolves to this cask on macOS. Homebrew-on-Linux has
+# no cask support, so Linux users install with `go install` or the release
+# archives — both documented in the README.
+homebrew_casks:
+  - name: readproof
+    ids:
+      - default
+    binaries:
+      - readproof
+      - readproofd
+    repository:
+      owner: fbzz
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: "https://fbzz.github.io/readproof/"
+    description: "Lockfile and replay primitive for what AI agents read — identity, freshness policy, snapshots, per-run manifests, diff, byte-exact replay, evidence bundles."
+    license: "Apache-2.0"
+    commit_author:
+      name: goreleaser-bot
+      email: bot@goreleaser.com
+    commit_msg_template: "readproof {{ .Tag }}"
+    # The tap lives in another repository, so publishing needs a PAT this
+    # workflow's GITHUB_TOKEN cannot substitute for. Skipping instead of
+    # failing means a release still succeeds before that secret exists —
+    # see docs/releasing.md.
+    skip_upload: '{{ if .Env.HOMEBREW_TAP_GITHUB_TOKEN }}false{{ else }}true{{ end }}'
+    caveats: |
+      Verify the install with:
+        readproof version
+      `readproofd` (the server) is installed alongside it.
+    # The binaries are not Apple-notarised, so without this every install
+    # would be met with a Gatekeeper block on first run. Revisit once
+    # release signing lands (docs/roadmap.md).
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/readproof"]
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/readproofd"]
+          end

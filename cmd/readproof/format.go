@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"readproof/internal/policy"
-	"readproof/internal/resolver"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resolver"
 )
 
 func newTabWriter() *tabwriter.Writer {

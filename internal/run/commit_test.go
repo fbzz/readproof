@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"readproof/internal/manifest"
-	"readproof/internal/run"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/run"
 )
 
 // A run id that was never started has no mounts, so committing it used to

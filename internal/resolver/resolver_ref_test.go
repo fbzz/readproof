@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"readproof/internal/policy"
-	"readproof/internal/resolver"
-	"readproof/internal/resource"
-	"readproof/internal/source"
-	"readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resolver"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/tag"
 )
 
 const (

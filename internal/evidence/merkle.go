@@ -3,7 +3,7 @@ package evidence
 import (
 	"encoding/hex"
 
-	"readproof/internal/merkle"
+	"github.com/fbzz/readproof/internal/merkle"
 )
 
 // LeafHash returns the Merkle leaf for one entry. The rule lives in

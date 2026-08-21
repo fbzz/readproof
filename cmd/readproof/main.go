@@ -7,12 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"readproof/internal/app"
-	"readproof/internal/client"
-	"readproof/internal/client/local"
-	"readproof/internal/client/remote"
-	"readproof/internal/telemetry"
-	"readproof/internal/version"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/client"
+	"github.com/fbzz/readproof/internal/client/local"
+	"github.com/fbzz/readproof/internal/client/remote"
+	"github.com/fbzz/readproof/internal/telemetry"
+	"github.com/fbzz/readproof/internal/version"
 )
 
 var (

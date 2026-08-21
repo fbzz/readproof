@@ -13,14 +13,14 @@ import (
 	"net/url"
 	"strings"
 
-	"readproof/internal/diff"
-	"readproof/internal/manifest"
-	"readproof/internal/replay"
-	"readproof/internal/resolver"
-	"readproof/internal/resource"
-	"readproof/internal/snapshot"
-	"readproof/internal/tag"
-	"readproof/internal/wire"
+	"github.com/fbzz/readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/replay"
+	"github.com/fbzz/readproof/internal/resolver"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/wire"
 )
 
 type Client struct {

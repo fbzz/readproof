@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"time"
 
-	"readproof/internal/version"
+	"github.com/fbzz/readproof/internal/version"
 )
 
 const (

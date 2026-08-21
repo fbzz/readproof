@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"readproof/internal/ids"
-	"readproof/internal/manifest"
-	"readproof/internal/materialization"
-	"readproof/internal/storage/blob"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/materialization"
+	"github.com/fbzz/readproof/internal/storage/blob"
 )
 
 // EntryResult verifies one manifest entry by recomputing the content hash

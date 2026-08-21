@@ -17,6 +17,7 @@
 <p align="center">
   <a href="https://fbzz.github.io/readproof/">Website</a> ·
   <a href="https://fbzz.github.io/readproof/docs/">Docs</a> ·
+  <a href="#install">Install</a> ·
   <a href="#quickstart">Quickstart</a> ·
   <a href="examples/support-agent/">Example agent</a> ·
   <a href="docs/mcp.md">MCP</a> ·
@@ -93,7 +94,29 @@ Deep dive: [`docs/architecture.md`](docs/architecture.md).
 
 ## Quickstart
 
-Embedded mode — one binary, a local `.readproof/` directory, no services:
+### Install
+
+```bash
+# Go 1.26+ — lands in $(go env GOPATH)/bin
+go install github.com/fbzz/readproof/cmd/readproof@latest
+go install github.com/fbzz/readproof/cmd/readproofd@latest   # only if you run the server
+
+# macOS — the cask installs both binaries
+brew install fbzz/tap/readproof
+```
+
+Or download a prebuilt archive for your platform from
+[GitHub Releases](https://github.com/fbzz/readproof/releases):
+`readproof_<version>_<os>_<arch>.tar.gz` (`.zip` on Windows) contains
+`readproof`, `readproofd`, `LICENSE`, `NOTICE`, and this README.
+
+> Plainly: all three work once this repository is public and the first
+> release is cut. Until then, build from source — which is what the
+> embedded walkthrough below does anyway.
+
+### Embedded mode
+
+One binary, a local `.readproof/` directory, no services:
 
 ```bash
 git clone https://github.com/fbzz/readproof.git && cd readproof
@@ -104,7 +127,9 @@ go build -o readproof ./cmd/readproof                        # Go 1.26+
 ./readproof replay run-a
 ```
 
-Client/server mode — Postgres + S3-compatible store, one HTTP API for every client:
+### Client/server mode
+
+Postgres + S3-compatible store, one HTTP API for every client:
 
 ```bash
 cp .env.example .env && docker compose up -d --build           # Postgres, MinIO, OTel collector, readproofd
@@ -142,6 +167,7 @@ export READPROOF_SERVER_URL=http://localhost:8080              # every command n
 | [`docs/architecture.md`](docs/architecture.md) | Data model, internals, CLI and HTTP reference, SDK, observability, tests |
 | [`docs/api.md`](docs/api.md) · [`docs/mcp.md`](docs/mcp.md) · [`docs/evidence.md`](docs/evidence.md) · [`docs/observability.md`](docs/observability.md) | Endpoint schemas · MCP setup · bundle format and what it proves · spans, attributes, metrics |
 | [`docs/roadmap.md`](docs/roadmap.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`docs/rename.md`](docs/rename.md) | What's next · what changed · the Ctx → Readproof mapping |
+| [`docs/releasing.md`](docs/releasing.md) · [`docs/launch.md`](docs/launch.md) | How a release is cut (tag → binaries, cask, npm) · launch copy and checklist |
 
 ## Status
 
@@ -156,6 +182,12 @@ No plaintext credentials at rest (env references resolved at fetch time; redacti
 ## Contributing
 
 `go build ./... && go vet ./... && gofmt -l . && go test ./...` must be green with no external services; the SDK, examples, and plugin each have `npm test`. Conventions, the live-infra test block, and the pre-PR checklist are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+**Community** — questions and ideas in
+[Discussions](https://github.com/fbzz/readproof/discussions), bugs and
+feature requests in [Issues](https://github.com/fbzz/readproof/issues),
+vulnerabilities privately via [`SECURITY.md`](SECURITY.md). Everyone taking
+part is held to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

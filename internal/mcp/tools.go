@@ -6,7 +6,7 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"readproof/internal/evidence"
+	"github.com/fbzz/readproof/internal/evidence"
 )
 
 // Tool inputs. Field tags carry the JSON Schema descriptions the SDK

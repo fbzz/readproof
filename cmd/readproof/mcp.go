@@ -8,7 +8,7 @@ import (
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 
-	ctxmcp "readproof/internal/mcp"
+	ctxmcp "github.com/fbzz/readproof/internal/mcp"
 )
 
 func newMCPCmd() *cobra.Command {

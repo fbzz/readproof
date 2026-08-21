@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/snapshot"
 )
 
 // ErrSnapshotNotFound is an alias for snapshot.ErrNotFound, kept exported

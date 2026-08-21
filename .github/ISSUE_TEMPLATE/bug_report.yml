@@ -1,0 +1,102 @@
+name: Bug report
+description: Something behaved differently from what you expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Security issues do not belong here.** Report them privately through
+        [GitHub's private vulnerability reporting](https://github.com/fbzz/readproof/security/advisories/new)
+        — see [SECURITY.md](https://github.com/fbzz/readproof/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+      placeholder: |
+        `readproof replay run-a` exited 1 with "content hash mismatch", but the
+        source has not changed since the run was committed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: >
+        The commands, in order. A `readproof resource add …` line for the
+        resource involved is usually the missing piece — the source type and
+        the freshness policy decide most behaviour.
+      render: console
+      placeholder: |
+        $ readproof resource add readproof://demo/policies/refunds --source-type filesystem --path ./refunds.md --policy require_fresh
+        $ readproof run --id run-a readproof://demo/policies/refunds
+        $ readproof replay run-a
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `readproof version` (and `readproofd --version` if a server is involved).
+      placeholder: readproof 0.3.0+a1b2c3d
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      description: >
+        Embedded means a local `--data-dir`; client/server means a running
+        `readproofd`. The two take different code paths through `internal/client`.
+      options:
+        - Embedded (--data-dir)
+        - Client/server (--server / READPROOF_SERVER_URL)
+        - Both, or not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface
+      multiple: true
+      options:
+        - CLI (readproof)
+        - Server (readproofd)
+        - MCP server (readproof mcp)
+        - TypeScript SDK (@readproof/sdk)
+        - DeepSeek Harness plugin (dsh-plugin-readproof)
+        - Examples
+        - Docs
+    validations:
+      required: true
+
+  - type: input
+    id: storage
+    attributes:
+      label: Storage backend
+      description: SQLite (the default) or Postgres + S3/MinIO.
+      placeholder: SQLite
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture
+      placeholder: macOS 15.4, arm64
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output and logs
+      description: >
+        Relevant terminal output. `readproofd --verbose` logs, or the MCP
+        client's server log, if either applies.
+        **Redact anything sensitive** — Readproof masks credential-shaped
+        header values, but paths and URIs are printed as-is.
+      render: shell

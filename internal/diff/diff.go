@@ -11,9 +11,9 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 
-	"readproof/internal/manifest"
-	"readproof/internal/snapshot"
-	"readproof/internal/storage/blob"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/storage/blob"
 )
 
 type Status string

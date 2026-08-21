@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/diff"
 )
 
 func newDiffCmd() *cobra.Command {

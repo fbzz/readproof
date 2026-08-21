@@ -1,5 +1,12 @@
 # Contributing
 
+Questions and ideas belong in
+[Discussions](https://github.com/fbzz/readproof/discussions); bugs and
+concrete proposals in [Issues](https://github.com/fbzz/readproof/issues),
+which have templates. Vulnerabilities go through
+[`SECURITY.md`](SECURITY.md), never a public issue. Everyone taking part is
+held to the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Prerequisites
 
 - Go 1.26+
@@ -52,6 +59,9 @@ compose up -d --build` from the repo root).
   (`docker compose down -v` first) and confirm all services report
   healthy
 - New behavior gets a test. Bug fixes get a regression test.
+- Add a line under `## Unreleased` in [`CHANGELOG.md`](CHANGELOG.md)
+
+The PR template restates this list as a checklist.
 
 ## Code style
 
@@ -67,4 +77,10 @@ compose up -d --build` from the repo root).
 
 Open an issue describing what you expected vs. what happened, including
 `readproof`/`readproofd` version (git commit) and whether you're in
-embedded or client/server mode.
+embedded or client/server mode — the
+[bug report template](.github/ISSUE_TEMPLATE/bug_report.yml) asks for
+exactly that.
+
+## Releasing
+
+Maintainers only: [`docs/releasing.md`](docs/releasing.md).

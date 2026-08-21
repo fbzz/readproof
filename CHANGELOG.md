@@ -4,6 +4,46 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Release plumbing for the first public release. No runtime behaviour, wire
+shape, or storage layout changes.
+
+### Changed
+
+- **Go module path** `readproof` → `github.com/fbzz/readproof`, so that
+  `go install github.com/fbzz/readproof/cmd/readproof@latest` resolves.
+  Every `"readproof/internal/…"` import follows, as does
+  `-ldflags "-X github.com/fbzz/readproof/internal/version.Commit=…"`.
+- **npm package versions.** `@readproof/sdk` and `dsh-plugin-readproof`
+  both go 0.1.0 → 0.3.0, in step with `internal/version`. Both gain
+  `repository`/`homepage`/`bugs`/`keywords`, `publishConfig.access:
+  public`, and a LICENSE + NOTICE copy inside the package.
+
+### Added
+
+- **Release pipeline.** [`.goreleaser.yaml`](.goreleaser.yaml) and
+  [`.github/workflows/release.yml`](.github/workflows/release.yml): a `v*`
+  tag builds `readproof` and `readproofd` for linux/darwin/windows ×
+  amd64/arm64, publishes checksummed archives and a grouped changelog, and
+  pushes the Homebrew cask to `fbzz/homebrew-tap` (skipped, rather than
+  failed, when `HOMEBREW_TAP_GITHUB_TOKEN` is absent).
+- **npm publishing.**
+  [`.github/workflows/publish-npm.yml`](.github/workflows/publish-npm.yml)
+  publishes both packages on the same tag with `--provenance`, skipping any
+  version already on the registry. The plugin's `file:` dependency on the
+  SDK is rewritten to the published semver at pack time by
+  `scripts/prepack.mjs`, and restored by `scripts/postpack.mjs`.
+- **`docs/releasing.md`** — the whole procedure, including every secret the
+  owner has to create. **`docs/launch.md`** — launch copy and the
+  launch-day checklist.
+- **MCP registry entry** in
+  [`integrations/mcp-registry/`](integrations/mcp-registry/).
+- **Repository hygiene.** Issue templates and chooser, a pull request
+  template, and `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
+- **README Install section** — `go install`, `brew install
+  fbzz/tap/readproof`, and the release archives.
+
 ## [0.3.0] - 2026-08-21
 
 ### Added
@@ -19,7 +59,7 @@ no storage layout. The full mapping is in
 ### Changed
 
 - **Go module** `ctx` → `readproof`; every import path follows, as does
-  `-ldflags "-X readproof/internal/version.Commit=…"`.
+  `-ldflags "-X github.com/fbzz/readproof/internal/version.Commit=…"`.
 - **Binaries.** `ctx` → `readproof` and `ctxd` → `readproofd`: the cobra
   command name, the help text, the `readproof:` / `readproofd:` error
   prefixes, the Compose service, and the Docker image entrypoint.
@@ -191,7 +231,7 @@ status: [`docs/mvp.md`](docs/mvp.md).
   unknown flags) still show usage.
 - `readproof version` / `readproof --version` / `readproofd --version`
   report a single `internal/version` source (`0.2.0`, `+<sha>` via
-  `-ldflags -X readproof/internal/version.Commit=…`); the evidence
+  `-ldflags -X github.com/fbzz/readproof/internal/version.Commit=…`); the evidence
   exporter and MCP server version strings read the same constant in Go and
   TS.
 

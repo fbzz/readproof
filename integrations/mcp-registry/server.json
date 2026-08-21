@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.fbzz/readproof",
+  "title": "Readproof",
+  "description": "Governed, versioned, replayable document reads for agents: snapshots, manifests, diff, evidence.",
+  "version": "0.3.0",
+  "websiteUrl": "https://fbzz.github.io/readproof/",
+  "repository": {
+    "url": "https://github.com/fbzz/readproof",
+    "source": "github",
+    "id": "1341737546"
+  },
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "tool": "manual",
+      "version": "0.3.0",
+      "transport": "stdio",
+      "command": "readproof mcp",
+      "install": {
+        "go": "go install github.com/fbzz/readproof/cmd/readproof@v0.3.0",
+        "homebrew": "brew install fbzz/tap/readproof",
+        "releases": "https://github.com/fbzz/readproof/releases"
+      },
+      "clientConfigExample": {
+        "command": "/abs/path/to/readproof",
+        "args": ["mcp", "--data-dir", "/abs/path/to/.readproof"],
+        "env": {
+          "READPROOF_API_KEY": "only when --server points at a readproofd started with --api-key"
+        }
+      },
+      "docs": "https://github.com/fbzz/readproof/blob/main/docs/mcp.md",
+      "tools": [
+        "readproof_resources_list",
+        "readproof_resolve",
+        "readproof_history",
+        "readproof_run_start",
+        "readproof_run_mount",
+        "readproof_run_commit",
+        "readproof_manifest",
+        "readproof_diff",
+        "readproof_replay",
+        "readproof_tag_set",
+        "readproof_tag_list",
+        "readproof_tag_delete",
+        "readproof_evidence_export"
+      ],
+      "packagesTodo": "No `packages` entry yet: the registry's registryType values are npm, pypi, nuget, cargo, oci and mcpb, and a Go binary published as a GitHub release archive is none of them. See integrations/mcp-registry/README.md."
+    }
+  }
+}

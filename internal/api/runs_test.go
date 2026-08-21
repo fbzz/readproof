@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"readproof/internal/api"
-	"readproof/internal/app"
-	"readproof/internal/client/remote"
-	"readproof/internal/wire"
+	"github.com/fbzz/readproof/internal/api"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/client/remote"
+	"github.com/fbzz/readproof/internal/wire"
 )
 
 // POST /v1/runs/commit used to answer 200 with an empty manifest for a run

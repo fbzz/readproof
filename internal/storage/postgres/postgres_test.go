@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"readproof/internal/ids"
-	"readproof/internal/manifest"
-	"readproof/internal/materialization"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
-	"readproof/internal/run"
-	"readproof/internal/snapshot"
-	"readproof/internal/source"
-	"readproof/internal/storage/postgres"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/materialization"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/run"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/storage/postgres"
 )
 
 // testDB skips the test unless READPROOF_TEST_POSTGRES_DSN is set, so `go

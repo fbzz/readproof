@@ -10,10 +10,10 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"readproof/internal/api"
-	"readproof/internal/app"
-	"readproof/internal/client/remote"
-	"readproof/internal/evidence"
+	"github.com/fbzz/readproof/internal/api"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/client/remote"
+	"github.com/fbzz/readproof/internal/evidence"
 )
 
 // TestServerOverRemoteClient runs the same MCP surface against a readproofd

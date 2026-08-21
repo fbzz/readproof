@@ -1,0 +1,38 @@
+name: Release
+
+# Cutting a release is pushing a tag. Everything below is driven by
+# .goreleaser.yaml; docs/releasing.md is the procedure around it.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    name: GoReleaser (binaries, checksums, Homebrew cask)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # GoReleaser builds the changelog from the commit range since the
+          # previous tag, so a shallow clone would produce an empty one.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Publishing the cask writes to fbzz/homebrew-tap, a different
+          # repository than GITHUB_TOKEN is scoped to. When the secret is
+          # absent this is the empty string and .goreleaser.yaml's
+          # skip_upload turns the tap push into a no-op, so the release
+          # itself still succeeds.
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

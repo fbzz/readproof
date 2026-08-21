@@ -5,9 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"readproof/internal/api"
-	"readproof/internal/app"
-	"readproof/internal/client/remote"
+	"github.com/fbzz/readproof/internal/api"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/client/remote"
 )
 
 func TestAPIKeyRequiredWhenConfigured(t *testing.T) {

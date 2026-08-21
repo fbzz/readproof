@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/manifest"
 )
 
 // ErrManifestNotFound is an alias for manifest.ErrNotFound, kept exported

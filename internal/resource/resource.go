@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"readproof/internal/policy"
-	"readproof/internal/source"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/source"
 )
 
 // ErrNotFound is returned by Store.Get/UpdateCurrentSnapshot when a Resource

@@ -1,7 +1,17 @@
 {
   "name": "dsh-plugin-readproof",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "DeepSeek Harness plugin for Readproof: stable readproof:// identity, freshness policy, snapshots, per-run manifests, diff, byte-exact replay, and evidence bundles as model-callable tools.",
+  "license": "Apache-2.0",
+  "homepage": "https://fbzz.github.io/readproof/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fbzz/readproof.git",
+    "directory": "integrations/deepseek-harness/dsh-plugin-readproof"
+  },
+  "bugs": {
+    "url": "https://github.com/fbzz/readproof/issues"
+  },
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -17,7 +27,9 @@
   "files": [
     "dist/src",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "keywords": [
     "dsh-plugin",
@@ -25,9 +37,15 @@
     "cordis",
     "readproof",
     "provenance",
-    "evidence"
+    "evidence",
+    "replay",
+    "manifest",
+    "ai-agents",
+    "llm"
   ],
-  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -36,7 +54,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/test/*.test.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build && npm test",
+    "prepack": "node scripts/prepack.mjs",
+    "postpack": "node scripts/postpack.mjs"
   },
   "dependencies": {
     "@readproof/sdk": "file:../../../sdk/typescript",

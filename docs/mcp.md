@@ -91,6 +91,14 @@ Restart Claude Desktop after editing the file.
 }
 ```
 
+### Registry
+
+Readproof's entry for the [official MCP
+registry](https://registry.modelcontextprotocol.io) lives in
+[`integrations/mcp-registry/`](../integrations/mcp-registry/) — the
+`server.json`, the `mcp-publisher` commands, and why the entry carries no
+installable `packages` array yet.
+
 ## What the server exposes
 
 ### Instructions

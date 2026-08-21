@@ -12,16 +12,16 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
-	"readproof/internal/materialization"
-	"readproof/internal/policy"
-	"readproof/internal/resolver"
-	"readproof/internal/resource"
-	"readproof/internal/source"
-	fsSource "readproof/internal/source/filesystem"
-	"readproof/internal/storage/blob"
-	"readproof/internal/storage/sqlite"
-	"readproof/internal/tag"
-	"readproof/internal/telemetry"
+	"github.com/fbzz/readproof/internal/materialization"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resolver"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/source"
+	fsSource "github.com/fbzz/readproof/internal/source/filesystem"
+	"github.com/fbzz/readproof/internal/storage/blob"
+	"github.com/fbzz/readproof/internal/storage/sqlite"
+	"github.com/fbzz/readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/telemetry"
 )
 
 // fixtureContent is the demo's refund policy. Tests below assert these

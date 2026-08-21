@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"readproof/internal/version"
+	"github.com/fbzz/readproof/internal/version"
 )
 
 // execRoot runs the real command tree the way `readproof` does, with

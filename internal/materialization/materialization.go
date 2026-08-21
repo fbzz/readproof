@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/snapshot"
 )
 
 type Strategy string

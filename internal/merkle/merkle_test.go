@@ -3,7 +3,7 @@ package merkle_test
 import (
 	"testing"
 
-	"readproof/internal/merkle"
+	"github.com/fbzz/readproof/internal/merkle"
 )
 
 // The exhaustive fixed vectors live in internal/evidence/merkle_test.go —
