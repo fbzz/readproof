@@ -75,7 +75,12 @@ function normalizeEndpoint(endpoint: string): string {
       `readproof: invalid endpoint ${JSON.stringify(endpoint)}: scheme ${parsed.protocol} is not supported (want http or https)`,
     );
   }
-  return endpoint.replace(/\/+$/, "");
+  // Trim trailing slashes with a loop rather than /\/+$/: that regex
+  // backtracks quadratically on a long run of slashes (CodeQL
+  // js/polynomial-redos), and the endpoint is caller-supplied.
+  let trimmed = endpoint;
+  while (trimmed.endsWith("/")) trimmed = trimmed.slice(0, -1);
+  return trimmed;
 }
 
 export interface RunOptions {
