@@ -206,8 +206,9 @@ func wire(
 	sources.Register(source.KindFilesystem, fsFetcher)
 	sources.Register(source.KindGitHub, ghSource.New())
 	sources.Register(source.KindHTTP, httpSource.NewWithOptions(httpSource.Options{
-		RestrictEnv:  opts.RestrictHeaderEnv,
-		EnvAllowlist: opts.HeaderEnvAllowlist,
+		RestrictEnv:        opts.RestrictHeaderEnv,
+		EnvAllowlist:       opts.HeaderEnvAllowlist,
+		DenyPrivateTargets: opts.DenyPrivateHTTPTargets,
 	}))
 
 	res := &resolver.Resolver{

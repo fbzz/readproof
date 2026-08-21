@@ -28,11 +28,15 @@ Readproof 0.3.x is a security **baseline**, not enterprise IAM:
   `golang.org/x/crypto/openpgp`) is not imported by any package this module
   builds and is accepted.
 - **SSRF.** The HTTP source adapter enforces an http/https scheme
-  allow-list, a 64 MiB response cap and a 30s timeout, but has no target-IP
-  restrictions. That is acceptable while resources are registered only by
-  the operator running `readproof`/`readproofd`; an allow-list is on the
-  roadmap before `readproofd` accepts registrations from less-trusted
-  callers.
+  allow-list, a 64 MiB response cap and a 30s timeout. On `readproofd` it
+  additionally refuses targets that resolve to loopback, link-local
+  (including `169.254.169.254`), private, CGNAT, unique-local, multicast or
+  unspecified addresses. The check runs at **dial** time, on the address the
+  resolver actually returned — so DNS rebinding does not get past it — and
+  again on every redirect hop, with the chain capped at 5.
+  `--allow-private-sources` (`READPROOFD_ALLOW_PRIVATE_SOURCES=1`) turns it
+  off for a trusted network. The embedded CLI leaves private targets
+  reachable, since developing against `localhost` is the ordinary case.
 - **Evidence bundles are not signed yet.** `readproof evidence verify` proves
   integrity against the Merkle root and, unless `--offline`, the store;
   signing (cosign / in-toto attestation) is on the roadmap. An `--offline`
@@ -75,9 +79,10 @@ without `--api-key` plus a network boundary:
   allow-list that narrows every Readproof process, the embedded CLI
   included — the CLI is otherwise permissive, because that environment
   belongs to the person typing the command.
-- **No SSRF address restriction.** A resource can reach loopback,
-  link-local and cloud metadata addresses, and redirects into them are
-  followed.
+- **Private network targets are refused unless you opt in.** See the SSRF
+  entry above; `--allow-private-sources` is the opt-in, and
+  `docker-compose.yml` sets it because that stack fetches from the host via
+  `host.docker.internal`.
 
 Operational gaps, all tracked in the report:
 

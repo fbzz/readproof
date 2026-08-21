@@ -1,15 +1,15 @@
 // Package http fetches content from a generic HTTP(S) endpoint.
 //
 // SECURITY NOTE: this adapter enforces a scheme allow-list (http/https), a
-// response size cap, and a per-fetch timeout. It performs NO SSRF
-// protection: the target address is not checked, so a registered resource
-// can reach loopback, link-local, and cloud metadata endpoints
-// (169.254.169.254), and redirects to those are followed. That is
-// acceptable only while resource registration is an operator-trusted
-// action — which is what `readproofd --api-key` is for. An address
-// allow-list, applied per-hop so it survives redirects and DNS rebinding,
-// is required before readproofd accepts registrations from less-trusted
-// callers; see docs/security-audit-2026-08.md and spec §39.
+// response size cap, and a per-fetch timeout. A Fetcher built with
+// DenyPrivateTargets — readproofd's default — additionally refuses to reach
+// loopback, link-local (including the cloud metadata endpoint
+// 169.254.169.254), private, CGNAT, unique-local, multicast and unspecified
+// addresses. That check runs at *dial* time, on the address the resolver
+// actually returned, so DNS rebinding cannot slip past it, and again on every
+// redirect hop, with the chain capped at 5. The embedded CLI leaves private
+// targets reachable: developing against a readproofd or a document server on
+// localhost is the ordinary case there.
 //
 // Header values may reference environment variables as "${VAR}". Because
 // those are read from the process's own environment and sent to whatever URL
@@ -27,11 +27,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fbzz/readproof/internal/ids"
@@ -50,6 +52,59 @@ const DefaultMaxBytes int64 = 64 << 20
 // source that accepts a connection and then stalls holds the request
 // goroutine forever.
 const DefaultTimeout = 30 * time.Second
+
+// MaxRedirects caps a redirect chain. Go's default is 10; 5 is more than any
+// legitimate document server needs and shortens the window in which a chain
+// can be walked towards an address the first hop would not have been allowed
+// to name.
+const MaxRedirects = 5
+
+// privateTargetFlag is the readproofd flag named in a refusal, so the operator
+// reads the fix out of the error.
+const privateTargetFlag = "--allow-private-sources (READPROOFD_ALLOW_PRIVATE_SOURCES=1)"
+
+// cgnat is RFC 6598 shared address space (100.64.0.0/10) — carrier-grade NAT,
+// routable inside a provider's network and not on the public internet. Go has
+// no IsPrivate for it.
+var cgnat = &net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
+
+// checkIP refuses an address this adapter will not connect to. Everything
+// refused here is either the host itself, the host's own network, or a
+// signalling address — none of which a *source document* is ever legitimately
+// served from, and all of which are what an SSRF is aiming at.
+func checkIP(ip net.IP) error {
+	if v4 := ip.To4(); v4 != nil {
+		ip = v4
+	}
+	switch {
+	case ip.IsUnspecified():
+		return source.Denied("%s is the unspecified address", ip)
+	case ip.IsLoopback():
+		return source.Denied("%s is a loopback address", ip)
+	case ip.IsLinkLocalUnicast(), ip.IsLinkLocalMulticast(), ip.IsInterfaceLocalMulticast():
+		// 169.254.169.254 lives here: the cloud metadata endpoint, and the
+		// single most valuable target an SSRF has.
+		return source.Denied("%s is a link-local address", ip)
+	case ip.IsMulticast():
+		return source.Denied("%s is a multicast address", ip)
+	case ip.IsPrivate():
+		// RFC 1918 for IPv4, fc00::/7 (unique local) for IPv6.
+		return source.Denied("%s is a private address", ip)
+	case cgnat.Contains(ip):
+		return source.Denied("%s is in shared address space (RFC 6598)", ip)
+	case !ip.IsGlobalUnicast():
+		return source.Denied("%s is not a global unicast address", ip)
+	}
+	return nil
+}
+
+// isLocalhostName catches the names that mean loopback without being an IP
+// literal. The dial-time check would catch them anyway once resolved; naming
+// them here turns a connection error into an explanation.
+func isLocalhostName(host string) bool {
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	return host == "localhost" || strings.HasSuffix(host, ".localhost")
+}
 
 // allowedSchemes is the set of URL schemes this adapter will fetch. Go's
 // default transport already refuses everything else, but stating it here
@@ -177,13 +232,21 @@ type Fetcher struct {
 	// EnvAllowlist names the variables a header may reference. Only
 	// consulted when RestrictEnv is set.
 	EnvAllowlist []string
+	// DenyPrivateTargets refuses to connect to loopback, link-local,
+	// private, CGNAT, multicast and unspecified addresses — checked at dial
+	// time and on every redirect hop. Set it through NewWithOptions:
+	// setting it on an existing Fetcher changes checkTarget but not the
+	// HTTPClient the constructor already built.
+	DenyPrivateTargets bool
 }
 
 // Options is the security policy a Fetcher is built with. The zero value is
-// the embedded CLI's: every variable in the user's own environment expands.
+// the embedded CLI's: every variable in the user's own environment expands,
+// and localhost is reachable.
 type Options struct {
-	RestrictEnv  bool
-	EnvAllowlist []string
+	RestrictEnv        bool
+	EnvAllowlist       []string
+	DenyPrivateTargets bool
 }
 
 // New returns a Fetcher with the embedded CLI's permissive policy.
@@ -192,12 +255,17 @@ func New() *Fetcher { return NewWithOptions(Options{}) }
 // NewWithOptions returns a Fetcher carrying an explicit policy — what
 // readproofd builds.
 func NewWithOptions(opts Options) *Fetcher {
+	client := &http.Client{Timeout: DefaultTimeout}
+	if opts.DenyPrivateTargets {
+		client = guardedClient(DefaultTimeout)
+	}
 	return &Fetcher{
-		HTTPClient:   &http.Client{Timeout: DefaultTimeout},
-		MaxBytes:     DefaultMaxBytes,
-		Timeout:      DefaultTimeout,
-		RestrictEnv:  opts.RestrictEnv,
-		EnvAllowlist: opts.EnvAllowlist,
+		HTTPClient:         client,
+		MaxBytes:           DefaultMaxBytes,
+		Timeout:            DefaultTimeout,
+		RestrictEnv:        opts.RestrictEnv,
+		EnvAllowlist:       opts.EnvAllowlist,
+		DenyPrivateTargets: opts.DenyPrivateTargets,
 	}
 }
 
@@ -210,7 +278,7 @@ func (f *Fetcher) Validate(cfg source.Config) error {
 		return nil
 	}
 	if cfg.HTTP.URL != "" {
-		if err := checkURL(cfg.HTTP.URL); err != nil {
+		if err := f.checkTarget(cfg.HTTP.URL); err != nil {
 			return err
 		}
 	}
@@ -238,11 +306,8 @@ func (f *Fetcher) timeout() time.Duration {
 	return DefaultTimeout
 }
 
-// checkURL rejects a target this adapter will not fetch. It is deliberately
-// only a scheme check: restricting the target *address* (loopback,
-// link-local, metadata endpoints) is a separate, larger control that has to
-// survive redirects and DNS rebinding, and is tracked as an SSRF allow-list
-// on the roadmap. See the package comment.
+// checkURL rejects a target no Fetcher will fetch, whatever its policy: a
+// scheme other than http/https, or a URL with no host.
 func checkURL(raw string) error {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -257,6 +322,92 @@ func checkURL(raw string) error {
 	return nil
 }
 
+// checkTarget is checkURL plus this Fetcher's address policy, applied to what
+// the URL says before anything is dialled.
+//
+// This is not the enforcement point — dialGuard is, because a name resolves at
+// connect time and can resolve differently the next time it is asked (DNS
+// rebinding), so a pre-flight lookup here would be a TOCTOU invitation. What
+// this catches is the honest case: an IP literal or a localhost name, refused
+// with an explanation instead of a connection error.
+func (f *Fetcher) checkTarget(raw string) error {
+	if err := checkURL(raw); err != nil {
+		return err
+	}
+	if !f.DenyPrivateTargets {
+		return nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("http: invalid url %q: %w", raw, err)
+	}
+	host := parsed.Hostname()
+	if isLocalhostName(host) {
+		return source.Denied("http: refusing to fetch %s: %q is a loopback name; this server does not fetch from private addresses (%s)", raw, host, privateTargetFlag)
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if err := checkIP(ip); err != nil {
+			return source.Denied("http: refusing to fetch %s: %v; this server does not fetch from private addresses (%s)", raw, err, privateTargetFlag)
+		}
+	}
+	return nil
+}
+
+// dialGuard is the address check that actually enforces the policy. net.Dialer
+// calls Control after the name has been resolved and before the socket
+// connects, with the concrete address the connection is about to use — so it
+// sees through DNS rebinding, and it sees every hop of a redirect chain
+// because each hop dials again.
+func dialGuard(network, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return source.Denied("http: refusing to connect to %q: %v", address, err)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return source.Denied("http: refusing to connect to %q: not an IP address", address)
+	}
+	if err := checkIP(ip); err != nil {
+		return source.Denied("http: refusing to connect to %s: %v; this server does not fetch from private addresses (%s)", address, err, privateTargetFlag)
+	}
+	return nil
+}
+
+// guardedClient returns an http.Client that applies this Fetcher's address
+// policy at dial time and on every redirect hop.
+func guardedClient(timeout time.Duration) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = (&net.Dialer{
+		Timeout:   10 * time.Second,
+		KeepAlive: 30 * time.Second,
+		Control:   dialGuard,
+	}).DialContext
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= MaxRedirects {
+				return fmt.Errorf("http: stopped after %d redirects", MaxRedirects)
+			}
+			// The scheme and any literal address in the new target are
+			// checked here; the address it resolves to is checked again when
+			// this hop dials.
+			if err := checkURL(req.URL.String()); err != nil {
+				return err
+			}
+			if isLocalhostName(req.URL.Hostname()) {
+				return source.Denied("http: refusing to follow a redirect to %s: %q is a loopback name (%s)", req.URL, req.URL.Hostname(), privateTargetFlag)
+			}
+			if ip := net.ParseIP(req.URL.Hostname()); ip != nil {
+				if err := checkIP(ip); err != nil {
+					return source.Denied("http: refusing to follow a redirect to %s: %v (%s)", req.URL, err, privateTargetFlag)
+				}
+			}
+			return nil
+		},
+	}
+}
+
 func (f *Fetcher) Fetch(ctx context.Context, req source.FetchRequest) (source.FetchResult, error) {
 	cfg := req.Config.HTTP
 	if cfg == nil {
@@ -265,7 +416,7 @@ func (f *Fetcher) Fetch(ctx context.Context, req source.FetchRequest) (source.Fe
 	if cfg.URL == "" {
 		return source.FetchResult{}, fmt.Errorf("http: missing url")
 	}
-	if err := checkURL(cfg.URL); err != nil {
+	if err := f.checkTarget(cfg.URL); err != nil {
 		return source.FetchResult{}, err
 	}
 
