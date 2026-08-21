@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 
 import { merkleRoot, type EvidenceEntry } from '@ctx/sdk'
 
+import { TOOL_BASE_NAMES } from '../src/index.js'
 import {
   DEMO_URI,
   fakeAgent,
@@ -40,6 +41,26 @@ describe('dsh-plugin-ctx against a real ctxd', () => {
 
   it('registers the thirteen Ctx tools on ctx.tools', () => {
     const names = app.toolNames()
+    // The literal list pins the exact MCP tool names; TOOL_BASE_NAMES has to
+    // agree with it, since that is what a consumer builds a tool filter from.
+    assert.deepEqual(
+      [...TOOL_BASE_NAMES].map((base) => `ctx_${base}`).sort(),
+      [
+        'ctx_diff',
+        'ctx_evidence_export',
+        'ctx_history',
+        'ctx_manifest',
+        'ctx_replay',
+        'ctx_resolve',
+        'ctx_resources_list',
+        'ctx_run_commit',
+        'ctx_run_mount',
+        'ctx_run_start',
+        'ctx_tag_delete',
+        'ctx_tag_list',
+        'ctx_tag_set',
+      ],
+    )
     for (const expected of [
       'ctx_resources_list',
       'ctx_resolve',

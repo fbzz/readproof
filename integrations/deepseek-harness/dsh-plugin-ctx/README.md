@@ -78,8 +78,8 @@ data directory — including the one a `spawn: true` plugin uses.)
 
 ```sh
 cd integrations/deepseek-harness/dsh-plugin-ctx && npm install && npm run build && cd -
-dsh plugin --profile ctx add ./integrations/deepseek-harness/dsh-plugin-ctx
-dsh --profile ctx web
+dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-ctx
+dsh web
 ```
 
 `dsh plugin add` links the package and appends `dsh-plugin-ctx` to the
@@ -88,11 +88,20 @@ profile's `dsh.profile.bundles`, which activates
 Check it landed without booting:
 
 ```sh
-dsh --profile ctx --dump-config      # shows a "# == dsh-plugin-ctx" layer
+dsh --profile web --dump-config      # shows a "# == dsh-plugin-ctx" layer
 ```
 
+Any profile name works (`--profile ctx`, `--profile tui`, …), but note that
+`dsh plugin` initializes a brand-new profile from `@deepseek-ai/dsh-base`
+alone, and base composes no runnable app: `dsh --profile ctx` on a profile
+holding only base and this plugin has nothing to boot. Add the plugin to a
+profile that already has a surface — `web` and `tui` are the built-in ones —
+or add a surface bundle to yours. (`dsh web` is an alias for
+`dsh --profile web`; `web` does **not** accept the launcher's `--profile`,
+so `dsh --profile ctx web` is an error.)
+
 Override any of the defaults in the profile's own
-`$DSH_HOME/profiles/ctx/cordis.patch.yml`. A patch replaces a row's whole
+`$DSH_HOME/profiles/web/cordis.patch.yml`. A patch replaces a row's whole
 `config`, so restate every key you need, not just the changed one:
 
 ```yaml
@@ -105,7 +114,7 @@ Override any of the defaults in the profile's own
         toolPrefix: ctx_
 ```
 
-Remove it with `dsh plugin --profile ctx remove dsh-plugin-ctx`.
+Remove it with `dsh plugin --profile web remove dsh-plugin-ctx`.
 
 The package is built TypeScript: `npm run build` must have produced `dist/`
 before `dsh plugin add`, because a local (or git) install runs no build
@@ -114,19 +123,26 @@ that step for users.
 
 ### B. Local development overlay
 
-No install and no profile — mount the checkout directly:
+No install and no profile — mount the checkout directly. Run this from the
+repository root:
 
 ```sh
 cd integrations/deepseek-harness/dsh-plugin-ctx && npm install && npm run build && cd -
-dsh web --patch "$PWD/integrations/deepseek-harness/ctx-plugin.cordis.yml"
+sed "s#__CTX_REPO__#$PWD#" integrations/deepseek-harness/ctx-plugin.cordis.yml > /tmp/ctx-plugin.cordis.yml
+dsh web --patch /tmp/ctx-plugin.cordis.yml --no-open
 ```
 
-[`ctx-plugin.cordis.yml`](../ctx-plugin.cordis.yml) points at
-`./dsh-plugin-ctx/dist/src/index.js` and defaults to `spawn: true`, so it
-needs `ctxd` on `PATH` (or `CTXD_BIN` set) and nothing else. Keep
-`npx tsc -w` running: the loader hot-replaces the plugin when the built file
-changes, and because every registration is a reversible Cordis effect, the
-old tools are unregistered first.
+The `sed` is not decoration. **A plugin path in a patch overlay must be
+absolute**: a patch contributes configuration but does not change the
+profile directory the loader resolves module paths from, and only a row's
+`config` is `!!js`-interpolated, so the path cannot be computed at load
+time either. [`ctx-plugin.cordis.yml`](../ctx-plugin.cordis.yml) therefore
+carries a `__CTX_REPO__` placeholder.
+
+It defaults to `spawn: true`, so it needs `ctxd` on `PATH` (or `CTXD_BIN`
+set) and nothing else. Keep `npx tsc -w` running: the loader hot-replaces
+the plugin when the built file changes, and because every registration is a
+reversible Cordis effect, the old tools are unregistered first.
 
 ### C. Zero-code MCP overlay
 
@@ -136,6 +152,14 @@ through `@deepseek-ai/dsh-mcp-client`:
 ```sh
 dsh web --patch "$PWD/integrations/deepseek-harness/ctx-mcp.cordis.yml"
 ```
+
+This one needs no absolute-path surgery: the row names
+`@deepseek-ai/dsh-mcp-client` (a package, resolved from the dsh
+installation) and computes the `ctx` binary and data directory in `!!js`
+config expressions — `CTX_BIN` and `CTX_HOME` override them. The overlay
+also carries a commented `--server` variant that passes `CTX_API_KEY`
+explicitly, because the stdio bridge scrubs credential-looking ambient
+variables before launching the child.
 
 The tools then appear under the MCP client's server-qualified names —
 `mcp__ctx__ctx_resolve`, `mcp__ctx__ctx_run_mount`,

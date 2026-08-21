@@ -1,16 +1,25 @@
 # Local-development overlay: mount the plugin straight from this checkout,
-# with no install step and no profile.
+# with no install and no profile of its own.
 #
-#   cd integrations/deepseek-harness/dsh-plugin-ctx && npm install && npm run build
-#   cd - && npx @deepseek-ai/dsh web --patch ./integrations/deepseek-harness/ctx-plugin.cordis.yml
+# `name` MUST be an absolute path. A patch file contributes configuration but
+# does not change the profile directory the loader resolves module paths
+# from, so a relative path here would be looked up under
+# $DSH_HOME/profiles/<name>/ and not found (docs/user/develop/basic/index.md).
+# Since only a row's `config` is `!!js`-interpolated, the path cannot be
+# computed either — resolve it once and feed the result to dsh:
 #
-# The `name` is resolved relative to THIS file, and it names the built entry
-# point rather than the package directory so Node's ESM resolver can load it
-# without a package-level install. Run `npm run build` after every edit (or
-# `npx tsc -w`) — the loader hot-replaces the plugin when the file changes.
+#   cd integrations/deepseek-harness/dsh-plugin-ctx && npm install && npm run build && cd -
+#   sed "s#__CTX_REPO__#$PWD#" integrations/deepseek-harness/ctx-plugin.cordis.yml > /tmp/ctx-plugin.cordis.yml
+#   npx @deepseek-ai/dsh web --patch /tmp/ctx-plugin.cordis.yml
+#
+# It names the built entry point rather than the package directory because
+# Node's ESM resolver does not resolve a directory. Keep `npx tsc -w`
+# running: the loader hot-replaces the plugin when that file changes, and
+# every registration is a reversible Cordis effect, so the old tools are
+# unregistered first.
 - insert:
     - id: ctx
-      name: './dsh-plugin-ctx/dist/src/index.js'
+      name: '__CTX_REPO__/integrations/deepseek-harness/dsh-plugin-ctx/dist/src/index.js'
       config:
         # Start a private ctxd from this repository's `go build ./cmd/ctxd`
         # output instead of expecting one to already be running. Set
