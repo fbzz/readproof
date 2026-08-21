@@ -6,3 +6,6 @@
 .env.*
 !.env.example
 dist/
+
+# private launch copy lives outside the repo (~/Documents/readproof-private)
+docs/launch.md
