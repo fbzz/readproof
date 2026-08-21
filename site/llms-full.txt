@@ -1,0 +1,1171 @@
+# Readproof — complete documentation for language models
+
+> Readproof is the lockfile and replay primitive for what AI agents read. Every
+> document an agent consumes gets a stable identity (readproof://NAMESPACE/PATH),
+> a freshness policy, and a content-addressed snapshot. Every run is recorded as
+> an immutable manifest that can be diffed against another run, replayed byte for
+> byte without touching the live source, and exported as a verifiable evidence
+> bundle.
+
+Version 0.3.1 · Apache-2.0 · CLI `readproof` · server `readproofd` · URI scheme `readproof://`
+Repository: https://github.com/fbzz/readproof
+Website: https://fbzz.github.io/readproof/
+Documentation: https://fbzz.github.io/readproof/docs/
+Short index for agents: https://fbzz.github.io/readproof/llms.txt
+
+This single file concatenates the project's own markdown documentation so an agent
+can read the whole product in one fetch. HTML has been stripped; headings, code
+blocks, and tables are unchanged. Each section is introduced by a SOURCE: marker
+naming the file it came from in the repository.
+
+Not inlined here, to keep this file to one comfortable fetch:
+  docs/api.md            every readproofd endpoint, request and response schema
+                         https://raw.githubusercontent.com/fbzz/readproof/main/docs/api.md
+  docs/observability.md  every OpenTelemetry span, attribute and metric
+                         https://raw.githubusercontent.com/fbzz/readproof/main/docs/observability.md
+
+CONTENTS
+  README.md                    What Readproof is, install, quickstart, CLI, integrations
+  docs/architecture.md         The six primitives and how they compose
+  docs/evidence.md             Evidence bundles: shape, Merkle rules, what they prove
+  docs/mcp.md                  MCP server: setup, resources, the 13 tools
+  skills/readproof/SKILL.md    The agent skill: when and how to reach for Readproof
+  docs/roadmap.md              Shipped, next, and explicitly out of scope
+
+==============================================================================
+SOURCE: README.md
+==============================================================================
+
+---
+
+**Readproof gives every document an AI agent reads a stable identity, a freshness policy, and a content-addressed snapshot — and records every run as a manifest you can diff, replay byte for byte without touching the live source, and hand over as evidence.**
+
+> Models are probabilistic, but many context failures are infrastructural.
+> Agent reliability is bounded by context reliability.
+
+It is not a vector database, not an observability tool, not a prompt registry, not a memory system. It sits underneath those and makes their inputs reproducible. Install-time lockfiles (Microsoft APM, `skills-lock.json`) pin an agent's *static* configuration; Readproof pins the *runtime documents, per run*.
+
+## Sixty seconds, end to end
+
+**1. Give a document an identity and a freshness policy, then record a run.**
+
+```text
+readproof resource add readproof://demo/policies/refunds \
+  --source-type filesystem --path policies/refunds.md --policy require_fresh
+readproof run --id run-a readproof://demo/policies/refunds
+```
+```text
+Committed manifest manifest_01M0GQH8K8… for run run-a (1 entry)
+```
+
+**2. The source changes. A later run picks it up — and the diff says exactly why.**
+
+```text
+printf 'Products can be refunded within 14 days.\n' > policies/refunds.md
+readproof run --id run-b readproof://demo/policies/refunds
+readproof diff run-a run-b
+```
+```text
+~ readproof://demo/policies/refunds
+  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456
+  -Products can be refunded within 30 days.
+  +Products can be refunded within 14 days.
+```
+
+**3. Replay the first run from the store — the file is gone or changed, the bytes are not — and prove it.**
+
+```text
+readproof replay run-a
+readproof evidence export run-a --with-content --out bundle.json
+readproof evidence verify bundle.json
+```
+```text
+Products can be refunded within 30 days.
+Replay verified: SHA256 match for 1/1 entries.
+evidence verified: 1 entry, merkle root a9b73469f1a6…, replay match 1/1
+```
+
+`SHA256(original) == SHA256(replay)` is a test, not a slogan: the reference demo asserts it over SQLite, over Postgres + MinIO, and over a real HTTP round trip ([`examples/refund-agent`](https://github.com/fbzz/readproof/tree/main/examples/refund-agent)).
+
+## Why
+
+| Failure you have seen | What Readproof does about it |
+| --- | --- |
+| **"It worked on Tuesday."** A policy, price table, or runbook changed and the agent quietly answered from a different version. | Every run records which revision of each document it read; `readproof diff run-a run-b` names the source revision and observation time that changed, then prints the unified diff. |
+| **"Can you rerun exactly that?"** Tracing tools keep strings; they cannot hand you the bytes again once the source moved. | `readproof replay` rebuilds a run's inputs from the content-addressed store and re-verifies every hash — no network, no source. Strict: any mismatch exits non-zero. |
+| **"What data did the agent consider?"** EU AI Act Art. 12 logging (Annex III, from 2 Aug 2026) and SOC 2 reviews ask exactly this. | `readproof evidence export` writes an in-toto Statement whose subject is a Merkle root over the run; `verify` checks it anywhere. Not legal advice — but it is the record. |
+
+## How it works
+
+- **Identity** — `readproof://<namespace>/<path>`, independent of where the bytes live.
+- **Policy** — `require_fresh` (re-verify every resolve), `allow_stale --max-age` (reuse within a TTL), or pin a reviewed snapshot by **tag**: `…@prod` delivers exactly that snapshot, no fetch, policy not consulted. Promotion is one pointer move; it is recorded and revertible.
+- **Snapshot** — immutable, content-addressed; identical bytes dedupe to one blob.
+- **Manifest** — the ordered list of what a run was delivered, by hash; entries record the `ref` they were mounted by, so moving a tag later can never change what a committed manifest replays.
+- **Evidence** — derived from a manifest on demand; the Go CLI and the TypeScript SDK produce byte-identical bundles, and the same Merkle root appears on the run's OpenTelemetry span.
+
+Deep dive: [`docs/architecture.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/architecture.md).
+
+## Quickstart
+
+### Install
+
+```bash
+# Go 1.26+ — lands in $(go env GOPATH)/bin
+go install github.com/fbzz/readproof/cmd/readproof@latest
+go install github.com/fbzz/readproof/cmd/readproofd@latest   # only if you run the server
+
+# macOS — the cask installs both binaries
+brew install fbzz/tap/readproof
+```
+
+Or download a prebuilt archive for your platform from
+[GitHub Releases](https://github.com/fbzz/readproof/releases):
+`readproof_<version>_<os>_<arch>.tar.gz` (`.zip` on Windows) contains
+`readproof`, `readproofd`, `LICENSE`, `NOTICE`, and this README.
+
+> Plainly: all three work once this repository is public and the first
+> release is cut. Until then, build from source — which is what the
+> embedded walkthrough below does anyway.
+
+### Embedded mode
+
+One binary, a local `.readproof/` directory, no services:
+
+```bash
+git clone https://github.com/fbzz/readproof.git
+cd readproof
+go build -o readproof ./cmd/readproof        # Go 1.26+
+
+# identity + source + freshness policy
+./readproof resource add readproof://demo/policies/refunds \
+  --source-type filesystem \
+  --path examples/refund-agent/policies/refunds.md \
+  --policy require_fresh
+
+./readproof run --id run-a readproof://demo/policies/refunds
+./readproof replay run-a
+```
+
+### Client/server mode
+
+Postgres + S3-compatible store, one HTTP API for every client:
+
+```bash
+# Postgres, MinIO, an OTel collector and readproofd, from a clean clone
+cp .env.example .env
+docker compose up -d --build
+
+# every command now talks to the server
+export READPROOF_SERVER_URL=http://localhost:8080
+./readproof get readproof://demo/policies/refunds
+```
+
+> A containerized `readproofd` cannot see your host filesystem; use GitHub/HTTP sources there, or run `readproofd --data-dir ~/.readproof` on the host.
+
+## Add it to your coding agent
+
+Two minutes, either path — or both.
+
+**A. Give the agent the tools (MCP).**
+
+```bash
+# Claude Code
+claude mcp add readproof -- readproof mcp --data-dir ~/.readproof
+# DeepSeek Harness
+dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof && dsh web
+# Cursor / Claude Desktop (mcpServers):
+#   {"command": "readproof", "args": ["mcp", "--data-dir", "~/.readproof"]}
+```
+
+The agent gets `readproof_resolve`, `readproof_run_*`, `readproof_diff`, `readproof_replay`, `readproof_tag_*`, `readproof_evidence_export`; every `resources/read` carries provenance in `_meta`. Details: [`docs/mcp.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/mcp.md).
+
+**B. Give the agent the habit (skill).** Install the skill file, or paste the block below into `CLAUDE.md`, `AGENTS.md`, or `.cursor/rules/readproof.mdc`.
+
+```bash
+mkdir -p .claude/skills/readproof && curl -fsSL \
+  https://raw.githubusercontent.com/fbzz/readproof/main/skills/readproof/SKILL.md \
+  -o .claude/skills/readproof/SKILL.md
+```
+
+```markdown
+## Readproof — record exactly what you read
+When a task reads a document that must be reproducible (policies, runbooks,
+specs, prices), read it through Readproof, never directly:
+1. `readproof run start <task-id>`
+2. `readproof run mount <task-id> readproof://<ns>/<path>[@prod]`  ← use the bytes it prints
+3. `readproof run commit <task-id>`  → put the manifest id in your output / PR / ticket
+Single shot: `readproof run --id <task-id> <uri> <uri>…`
+Register once: `readproof resource add readproof://<ns>/<path>
+  --source-type filesystem|github|http … --policy require_fresh|allow_stale`
+Explain a change: `readproof diff <a> <b>`
+Reproduce:        `readproof replay <id>`
+Prove:            `readproof evidence export <id> --out bundle.json`
+                  `readproof evidence verify bundle.json`
+Deploy a document by moving a tag (`readproof tag set <uri> prod <snapshot>`),
+never by editing the file in place. Never paste secrets into resource
+definitions (use `${ENV_VAR}` headers); never touch the data directory by hand.
+```
+
+Full version with setup, policies, and the do-nots: [`skills/readproof/SKILL.md`](https://raw.githubusercontent.com/fbzz/readproof/main/skills/readproof/SKILL.md).
+
+## What you get
+
+| | |
+| --- | --- |
+| **CLI** `readproof` | `resource` · `get` · `inspect` · `history` · `run` · `manifest` · `diff` · `replay` · `tag` · `evidence` · `mcp` — identical embedded or with `--server` |
+| **Server** `readproofd` | JSON API (`/v1/resources`, `/v1/tags`, `/v1/resolve`, `/v1/runs`, `/v1/manifests`, `/v1/diff`, `/v1/replay`), optional bearer auth, SQLite or Postgres + S3 |
+| **MCP server** `readproof mcp` | resources as `readproof://` URIs with provenance in `_meta`, 13 tools — Claude Code, Claude Desktop, Cursor ([`docs/mcp.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/mcp.md)) |
+| **DeepSeek Harness plugin** | native bundle registering the same 13 tools, one Readproof run per DSH session, plus a zero-code MCP overlay ([`integrations/deepseek-harness`](https://raw.githubusercontent.com/fbzz/readproof/main/integrations/deepseek-harness/dsh-plugin-readproof/README.md)) |
+| **TypeScript SDK** `@readproof/sdk` | typed, zero-dependency client; `run().mount()…commit()`, tags, diff, replay, `buildEvidence()` ([`sdk/typescript`](https://raw.githubusercontent.com/fbzz/readproof/main/sdk/typescript/README.md)) |
+| **OpenTelemetry** | every pipeline stage traced; GenAI attributes (`gen_ai.data_source.id`); the commit span carries the evidence Merkle root; content never attached ([`docs/observability.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/observability.md)) |
+| **Evidence** | in-toto Statement v1, Merkle root over entries, redacted resource definitions, replay check; `verify` works offline ([`docs/evidence.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/evidence.md)) |
+
+## Examples
+
+| | |
+| --- | --- |
+| [`examples/support-agent`](https://github.com/fbzz/readproof/tree/main/examples/support-agent) | A support agent on an **open model via Ollama** — one run per ticket, the policy changes, `diff` explains, `replay` returns the old bytes, the Go CLI verifies the evidence, a pinned `@prod` house style stays put. `npm run scenario`. [Guide](https://fbzz.github.io/readproof/examples/support-agent/). |
+| [`examples/langgraph-ts`](https://github.com/fbzz/readproof/tree/main/examples/langgraph-ts) | LangGraph.js: mount inside a node, store the manifest id in the checkpoint, replay from it. |
+| [`examples/refund-agent`](https://github.com/fbzz/readproof/tree/main/examples/refund-agent) | The reference walkthrough of the invariant, driven from the shell; the automated version runs in `go test ./...`. |
+
+## Documentation
+
+| | |
+| --- | --- |
+| [Website](https://fbzz.github.io/readproof/) · [Docs](https://fbzz.github.io/readproof/docs/) | Guide-style documentation for the whole surface |
+| [`docs/architecture.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/architecture.md) | Data model, internals, CLI and HTTP reference, SDK, observability, tests |
+| [`docs/api.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/api.md) · [`docs/mcp.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/mcp.md) · [`docs/evidence.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/evidence.md) · [`docs/observability.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/observability.md) | Endpoint schemas · MCP setup · bundle format and what it proves · spans, attributes, metrics |
+| [`docs/roadmap.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/roadmap.md) · [`CHANGELOG.md`](https://raw.githubusercontent.com/fbzz/readproof/main/CHANGELOG.md) · [`docs/rename.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/rename.md) | What's next · what changed · the Ctx → Readproof mapping |
+| [`docs/releasing.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/releasing.md) · [`docs/launch.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/launch.md) | How a release is cut (tag → binaries, cask, npm) · launch copy and checklist |
+
+## Status
+
+**v0.3.1** — Apache-2.0. Stable core (identity, policies, tags, snapshots, manifests, provenance-aware diff, strict replay, evidence), MCP server, OpenTelemetry, TypeScript SDK, SQLite or Postgres + S3, DeepSeek Harness plugin, three runnable examples. CI runs Go build/vet/test, the SDK and example suites, the DSH plugin suite, and a Docker Compose integration job that replays the demo against the built `readproofd` image on every push.
+
+Next, in order ([`docs/roadmap.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/roadmap.md)): public release and packages (binaries, npm), Python SDK, trace-context propagation over the HTTP API, MCP HTTP transport, a source policy file (allow-lists), signed and OCI-distributed evidence bundles, `tag promote`, more adapters.
+
+## Security
+
+No plaintext credentials at rest (env references resolved at fetch time; redaction everywhere), optional API-key auth on `readproofd`, labeled dev-only Compose credentials, dependency scanning. Not yet: SSRF allow-list for the HTTP adapter, signed bundles. Report vulnerabilities privately — see [`SECURITY.md`](https://raw.githubusercontent.com/fbzz/readproof/main/SECURITY.md).
+
+## Contributing
+
+`go build ./... && go vet ./... && gofmt -l . && go test ./...` must be green with no external services; the SDK, examples, and plugin each have `npm test`. Conventions, the live-infra test block, and the pre-PR checklist are in [`CONTRIBUTING.md`](https://raw.githubusercontent.com/fbzz/readproof/main/CONTRIBUTING.md).
+
+**Community** — questions and ideas in
+[Discussions](https://github.com/fbzz/readproof/discussions), bugs and
+feature requests in [Issues](https://github.com/fbzz/readproof/issues),
+vulnerabilities privately via [`SECURITY.md`](https://raw.githubusercontent.com/fbzz/readproof/main/SECURITY.md). Everyone taking
+part is held to the [Code of Conduct](https://raw.githubusercontent.com/fbzz/readproof/main/CODE_OF_CONDUCT.md).
+
+## License
+
+[Apache-2.0](https://raw.githubusercontent.com/fbzz/readproof/main/LICENSE) · [NOTICE](https://raw.githubusercontent.com/fbzz/readproof/main/NOTICE)
+
+
+==============================================================================
+SOURCE: docs/architecture.md
+==============================================================================
+
+# Architecture and reference
+
+The long-form companion to the README: how the pieces fit, the full CLI and HTTP surface, the SDK, observability, and how the test suite proves the invariant. Product docs live beside this file (`api.md`, `mcp.md`, `evidence.md`, `observability.md`).
+
+## Client/server mode (`readproofd`)
+
+**⚠️ `docker-compose.yml`'s default credentials (Postgres, MinIO) are
+dev-only placeholders — do not reuse them, or this file as-is, outside
+local development.** Override via a `.env` file; see `.env.example`.
+
+`docker compose up -d --build` brings up Postgres, MinIO, an OTel
+collector, and `readproofd` itself (built from this repo's `Dockerfile`),
+healthy, from a clean clone — no manual DB or bucket setup. Point the CLI
+at it and every command behaves exactly as it does embedded:
+
+```bash
+docker compose up -d --build
+curl http://localhost:8080/healthz             # -> ok
+export READPROOF_SERVER_URL=http://localhost:8080    # or --server on any command
+readproof resource add readproof://demo/hello-world \
+  --source-type http --url https://raw.githubusercontent.com/octocat/Hello-World/master/README \
+  --policy require_fresh
+readproof get readproof://demo/hello-world
+```
+
+One real difference: **`readproofd` in a container has no access to your
+host filesystem**, so a `filesystem` source only works there if the file
+is baked into the image or volume-mounted; GitHub and HTTP sources are the
+natural fit (`http://host.docker.internal:<port>/…` reaches a server on
+the host). To run `readproofd` outside Compose, build `./cmd/readproofd`
+and give it either `--data-dir` (embedded) or `--postgres-dsn` plus the
+`--s3-*` flags — see the HTTP API section.
+
+## Data model
+
+Six immutable primitives and one mutable pointer:
+
+- **Source** — physical origin (`internal/source`; filesystem, GitHub, HTTP).
+- **Resource** — stable logical identity, `readproof://<namespace>/<path>` (`internal/resource`).
+- **Policy** — freshness strategy: `require_fresh` | `allow_stale` | `pinned` (`internal/policy`).
+- **Snapshot** — immutable observed state, content-addressed (`internal/snapshot`).
+- **Materialization** — the byte form delivered to a consumer; raw/deterministic so far (`internal/materialization`).
+- **Manifest** — the ordered, immutable record of everything resolved during a run (`internal/manifest`).
+- **Tag** — the one mutable thing: a named pointer `(resource_uri, tag) → snapshot_id` (`internal/tag`), re-pointable at any time.
+
+A **ref** is how a tag enters a run. `readproof://<ns>/<path>@<tag>`
+resolves to exactly that snapshot; manifest and run-mount entries record
+the bare URI *plus* the `ref` they were mounted by, so a manifest shows
+how a snapshot was chosen while still replaying by snapshot and content
+hash. Moving a tag afterwards can never change what a committed manifest
+replays.
+
+An **evidence bundle** is derived, not stored: an in-toto Statement built
+from a manifest, its snapshots, its resource definitions (source config
+redacted) and a live replay check, digested by a Merkle root over the
+entries — the same bytes from the CLI and the TypeScript SDK
+([`docs/evidence.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/evidence.md)).
+
+`internal/resolver` is the resolution pipeline, `internal/run` the
+run/mount/commit orchestrator, `internal/replay` and `internal/diff` the
+consumers of a committed manifest, and `internal/merkle` the one
+implementation of the manifest digest rule. Every store sits behind a
+domain interface with two implementations — `storage/sqlite` +
+`storage/blob` (embedded) and `storage/postgres` + `storage/s3blob`
+(PostgreSQL + S3/MinIO) — and every `cmd/readproof` command is written
+against `internal/client`, which has a `local` (in-process) and a `remote`
+(HTTP) implementation, which is why the two modes can't drift.
+
+## CLI
+
+```
+readproof resource add <uri> --source-type <filesystem|github|http> [flags] --policy <strategy>
+readproof resource list
+readproof get <uri>[@<tag>]
+readproof inspect <uri>[@<tag>]
+readproof history <uri>
+readproof tag set <uri> <tag> <snapshot-id> / readproof tag list <uri> / readproof tag rm <uri> <tag>
+readproof run start <run-id> / readproof run mount <run-id> <uri>[@<tag>] / readproof run commit <run-id>
+readproof run --id <run-id> <uri1> <uri2> ...   # single-shot start+mount+commit
+readproof manifest <manifest-or-run>
+readproof diff <target-a> <target-b>
+readproof replay <manifest-or-run>
+readproof evidence export <manifest-or-run> [--with-content] [--out <file>]
+readproof evidence verify <bundle.json> [--offline]
+readproof mcp
+```
+
+Global flags: `--data-dir <path>` (embedded data directory), `--server
+<url>` / `$READPROOF_SERVER_URL` (talk to a `readproofd` instead),
+`--api-key` / `$READPROOF_API_KEY`.
+
+**Tags and `@ref`.** Tag names match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
+Any command taking a URI also takes `readproof://<ns>/<path>@<tag>`, which
+delivers exactly that snapshot: **no source fetch, and the resource's
+freshness policy is not consulted** (resolve decision `use_tag`). An
+unknown tag is an error naming both the URI and the tag. `readproof
+history` grows a `TAGS` column, and `readproof manifest` a `REF` column
+when a run mounted anything by tag:
+
+```
+$ readproof run --id run-c readproof://demo/policies/refunds@prod
+$ readproof manifest run-c
+POS  URI                                REF   SNAPSHOT          CONTENT_HASH
+0    readproof://demo/policies/refunds  prod  snap_01M0GQH8K6…  sha256:c8b0bb212e93…
+```
+
+**Diff explains itself.** For every changed entry, `readproof diff` prints
+one provenance line before the unified diff — `why: source revision X → Y;
+observed T1 → T2`, plus `; ref <a> → <b>` when either side was mounted by
+tag. **Replay is strict**: `readproof replay` exits non-zero if any
+entry's bytes fail to reproduce their recorded SHA256, or if a blob is
+missing. There is no lenient mode.
+
+**Evidence.** `readproof evidence export` writes an in-toto Statement for
+a manifest or run (`--with-content` embeds the bytes); `readproof evidence
+verify` recomputes the Merkle root, re-hashes embedded content, and
+cross-checks the store by replay (`--offline` skips that last part). Both
+exit non-zero on failure and work embedded or with `--server`. Format,
+Merkle rule, and what it does and doesn't prove:
+[`docs/evidence.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/evidence.md).
+
+**MCP.** `readproof mcp` runs a stdio MCP server: registered resources are
+readable `readproof://` resources (`@tag` honored; each read carries
+`_meta` with snapshot id, content hash, source revision, observed-at,
+decision), and resolve / runs / manifest / diff / replay / tags / evidence
+export are 13 tools, reusing the same `--data-dir` / `--server` /
+`--api-key` flags as every other command. Claude Code, Claude Desktop, and
+Cursor config snippets: [`docs/mcp.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/mcp.md).
+
+## HTTP API (`readproofd`)
+
+Full request/response schemas: [`docs/api.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/api.md).
+
+```
+Resources  POST /v1/resources · GET /v1/resources · GET /v1/resources/get?uri=
+           GET /v1/resources/history?uri= · GET /v1/snapshots?id=
+Tags       PUT /v1/tags · GET /v1/tags?uri= · DELETE /v1/tags?uri=&tag=
+Resolve    POST /v1/resolve                                  (accepts uri@tag)
+Runs       POST /v1/runs · POST /v1/runs/mount · POST /v1/runs/commit
+Manifests  GET /v1/manifests?target= · GET /v1/diff?a=&b= · GET /v1/replay?target=
+Health     GET /healthz                                   (never requires auth)
+```
+
+`readproofd` flags: `--addr`, `--data-dir` (embedded) or `--postgres-dsn`
+plus `--s3-endpoint`/`--s3-access-key`/`--s3-secret-key`/`--s3-bucket`/`--s3-use-ssl`
+(Postgres+S3) — also settable via `READPROOFD_*` env vars. `--api-key`
+(`READPROOFD_API_KEY`) requires a matching `Authorization: Bearer <key>`
+on every request except `/healthz`; off by default, and both the CLI and
+the TS SDK send it when set. Evidence has no endpoint of its own — bundles
+are composed from the calls above, so `readproof evidence` and the SDK's
+`buildEvidence` need no new server surface.
+
+## TypeScript SDK
+
+`sdk/typescript` (`@readproof/sdk`) is a typed client for `readproofd`:
+`resolve()`, `run({id}).mount()…commit()`,
+`setTag`/`listTags`/`deleteTag`,
+`registerResource`/`listResources`/`history`/`diff`/`replay`, and
+`buildEvidence()` for client-side bundles that hash identically to the
+CLI's. `@tag` refs work in `resolve()` and `mount()`; diff entries carry
+per-side `source_revision_*`, `observed_at_*`, and `ref_*`. No runtime
+dependencies (Node 18+ global `fetch`), no `any` in the public surface.
+See [`sdk/typescript/README.md`](https://raw.githubusercontent.com/fbzz/readproof/main/sdk/typescript/README.md).
+
+```bash
+cd sdk/typescript && npm install && npm run build && npm test
+docker compose up -d --build   # from the repo root, for the example below
+npm run example                # resolves a real URI against readproofd
+```
+
+## Observability
+
+Run-level spans wrap the resolve tree: `readproof.run.start`,
+`readproof.run.mount` (parenting that mount's `readproof.resolve` and
+`readproof.manifest.append`), and `readproof.run.commit`, whose
+`readproof.manifest.merkle_root` is the same digest `readproof evidence
+export` signs — so a trace and an evidence bundle join on one field.
+`readproof.resolve` carries the identity of what was delivered
+(`readproof.snapshot.content_hash`, `readproof.snapshot.source_revision`,
+`readproof.snapshot.observed_at`, `readproof.materialization.bytes`,
+`readproof.source.type`, `readproof.policy.strategy`,
+`readproof.policy.decision`) plus the OpenTelemetry GenAI attribute
+`gen_ai.data_source.id` = `readproof://<namespace>`.
+`readproof.policy.decision` is the canonical name for the value
+`readproof.freshness.status` also holds. Two more metrics:
+`readproof_run_committed_total`, `readproof_tag_resolve_total`. Full
+tables, a worked trace, and the GenAI/OpenInference correlation proposal
+are in [`docs/observability.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/observability.md).
+
+Resolved content is never attached to spans or metrics — tests scan every
+recorded attribute and event for the fixture's bytes and fail if they
+appear. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to export; unset, every
+instrumentation call is a no-op, so no collector is required. `docker
+compose up -d` already wires `readproofd` to one.
+
+## Testing
+
+```bash
+go build ./... && go vet ./... && go test ./...
+```
+
+Live-infra tests skip themselves unless their env vars are set;
+[`CONTRIBUTING.md`](https://raw.githubusercontent.com/fbzz/readproof/main/CONTRIBUTING.md) has that block and the pre-PR
+checklist. `internal/e2e/` runs the Refund Agent demo over embedded SQLite,
+over Postgres+MinIO, and over a real HTTP round-trip through
+`internal/api` + `internal/client/remote` — each asserting the SHA256
+replay invariant, each mounting a `@prod` tag.
+
+
+==============================================================================
+SOURCE: docs/evidence.md
+==============================================================================
+
+# Evidence bundles (`readproof evidence`)
+
+An evidence bundle is a single JSON file that answers one question about
+one agent run: **what context was actually delivered, and can we still
+prove it?**
+
+It is an [in-toto Statement
+v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md)
+whose subject digest is a Merkle root over the run's manifest entries, so
+it can be signed, stored, and verified by existing supply-chain tooling
+(cosign, in-toto verifiers) without those tools knowing anything about
+Readproof.
+
+Bundles are built entirely from calls Readproof already answers —
+manifest, snapshots, resources, replay — so `readproof evidence` behaves
+identically in embedded mode and against a `readproofd`, and the
+TypeScript SDK produces the same bytes client-side.
+
+Source: [`internal/evidence`](https://github.com/fbzz/readproof/tree/main/internal/evidence),
+[`cmd/readproof/evidence.go`](https://raw.githubusercontent.com/fbzz/readproof/main/cmd/readproof/evidence.go),
+[`sdk/typescript/src/evidence.ts`](https://raw.githubusercontent.com/fbzz/readproof/main/sdk/typescript/src/evidence.ts).
+
+## CLI
+
+```bash
+# metadata only, to stdout
+readproof evidence export run-audit-1
+
+# with the delivered bytes embedded, to a file
+readproof evidence export run-audit-1 --with-content --out bundle.json
+
+# verify: recompute the root, re-hash embedded bytes, cross-check the store
+readproof evidence verify bundle.json
+
+# verify the file on its own, with no store reachable
+readproof evidence verify bundle.json --offline
+```
+
+Both commands accept a manifest id or a run id, and both work with
+`--server https://readproofd.internal` exactly as they do embedded.
+
+`verify` prints one line on success and exits `0`:
+
+```
+evidence verified: 2 entries, merkle root 518f2505…a92c, embedded content 2/2 re-hashed, replay match 2/2
+```
+
+On failure it prints every check — passing and failing — and exits
+non-zero, because *which* checks failed is the whole diagnosis:
+
+```
+  ok    merkle_root            518f2505…a92c (2 entries)
+  FAIL  content[0]             readproof://demo/policies/refunds: embedded content hashes to sha256:b3689d…, entry records sha256:c8b0bb…
+  ok    store_replay[0]        readproof://demo/policies/refunds: sha256:c8b0bb…
+Error: evidence verification failed: 1 of 11 checks failed
+```
+
+That combination says the *file* was edited: the store still replays the
+recorded hash, and the root (which commits to hashes, not bytes) still
+verifies. The opposite pattern — every offline check passing but
+`store_replay[i]` failing — says the bundle is internally consistent but
+no longer matches what Readproof holds.
+
+## TypeScript SDK
+
+```ts
+import { Readproof, buildEvidence, encodeEvidence } from "@readproof/sdk";
+
+const rp = new Readproof({ endpoint: "http://localhost:8080" });
+const bundle = await buildEvidence(rp, "run-audit-1", { withContent: true });
+
+console.log(bundle.subject[0].digest.sha256);   // the merkle root
+await fs.writeFile("bundle.json", encodeEvidence(bundle));
+```
+
+`buildEvidence` is composed from `getManifest` / `getSnapshot` /
+`getResource` / `replay` and uses Node's `crypto` — no dependencies. For
+the same manifest it produces a bundle byte-identical to `readproof
+evidence export` apart from `generated_at` / `verified_at`, and `readproof
+evidence verify` accepts it.
+
+One limitation: the SDK's `replay()` hands back decoded text, so
+`content_b64` is re-encoded from UTF-8. Readproof payloads are text
+(markdown, JSON, YAML), but for a genuinely binary source use the Go
+exporter, which carries the raw bytes through.
+
+`merkleRoot(entries)` and `merkleLeaf(entry)` are exported too, if you
+want to recompute a root without pulling in the whole bundle.
+
+## The JSON shape
+
+```json
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    { "name": "manifest_01M0…SRZ", "digest": { "sha256": "518f2505…a92c" } }
+  ],
+  "predicateType": "urn:readproof:evidence:v0.3",
+  "predicate": {
+    "run_id": "run-audit-1",
+    "manifest_id": "manifest_01M0…SRZ",
+    "manifest_created_at": "2026-08-20T22:42:21.761651Z",
+    "generated_at": "2026-08-20T22:42:27.389302Z",
+    "exporter": { "name": "readproof", "version": "0.3.1" },
+    "merkle": {
+      "algorithm": "sha256",
+      "leaf": "sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)",
+      "root": "518f2505…a92c"
+    },
+    "entries": [
+      {
+        "position": 0,
+        "uri": "readproof://demo/policies/refunds",
+        "snapshot_id": "snap_01M0…PQJ",
+        "materialization_id": "mat_01M0…126",
+        "content_hash": "sha256:c8b0bb21…aedb",
+        "source_revision": "sha256:c8b0bb212e93",
+        "observed_at": "2026-08-20T22:42:21.599166Z",
+        "content_type": "text/markdown",
+        "bytes": 41,
+        "provenance": { "path": "/srv/policies/refunds.md", "source_type": "filesystem" },
+        "content_b64": "UHJvZHVjdHMgY2FuIGJl…"
+      }
+    ],
+    "resources": [
+      {
+        "uri": "readproof://demo/policies/refunds",
+        "namespace": "demo",
+        "path": "policies/refunds",
+        "source": {
+          "kind": "http",
+          "config": { "http": { "url": "https://policies.internal/refunds", "headers": { "Authorization": "[REDACTED]" } } }
+        },
+        "policy": { "strategy": "allow_stale", "max_age_seconds": 3600 }
+      }
+    ],
+    "replay": {
+      "verified_at": "2026-08-20T22:42:27.389302Z",
+      "all_match": true,
+      "entries": [
+        { "position": 0, "match": true, "expected_hash": "sha256:c8b0bb21…aedb", "actual_hash": "sha256:c8b0bb21…aedb" }
+      ]
+    }
+  }
+}
+```
+
+Notes on the fields:
+
+- **`predicateType` is still provisional.** `urn:readproof:evidence:v0.3`
+  will change again if the predicate schema does. It lives in exactly one
+  const per implementation (`evidence.PredicateType`,
+  `EVIDENCE_PREDICATE_TYPE`) so a bump is a one-line change. It changed
+  from `urn:ctx:evidence:v0.2` in v0.3.0, when the project was renamed —
+  verifiers pinned to the old URN must be updated.
+- **`content_b64` appears only with `--with-content`.** Without it the
+  bundle is metadata-only: it names what the agent read and proves the
+  hashes, without reproducing content an auditor may not be cleared to
+  see.
+- **Source config is always redacted**, through the same
+  [`internal/redact`](https://github.com/fbzz/readproof/tree/main/internal/redact) rules the API responses use,
+  including in embedded mode where the raw values never crossed a wire. A
+  bundle is built to be exported; it must never carry a credential.
+- **`resources[i].missing: true`** records a URI whose resource
+  definition was deregistered after the run. The manifest is still
+  replayable, so this is recorded rather than fatal.
+- **`replay.error`** is set when replay could not run at all (a blob is
+  gone, the store is unreachable). The export still succeeds — an
+  un-replayable manifest is exactly the thing worth having a record of.
+- Timestamps are RFC 3339. Entry order is manifest position order and is
+  never sorted; map keys (`provenance`, `headers`) are sorted so both
+  exporters emit identical bytes.
+
+## The Merkle rule
+
+Leaf, for each entry:
+
+```
+leaf = sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)
+```
+
+`position` is a fixed-width big-endian `uint32`; `uri` and
+`content_hash` are UTF-8, `0x00`-separated so no two distinct entries can
+serialize to the same bytes. `content_hash` is hashed as the recorded
+string, `"sha256:"` prefix included.
+
+Root, over the leaves **in position order**:
+
+- **zero entries** → `sha256` of the empty input
+  (`e3b0c442…b855`)
+- **one entry** → the root is that entry's leaf
+- **odd number of nodes at a level** → the last node is duplicated and
+  paired with itself (the Bitcoin rule), then
+  `parent = sha256(left || right)`
+
+Only `position`, `uri` and `content_hash` feed the root. Descriptive
+fields — `observed_at`, `bytes`, `provenance`, `content_b64` — do not, so
+two exports of the same manifest always agree.
+
+Entry order is deliberately part of the digest: in Readproof, the order
+context was mounted in can change what a model does with it, so the same
+two resources in the other order is a different context and digests
+differently.
+
+The duplicate-last rule admits CVE-2012-2459-style collisions between
+differently shaped trees. That is acceptable here because a bundle always
+carries its full entry list: a verifier recomputes the root from a known
+entry count rather than trusting a bare root.
+
+## What `verify` proves — and what it does not
+
+`readproof evidence verify` runs these checks:
+
+| Check | What it establishes |
+| --- | --- |
+| `statement_type`, `predicate_type` | The file is a bundle this verifier understands |
+| `subject`, `merkle_root`, `predicate_merkle_root` | The signed digest is the Merkle root of exactly these entries, in this order |
+| `entry_order` | Positions are `0..n-1` in order — the invariant the leaves commit to |
+| `content[i]` | Embedded bytes hash to the `content_hash` recorded for that entry |
+| `store_replay[i]`, `store_replay_count` | The Readproof store, replayed *now*, still reconstructs the same hashes (skipped with `--offline`) |
+
+**It proves**: these exact bytes, in this order, were resolved and
+recorded by Readproof for this run; the record has not been edited since
+it was exported; and (without `--offline`) the store still reconstructs
+the same content from its own blobs, independently of whether the original
+source is still reachable or still says the same thing.
+
+**It does not prove**:
+
+- **that the model used them.** Readproof records what was delivered to the
+  agent, not what the agent attended to, or what it put in a prompt.
+- **that the source was authoritative or correct.** A bundle proves the
+  bytes came from the configured source at `observed_at`, not that the
+  source held the right answer.
+- **who exported it.** A bundle is unsigned. Sign it — it is a valid
+  in-toto Statement — if you need authorship or non-repudiation.
+- **that nothing else reached the model.** Context resolved outside Readproof
+  (hardcoded prompts, tool output, retrieval the agent did itself) is
+  invisible here, by construction.
+- **anything at all, offline, about a re-rooted forgery.** Someone who
+  edits an entry *and* recomputes the root produces an internally
+  consistent file. Only the store cross-check (or an external signature)
+  catches that, which is why `--offline` is opt-in rather than the
+  default.
+
+## Why this shape: audit and compliance framing
+
+> **This is not legal advice.** Nothing here is a compliance
+> certification, and no artifact Readproof produces makes a system compliant
+> with anything. Regulatory obligations depend on your system, your role,
+> and your jurisdiction — take the framing below as engineering context
+> for *why* the bundle records what it records, and talk to counsel about
+> what you actually owe.
+
+Two recurring asks shaped this format:
+
+**EU AI Act, Article 12 (record-keeping).** High-risk AI systems are
+expected to technically allow for the automatic recording of events over
+their lifetime, with traceability of the system's functioning that is
+appropriate to its purpose. For a context-driven agent, a large part of
+"functioning" is which documents, at which versions, were in front of the
+model for a given decision. A bundle pins that per run: content-addressed
+hashes, the resolution policy in force, and a reconstruction check —
+rather than a log line asserting that a document was read.
+
+**SOC 2 (and internal audit) — "what did the agent see?"** The evidence
+an auditor asks for is usually not "show me your logs" but "for this
+customer's disputed decision on this date, show me the policy text the
+system used, and show me it hasn't been edited since." Content hashes
+plus the replay check answer that with an artifact that can be attached
+to a ticket, mailed out of the building, and re-verified later by someone
+without access to your database. `--with-content` decides whether the
+recipient gets the text itself or only the proof that a specific text was
+used.
+
+Two practical consequences of that framing:
+
+- **Export at decision time, not at audit time.** A bundle is a snapshot
+  of what Readproof could prove when it was written; exporting only after a
+  dispute means the store must still be intact.
+- **Sign bundles you intend to rely on.** Verification proves internal
+  consistency and agreement with the store. It says nothing about who
+  produced the file, and in-toto tooling handles that part.
+
+
+==============================================================================
+SOURCE: docs/mcp.md
+==============================================================================
+
+# MCP server (`readproof mcp`)
+
+`readproof mcp` serves a Readproof deployment over the [Model Context
+Protocol](https://modelcontextprotocol.io) on stdio, so an agent host —
+Claude Code, Claude Desktop, Cursor — can read governed documents through
+Readproof instead of fetching files and URLs directly.
+
+The difference that buys: every read the model performs is resolved
+through a freshness policy, recorded as an immutable snapshot with a
+content hash and a source revision, and can be pinned to a tag, grouped
+into a run, replayed byte-for-byte, diffed against another run, and
+exported as an evidence bundle. The model gets documents; you get a record
+of exactly which bytes it saw.
+
+The server is built on the same `client.Client` every CLI command uses, so
+it honors the global flags: `--data-dir` runs it embedded over a local
+data directory, `--server` / `--api-key` runs it against a `readproofd`.
+Nothing about the MCP surface changes between the two.
+
+Source: [`internal/mcp`](https://github.com/fbzz/readproof/tree/main/internal/mcp),
+[`cmd/readproof/mcp.go`](https://raw.githubusercontent.com/fbzz/readproof/main/cmd/readproof/mcp.go).
+
+## Setup
+
+`readproof mcp` is launched *by* the MCP client as a subprocess and speaks
+JSON-RPC on stdin/stdout — you never run it by hand. Every path in the
+configuration must be **absolute**: the client chooses the working
+directory, so a relative `--data-dir` will not resolve to what you expect.
+
+### Claude Code
+
+```bash
+# embedded: one local data directory
+claude mcp add readproof -- /abs/path/to/readproof mcp --data-dir /abs/path/to/.readproof
+
+# against a running readproofd (API key from the environment, not the command line)
+claude mcp add readproof --env READPROOF_API_KEY=sk-... -- /abs/path/to/readproof mcp --server https://readproofd.internal
+```
+
+Check it came up with `claude mcp list`, and remove it with `claude mcp
+remove readproof`.
+
+`--api-key` also works as a flag, but a flag is visible in the process
+list to every user on the machine; `READPROOF_API_KEY` is not.
+
+### Claude Desktop
+
+`claude_desktop_config.json` (macOS:
+`~/Library/Application Support/Claude/claude_desktop_config.json`;
+Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "readproof": {
+      "command": "/abs/path/to/readproof",
+      "args": ["mcp", "--data-dir", "/abs/path/to/.readproof"]
+    }
+  }
+}
+```
+
+Against a `readproofd`:
+
+```json
+{
+  "mcpServers": {
+    "readproof": {
+      "command": "/abs/path/to/readproof",
+      "args": ["mcp", "--server", "https://readproofd.internal"],
+      "env": { "READPROOF_API_KEY": "sk-..." }
+    }
+  }
+}
+```
+
+Restart Claude Desktop after editing the file.
+
+### Cursor
+
+`.cursor/mcp.json` in the project (or `~/.cursor/mcp.json` globally):
+
+```json
+{
+  "mcpServers": {
+    "readproof": {
+      "command": "/abs/path/to/readproof",
+      "args": ["mcp", "--data-dir", "/abs/path/to/.readproof"]
+    }
+  }
+}
+```
+
+### Registry
+
+Readproof's entry for the [official MCP
+registry](https://registry.modelcontextprotocol.io) lives in
+[`integrations/mcp-registry/`](https://github.com/fbzz/readproof/tree/main/integrations/mcp-registry) — the
+`server.json`, the `mcp-publisher` commands, and why the entry carries no
+installable `packages` array yet.
+
+## What the server exposes
+
+### Instructions
+
+The MCP `initialize` response carries an `instructions` paragraph that
+tells the model what Readproof is before it calls anything: resources are
+versioned and policy-governed, `@<tag>` pins an exact snapshot, and a run
+(`readproof_run_start` → `readproof_run_mount` → `readproof_run_commit`)
+produces a manifest id that can later be inspected, diffed, replayed, and
+exported.
+
+### Resources
+
+`resources/list` returns every registered resource, live from the store —
+a resource registered by another process while the server is running shows
+up on the next list, no restart needed.
+
+| Field | Value |
+| --- | --- |
+| `uri` | the Readproof URI, `readproof://<namespace>/<path>` |
+| `name` | the resource path, e.g. `policies/refunds` |
+| `title` | the full URI |
+| `description` | source kind, freshness policy, and origin — e.g. `github · require_fresh — acme/company-docs:policies/refunds.md@main` |
+| `mimeType` | the current snapshot's content type, once one exists |
+| `size` | the current snapshot's byte count |
+| `_meta` | `namespace`, `path`, `source` (**redacted**), `policy`, `current_snapshot_id` |
+
+`resources/templates/list` returns one template,
+`readproof://{namespace}/{+path}`. It is what makes tagged reads possible:
+no static listing can enumerate every `@<tag>`, so
+**`readproof://<namespace>/<path>@<tag>` is readable via `resources/read`
+even though it never appears in `resources/list`.**
+
+`resources/read` resolves the URI exactly as `readproof get` does — the
+resource's freshness policy decides whether the source is re-fetched, and
+a trailing `@<tag>` bypasses the policy to deliver one exact snapshot.
+Text-like content (`text/*`, `application/json`, `application/*+json`,
+`application/xml`, `application/yaml`, and unknown types whose bytes are
+valid UTF-8) comes back as text; everything else comes back as a base64
+blob.
+
+Each content block carries the provenance in its own `_meta`:
+
+```json
+{
+  "uri": "readproof://demo/policies/refunds",
+  "mimeType": "text/markdown",
+  "text": "Products can be refunded within 30 days.\n",
+  "_meta": {
+    "uri": "readproof://demo/policies/refunds",
+    "ref": "",
+    "snapshot_id": "snap_01M0GQE8MCRQHJC8E1CY9AQGZT",
+    "content_hash": "sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb",
+    "source_revision": "sha256:c8b0bb212e93",
+    "observed_at": "2026-08-20T23:17:30Z",
+    "decision": "fetch",
+    "materialization_id": "mat_01M0GQE8MCAYRNZ8RNJ26YZ9GA",
+    "content_type": "text/markdown",
+    "bytes": 41
+  }
+}
+```
+
+`decision` is `fetch`, `use_current`, `use_pinned`, or `use_tag` — why
+these bytes and not others. `ref` is the tag the read was pinned to, `""`
+for a plain URI. Reading an unregistered URI, or one whose tag doesn't
+exist, returns a proper MCP resource-not-found error.
+
+### Tools
+
+Every tool returns both a JSON text block and `structuredContent`, with an
+input schema derived from the handler's argument type. Failures come back
+as tool *error results* (`isError: true`) with a readable message, not as
+protocol errors, so the model can correct itself.
+
+| Tool | What it does |
+| --- | --- |
+| `readproof_resources_list` | List every registered document with its source and policy. The discovery call. |
+| `readproof_resolve` | Read one document; returns the bytes plus snapshot id, content hash, and source revision. |
+| `readproof_history` | List a resource's snapshots, newest first, with the tags pointing at each. |
+| `readproof_run_start` | Open a run — the container that records what this piece of work reads. |
+| `readproof_run_mount` | Read a document *and* record it in the open run, at the next position. |
+| `readproof_run_commit` | Freeze the run into an immutable manifest; returns the **manifest id**. |
+| `readproof_manifest` | Show a committed manifest, by manifest id or run id. |
+| `readproof_diff` | Compare two runs: added/removed/changed, the unified diff, and each side's source revision, observation time, and tag. |
+| `readproof_replay` | Reconstruct a manifest's bytes from storage alone and re-hash them. `include_content: true` returns the bytes. |
+| `readproof_tag_set` | Point a named tag at a snapshot, so it can be read as `uri@tag`. |
+| `readproof_tag_list` | List a resource's tags and the exact `uri@tag` reference for each. |
+| `readproof_tag_delete` | Remove a tag. The snapshot survives, and manifests that mounted it still replay. |
+| `readproof_evidence_export` | Build an in-toto evidence bundle for a run (see [`docs/evidence.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/evidence.md)). `with_content: true` embeds the bytes. |
+
+The `readproof_run_*` trio is the load-bearing one: mount → commit →
+manifest id. `readproof_resolve` reads a document; `readproof_run_mount`
+reads it *and* records it, which is what later makes `readproof_diff`,
+`readproof_replay`, and `readproof_evidence_export` possible. A manifest
+id is the only handle those three need.
+
+**Reading has side effects.** `resources/read`, `readproof_resolve`, and
+`readproof_run_mount` may fetch from the source and record a new snapshot
+— that is how Readproof observes what the model saw, and the tool
+descriptions say so. Everything else is read-only and annotated as such.
+
+### Result size
+
+Inline content is capped at 1 MiB. Past that, text is cut on a rune
+boundary and a marker is appended naming the content hash of the complete
+bytes:
+
+```
+[readproof: content truncated — 1048576 of 4210688 bytes shown. The full content is
+unchanged and content-addressed as sha256:c8b0bb…; use readproof_replay or
+readproof_evidence_export --with-content to obtain all of it.]
+```
+
+The `_meta` of a truncated read also carries `"truncated": true`, and tool
+results carry `truncated` plus `total_bytes`.
+
+## Try it
+
+With the refund-agent demo registered (see the README), ask the model:
+
+1. *"List the Readproof resources you can read."* → `readproof_resources_list`
+2. *"Read `readproof://demo/policies/refunds` and tell me the refund
+   window."* → `resources/read`, which records a snapshot.
+3. *"Tag that snapshot as `prod`, then read
+   `readproof://demo/policies/refunds@prod`."* → `readproof_tag_set`, then
+   a pinned read.
+4. Edit the underlying document, then: *"Read the resource again — did it
+   change? What does `@prod` say now?"* The plain read returns the new
+   bytes; `@prod` still returns the old ones, with `decision: "use_tag"`.
+5. *"Start a run called `demo-1`, mount `readproof://demo/policies/refunds`,
+   commit it, and tell me the manifest id."* → the `readproof_run_*` trio.
+6. *"Diff `demo-1` against `demo-2` and explain why the answer changed."*
+   → `readproof_diff`, including the source-revision and observed-at "why".
+7. *"Replay `demo-1` and export an evidence bundle for it."* →
+   `readproof_replay`, then `readproof_evidence_export`.
+
+Everything the model did is reproducible from the CLI against the same
+data directory: `readproof manifest demo-1`, `readproof replay demo-1`,
+`readproof evidence export demo-1`.
+
+## Security
+
+- **stdio is a local trust boundary.** The server runs as a subprocess of
+  the MCP client, with that user's privileges and no authentication of its
+  own. In embedded mode it can read every resource in the data directory,
+  and through the filesystem source adapter it can read any file a
+  registered resource points at. Register only resources you are willing
+  for the connected agent to read.
+- **`--server` mode inherits `readproofd`'s auth.** The API key is passed
+  straight through by the same client the CLI uses; the MCP layer adds no
+  authorization of its own and removes none. Prefer `READPROOF_API_KEY` in the
+  client's `env` block over `--api-key` on the command line, which is
+  visible in the process list.
+- **Credentials are redacted from everything the model can see.** Source
+  configuration surfaced in resource listings and tool results runs
+  through [`internal/redact`](https://github.com/fbzz/readproof/tree/main/internal/redact), so HTTP header values
+  that look like credentials come back as `[REDACTED]` — including in
+  embedded mode, where they never crossed a wire.
+- **Resolving has side effects.** `resources/read`, `readproof_resolve`, and
+  `readproof_run_mount` may contact the configured source. For an `http` or
+  `github` resource that means an outbound request initiated by the model.
+- **stdout is the protocol channel.** `readproof mcp` writes diagnostics to
+  stderr only, and stays quiet unless `--verbose` is passed.
+
+## Not in the MVP
+
+- **HTTP transport.** stdio only for now; the SDK also offers a streamable
+  HTTP transport, which is the natural way to serve one shared Readproof
+  deployment to many agent hosts. Deliberately deferred — it needs an
+  authentication story of its own rather than inheriting `readproofd`'s.
+- **Prompts.** No MCP prompts are registered.
+- **Resource subscriptions.** No `resources/subscribe`; a client polls
+  `resources/list` or re-reads.
+
+
+==============================================================================
+SOURCE: skills/readproof/SKILL.md
+==============================================================================
+
+---
+name: readproof
+description: Use Readproof whenever a task reads external documents that must be reproducible later — policies, runbooks, price tables, specs, anything fetched from a file, GitHub, or a URL. It gives each document a stable readproof:// identity and a freshness policy, records what a task actually read as an immutable manifest, and lets anyone diff, replay byte-for-byte, or export evidence for that task afterwards.
+---
+
+# Readproof — record exactly what you read
+
+## When to use this
+- The task reads a document (policy, contract, runbook, config, spec) that a
+  human may later ask about: "what did the agent see?", "why did the answer
+  change?", "can you rerun exactly that?".
+- The task's output must be auditable or reproducible (support decisions,
+  compliance, billing, anything regulated).
+- You are about to paste a document into your own context: mount it through
+  Readproof instead, so the bytes are recorded by hash.
+
+## Setup (once per machine)
+```bash
+# binary: brew install fbzz/tap/readproof   or
+go install github.com/fbzz/readproof/cmd/readproof@latest
+export READPROOF_HOME=~/.readproof            # embedded store, no services
+# shared server instead: export READPROOF_SERVER_URL=http://host:8080  (+ READPROOF_API_KEY)
+```
+If the MCP server is available (`readproof mcp`), prefer its tools
+(`readproof_resolve`, `readproof_run_*`, `readproof_diff`, `readproof_replay`,
+`readproof_evidence_export`, `readproof_tag_*`) over shelling out.
+
+## Register a document (once per document)
+```bash
+readproof resource add readproof://<ns>/<path> --source-type filesystem --path /abs/file.md --policy require_fresh
+readproof resource add readproof://<ns>/<path> --source-type github --owner O --repo R --path docs/x.md --ref main --policy allow_stale --max-age 1h
+readproof resource add readproof://<ns>/<path> --source-type http --url https://… --header 'Authorization: Bearer ${TOKEN}' --policy require_fresh
+```
+Policies: `require_fresh` (re-verify every read), `allow_stale --max-age`
+(reuse within a TTL). To pin a reviewed version, tag it and read `@tag`.
+
+## The rule for every task that reads documents
+1. Open one run per task: `readproof run start <task-id>`.
+2. Read every document through the run, never directly:
+   `readproof run mount <task-id> readproof://<ns>/<path>[@prod]`
+   The command prints the bytes — use exactly those bytes in your reasoning.
+3. Finish: `readproof run commit <task-id>` → prints a **manifest id**.
+4. Put the manifest id in your output / ticket / PR description
+   (`readproof manifest: manifest_…`). That id is what makes the task
+   reproducible.
+Single shot: `readproof run --id <task-id> <uri> <uri>…` does 1–3 at once.
+
+## Answering "why did it change?" / "show me what it read"
+```bash
+readproof diff <task-a> <task-b>        # which document moved; why: source revision + observed time
+readproof replay <task-id>              # the exact bytes, from the store, never the live source
+readproof evidence export <task-id> --with-content --out bundle.json
+readproof evidence verify bundle.json   # Merkle root + re-hash + store cross-check; non-zero on tamper
+```
+
+## Promotion with tags
+```bash
+readproof history readproof://<ns>/<path>            # snapshots + tags
+readproof tag set readproof://<ns>/<path> prod <snapshot-id>
+readproof run mount <task-id> readproof://<ns>/<path>@prod   # exactly that snapshot, no fetch
+```
+Never edit files to "deploy" a document; move the tag.
+
+## Do not
+- Do not bypass the run (read the file directly) for documents that matter.
+- Do not paste secrets into resource definitions; use `${ENV_VAR}` headers.
+- Do not delete or rewrite anything under the data directory; it is the record.
+
+
+==============================================================================
+SOURCE: docs/roadmap.md
+==============================================================================
+
+# Roadmap
+
+What comes after the v0.2 MVP ([`mvp.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/mvp.md)), roughly in priority
+order. Each line is a real gap, not a wish — most are things the current
+code notes as a limitation. Nothing here is a commitment or a date.
+
+1. **LICENSE (done: Apache-2.0), public repo.** The rename to Readproof landed in v0.3.0: the
+   evidence `predicateType` URN and the `readproof://` scheme both bake the
+   name in, so it had to happen before anyone depended on either. LICENSE
+   remains an owner decision that blocks publishing at all.
+2. **Python SDK.** Most agent code that would mount `readproof://` URIs is
+   Python; a TypeScript-only SDK excludes the majority of the users this is
+   for.
+3. **Trace-context propagation across the HTTP API.** Today a CLI/SDK
+   span and the `readproofd` spans it caused are correlated by
+   `readproof.run.id` and `readproof.resource.uri`, not by trace id — a
+   documented gap in [`observability.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/observability.md). W3C
+   `traceparent` on the wire closes it and makes one run one trace.
+4. **MCP over HTTP.** `readproof mcp` is stdio-only, which means one
+   Readproof per client machine. A streamable-HTTP transport lets a team
+   share one `readproofd`-backed MCP endpoint.
+5. **Policy file.** A declarative allow-list of sources (with an SSRF
+   allow-list for HTTP targets) plus integrity and prompt-injection
+   scanning of fetched content. Registration is currently trusted
+   implicitly, which stops being acceptable the moment `readproofd` accepts
+   resources from anyone but its operator.
+6. **Signed evidence bundles and OCI export.** A bundle is a valid in-toto
+   Statement but is unsigned, so it proves consistency and not authorship;
+   cosign / in-toto attestation fixes that, and pushing bundles to a
+   registry with ORAS puts them where supply-chain tooling already looks.
+7. **Tag promotion workflow.** `readproof tag promote staging→prod` as one
+   audited step, instead of reading a snapshot id out of one command and
+   pasting it into another — the error-prone part of using tags today.
+8. **More source adapters.** S3, Confluence/Notion, and a generic git
+   adapter (not just the GitHub API) cover where policy documents actually
+   live in the companies most likely to need a manifest.
+9. **Durable-execution helpers.** Thin Temporal / Restate activity wrappers
+   for `run.start` / `mount` / `commit`, because a run legitimately spans
+   processes and retries and those frameworks are where that already
+   happens.
+10. **Auth beyond a single API key.** One shared bearer token has no
+    identity, no scoping, and no rotation story; per-caller keys or OIDC
+    are the minimum for a shared `readproofd`.
+11. **Operator UI.** A read-only web view of resources, tags, runs, diffs
+    and bundles — the fastest way to answer "what did the agent see?"
+    for someone who will never run the CLI.

@@ -3,9 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Readproof Docs</title>
-<meta name="description" content="Readproof documentation: install, sources, runs, tags, evidence bundles, server mode, SDK, MCP, LangGraph, observability, CLI reference.">
+<title>Readproof docs — pin, diff and replay agent context</title>
+<meta name="description" content="Install Readproof, register a document, record a run, then diff, replay and export it. Sources, policies, tags, evidence, server mode, SDK, MCP, CLI.">
+<!-- remove at public launch -->
 <meta name="robots" content="noindex">
+<link rel="canonical" href="https://fbzz.github.io/readproof/docs/">
+<link rel="alternate" type="text/plain" href="/readproof/llms.txt" title="llms.txt — Readproof for language models">
+<meta property="og:site_name" content="Readproof">
+<meta property="og:title" content="Readproof docs — pin, diff and replay agent context">
+<meta property="og:description" content="The whole surface on one page: install, sources and freshness policies, runs and manifests, tags, evidence bundles, server mode, SDK, MCP, observability, CLI reference.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://fbzz.github.io/readproof/docs/">
+<meta property="og:image" content="https://fbzz.github.io/readproof/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Readproof wordmark over a terminal showing a verified byte-for-byte replay.">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Readproof docs — pin, diff and replay agent context">
+<meta name="twitter:description" content="The whole surface on one page: install, sources and freshness policies, runs and manifests, tags, evidence bundles, server mode, SDK, MCP, observability, CLI reference.">
+<meta name="twitter:image" content="https://fbzz.github.io/readproof/og.png">
+<meta name="twitter:image:alt" content="Readproof wordmark over a terminal showing a verified byte-for-byte replay.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Erp%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +31,7 @@
 <style>
   :root {
     --bg: #000000; --surface: #181818; --raised: #1F1F1F; --hover: #272727; --rule: #313131;
-    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #737373;
+    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #7E7E7E; --comment: #8C8C8C;
     --accent: #4ADE80; --accent-contrast: #000000;
     --amber: #FBBF24;
     --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
@@ -23,7 +41,7 @@
   @media (prefers-color-scheme: light) {
     :root {
       --bg: #FFFFFF; --surface: #FAFAFA; --raised: #F5F5F5; --hover: #EFEFEF; --rule: #E5E5E5;
-      --ink: #000000; --ink-2: #666666; --muted: #8A8A8A;
+      --ink: #000000; --ink-2: #666666; --muted: #7A7A7A; --comment: #6F6F6F;
       --accent: #15803D; --accent-contrast: #FFFFFF;
       --amber: #8A5800;
     }
@@ -84,29 +102,30 @@
 
   /* Terminal / code */
   pre { margin: 0; }
-  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
-  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 10px; right: 60px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .code .copy { position: absolute; top: 8px; right: 8px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
+  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
+  /* the label gets its own row on the left, clear of the copy button */
+  .code[data-lang] { padding-top: 48px; }
+  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 20px; left: 24px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .code .copy { position: absolute; top: 12px; right: 12px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
   .code .copy:hover { color: var(--accent); border-color: var(--accent); background: transparent; }
   .term .p { color: var(--accent); font-weight: 600; }
   .term .cy { color: var(--ink); }
-  .term .am { color: var(--amber); }
   .term .pin { color: var(--amber); }
   .term .m { color: var(--ink-2); }
   .term .ok { color: var(--accent); }
-  .term .c { color: var(--muted); }
+  .term .c { color: var(--comment); }
   .term .hl { color: var(--ink); font-weight: 600; }
   .code .k { color: var(--ink); font-weight: 600; }
   .code .s { color: var(--accent); }
-  .code .c { color: var(--muted); }
+  .code .c { color: var(--comment); }
   .code .n { color: var(--amber); }
 
   /* Cards, tables, callouts */
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
   .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; transition: all .7s var(--ease); }
   .card:hover { background: var(--raised); transform: translateY(-2px); }
-  .card h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
-  .card h4 code { font-size: 14px; }
+  .card h3 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  .card h3 code { font-size: 14px; }
   .card p { font-size: 14px; line-height: 20px; color: var(--ink-2); margin: 0 0 8px; }
   .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); margin: 16px 0 24px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 20px; }
@@ -128,7 +147,7 @@
   ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 16px; padding: 24px 0; margin: 0; }
   ol.steps > li + li { border-top: 1px solid var(--rule); }
   ol.steps > li::before { content: counter(s, decimal-leading-zero); font-family: var(--mono); font-weight: 600; font-size: 18px; line-height: 28px; color: var(--accent); }
-  ol.steps h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  ol.steps h3 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
   ol.steps p { max-width: 70ch; }
   ol.steps .code, ol.steps .term { margin: 8px 0 8px; }
 
@@ -140,6 +159,8 @@
   .foot { border-top: 1px solid var(--rule); padding-top: 24px; font-size: 14px; line-height: 20px; color: var(--muted); }
   kbd { font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 6px; padding: 0 .35em; background: var(--surface); }
 
+  /* available to screen readers, invisible on screen: keeps the heading outline nested */
+  .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
   .skip { position: fixed; left: 16px; top: -64px; z-index: 60; background: var(--accent); color: var(--accent-contrast); padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: top .7s var(--ease); }
   .skip:focus { top: 16px; }
   /* long commands and transcripts wrap instead of hiding behind a horizontal scrollbar */
@@ -189,29 +210,47 @@
     <a class="btn" href="#sdk">TypeScript SDK</a>
   </div>
 
-  <pre class="term"><span class="c"># The whole idea in six commands. Real output, hashes trimmed.</span>
-<span class="p">$</span> readproof resource add readproof://demo/policies/refunds --source-type filesystem --path policies/refunds.md --policy require_fresh
-<span class="p">$</span> readproof run --id run-a readproof://demo/policies/refunds
-<span class="m">Mounted readproof://demo/policies/refunds -> snapshot snap_01M0HRB5KJ… (position 0)</span>
-<span class="m">Committed manifest manifest_01M0HRB5KJ… for run run-a (1 entry)</span>
-<span class="p">$</span> readproof tag set readproof://demo/policies/refunds prod snap_01M0HRB5KJ…        <span class="c"># promote what run-a saw</span>
-<span class="p">$</span> printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md   <span class="c"># the source changes underneath</span>
-<span class="p">$</span> readproof run --id run-b readproof://demo/policies/refunds
-<span class="p">$</span> readproof diff run-a run-b
-<span class="m">~ readproof://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
-<span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 08:52:32Z → 08:52:33Z</span>
-<span class="m">  -Products can be refunded within 30 days.</span>
-<span class="m">  +Products can be refunded within 14 days.</span>
-<span class="p">$</span> readproof replay run-a                                  <span class="c"># reads the store, never the file</span>
-<span class="hl">Products can be refunded within 30 days.</span>
-<span class="ok">Replay verified: SHA256 match for 1/1 entries.</span>
-<span class="p">$</span> readproof evidence export run-a --with-content --out bundle.json &amp;&amp; readproof evidence verify bundle.json
-<span class="ok">evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-hashed, replay match 1/1</span></pre>
+  <pre class="term" aria-label="Terminal session: the whole Readproof loop — register, record, pin, change the source, diff, replay, verify"><span class="c"># The whole loop. Real output from readproof 0.3.1; ids trimmed.</span>
 
+<span class="c"># 1. give the document an identity and a freshness rule</span>
+<span class="p">$</span> readproof resource add readproof://demo/policies/refunds \
+            --source-type filesystem --path policies/refunds.md \
+            --policy require_fresh
+
+<span class="c"># 2. record one agent run, then pin what it read as @prod</span>
+<span class="p">$</span> readproof run --id run-a readproof://demo/policies/refunds
+<span class="m">  Mounted …/policies/refunds -&gt; snapshot snap_01M0JED935… (position 0)
+  Committed manifest manifest_01M0JED936… for run run-a (1 entry)</span>
+<span class="p">$</span> readproof tag set readproof://demo/policies/refunds prod snap_01M0JED935…
+
+<span class="c"># 3. the file changes underneath; a later run records the new bytes</span>
+<span class="p">$</span> printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
+<span class="p">$</span> readproof run --id run-b readproof://demo/policies/refunds
+
+<span class="c"># 4. the diff names the revision that moved, and when it was observed</span>
+<span class="p">$</span> readproof diff run-a run-b
+<span class="m">  ~ readproof://demo/policies/refunds</span>
+<span class="pin">    why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456;
+         observed 2026-08-21T15:18:10Z → 2026-08-21T15:18:12Z</span>
+<span class="m">    -Products can be refunded within 30 days.
+    +Products can be refunded within 14 days.</span>
+
+<span class="c"># 5. replay rebuilds run-a from the store, never from the file</span>
+<span class="p">$</span> readproof replay run-a
+<span class="hl">  Products can be refunded within 30 days.</span>
+<span class="ok">  Replay verified: SHA256 match for 1/1 entries.</span>
+
+<span class="c"># 6. and the whole run exports as one file anyone can check</span>
+<span class="p">$</span> readproof evidence export run-a --with-content --out bundle.json
+<span class="p">$</span> readproof evidence verify bundle.json
+<span class="ok">  evidence verified: 1 entry, merkle root a9b73469f1a6…,
+  embedded content 1/1 re-hashed, replay match 1/1</span></pre>
+
+  <h2 class="vh">Readproof in three cards</h2>
   <div class="grid">
-    <div class="card"><h4>What it is</h4><p>A small Go binary (<code>readproof</code>) plus an optional server (<code>readproofd</code>) that sits underneath your retrieval, prompting, and memory stack and answers one question forever: <strong>which exact bytes went into this run?</strong></p></div>
-    <div class="card"><h4>What it isn't</h4><p>Not a vector DB, not an observability tool, not a prompt registry, not memory. It complements install time lockfiles (APM, <code>skills-lock.json</code>) that pin <strong>static</strong> config — Readproof pins the <strong>runtime</strong> documents, per run.</p></div>
-    <div class="card"><h4>Where it plugs in</h4><p>MCP server for Claude Code / Desktop / Cursor, OpenTelemetry spans with GenAI attributes, a TypeScript SDK, a LangGraph example, and a plain HTTP API. The CLI behaves identically embedded or against a server.</p></div>
+    <div class="card"><h3>What it is</h3><p>A small Go binary (<code>readproof</code>) plus an optional server (<code>readproofd</code>) that sits underneath your retrieval, prompting, and memory stack and answers one question forever: <strong>which exact bytes went into this run?</strong></p></div>
+    <div class="card"><h3>What it isn't</h3><p>Not a vector DB, not an observability tool, not a prompt registry, not memory. It complements install time lockfiles (APM, <code>skills-lock.json</code>) that pin <strong>static</strong> config — Readproof pins the <strong>runtime</strong> documents, per run.</p></div>
+    <div class="card"><h3>Where it plugs in</h3><p>MCP server for Claude Code / Desktop / Cursor, OpenTelemetry spans with GenAI attributes, a TypeScript SDK, a LangGraph example, and a plain HTTP API. The CLI behaves identically embedded or against a server.</p></div>
   </div>
 </section>
 
@@ -305,12 +344,12 @@
   </figure>
 
   <div class="grid">
-    <div class="card"><h4>Source</h4><p>Where bytes physically live: <code>filesystem</code>, <code>github</code>, or <code>http</code>. Credentials come from readproofd's environment at fetch time and are never stored.</p></div>
-    <div class="card"><h4>Resource</h4><p>The stable logical identity your code uses: <code>readproof://&lt;namespace&gt;/&lt;path&gt;</code>. Survives the bytes changing.</p></div>
-    <div class="card"><h4>Policy</h4><p>Freshness rule per resource: <code>require_fresh</code> (verify again every resolve), <code>allow_stale</code> (reuse within <code>--max-age</code>), or pin with a <code>@tag</code>.</p></div>
-    <div class="card"><h4>Snapshot</h4><p>An immutable observation: <code>sha256:…</code> content hash, source revision, observed at, provenance (ETag, path, commit…). Identical bytes dedupe to one blob.</p></div>
-    <div class="card"><h4>Manifest</h4><p>The ordered, immutable record of everything a run resolved — position, URI, <code>@ref</code>, snapshot, content hash. Order is an invariant: it changes model input.</p></div>
-    <div class="card"><h4>Evidence bundle</h4><p>An <code>in-toto</code> Statement whose subject digest is a Merkle root over the manifest; carries entries, redacted resource definitions, and a replay check. Verifiable by anyone you hand it to.</p></div>
+    <div class="card"><h3>Source</h3><p>Where bytes physically live: <code>filesystem</code>, <code>github</code>, or <code>http</code>. Credentials come from readproofd's environment at fetch time and are never stored.</p></div>
+    <div class="card"><h3>Resource</h3><p>The stable logical identity your code uses: <code>readproof://&lt;namespace&gt;/&lt;path&gt;</code>. Survives the bytes changing.</p></div>
+    <div class="card"><h3>Policy</h3><p>Freshness rule per resource: <code>require_fresh</code> (verify again every resolve), <code>allow_stale</code> (reuse within <code>--max-age</code>), or pin with a <code>@tag</code>.</p></div>
+    <div class="card"><h3>Snapshot</h3><p>An immutable observation: <code>sha256:…</code> content hash, source revision, observed at, provenance (ETag, path, commit…). Identical bytes dedupe to one blob.</p></div>
+    <div class="card"><h3>Manifest</h3><p>The ordered, immutable record of everything a run resolved — position, URI, <code>@ref</code>, snapshot, content hash. Order is an invariant: it changes model input.</p></div>
+    <div class="card"><h3>Evidence bundle</h3><p>An <code>in-toto</code> Statement whose subject digest is a Merkle root over the manifest; carries entries, redacted resource definitions, and a replay check. Verifiable by anyone you hand it to.</p></div>
   </div>
 </section>
 
@@ -318,22 +357,24 @@
   <p class="eyebrow">use it</p>
   <h2>Install &amp; first resolve</h2>
   <p class="lede">Embedded mode needs only Go 1.26+. Everything lives in a local <code>.readproof</code> directory (SQLite + blobs); no services.</p>
-  <pre class="code" data-lang="bash"><code>git clone &lt;this repo&gt; readproof &amp;&amp; cd readproof
+  <pre class="code" data-lang="bash"><code><span class="c"># 1. build the one binary</span>
+git clone https://github.com/fbzz/readproof.git &amp;&amp; cd readproof
 go build -o readproof ./cmd/readproof
-./readproof version            <span class="c"># readproof 0.3.1</span>
+./readproof version
+<span class="c"># -&gt; readproof 0.3.1</span>
 
-<span class="c"># register a document: identity + source + freshness policy</span>
+<span class="c"># 2. register a document: identity + source + freshness rule</span>
 ./readproof resource add readproof://demo/policies/refunds \
   --source-type filesystem \
   --path examples/refund-agent/policies/refunds.md \
   --policy require_fresh
 
-<span class="c"># resolve it (creates the first snapshot)</span>
+<span class="c"># 3. resolve it — this creates the first snapshot</span>
 ./readproof get readproof://demo/policies/refunds</code></pre>
-  <pre class="term"><span class="m">uri:          readproof://demo/policies/refunds
-snapshot:     snap_01M0HRB5GNVBJ1MYZXCPHA51VZ
-content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
-freshness:    fresh (observed 2026-08-21T08:52:32Z, policy require_fresh)
+  <pre class="term" aria-label="Output of readproof get: uri, snapshot, content hash, freshness, provenance, and the content"><span class="m">uri:          readproof://demo/policies/refunds
+snapshot:     snap_01M0JED70D1TPFJJNVC4C3ZY9X
+content_hash: sha256:c8b0bb212e93…
+freshness:    fresh (observed 2026-08-21T15:18:08Z, policy require_fresh)
 provenance:   path=policies/refunds.md source_type=filesystem
 bytes:        41
 content_type: text/markdown
@@ -346,20 +387,30 @@ content_type: text/markdown
 
 <section id="sources">
   <h2>Sources &amp; freshness policies</h2>
-  <p class="lede">A resource is <strong>where the bytes come from</strong> plus <strong>how fresh they must be</strong>. Three adapters ship in v0.2.</p>
+  <p class="lede">A resource is <strong>where the bytes come from</strong> plus <strong>how fresh they must be</strong>. Three adapters ship in v0.3.</p>
   <h3>Filesystem</h3>
-  <pre class="code" data-lang="bash"><code>readproof resource add readproof://acme/policies/refunds \
-  --source-type filesystem --path /srv/policies/refunds.md --policy require_fresh</code></pre>
+  <pre class="code" data-lang="bash"><code><span class="c"># a file on the machine that runs readproof (or readproofd)</span>
+readproof resource add readproof://acme/policies/refunds \
+  --source-type filesystem \
+  --path /srv/policies/refunds.md \
+  --policy require_fresh</code></pre>
   <h3>GitHub (file in a repo, at a branch or ref)</h3>
-  <pre class="code" data-lang="bash"><code><span class="c"># GITHUB_TOKEN is read from the readproof/readproofd process environment at fetch time; it is never stored.</span>
+  <pre class="code" data-lang="bash"><code><span class="c"># the token is read from the process environment at fetch time
+# and is never stored; the commit SHA becomes the source revision</span>
 export GITHUB_TOKEN=ghp_…
+
 readproof resource add readproof://acme/runbooks/oncall \
-  --source-type github --owner acme --repo ops --path runbooks/oncall.md --ref main \
+  --source-type github \
+  --owner acme --repo ops --ref main \
+  --path runbooks/oncall.md \
   --policy allow_stale --max-age 1h</code></pre>
   <p>The snapshot's <code>source_revision</code> is the commit SHA the file was read at, so <code>readproof diff</code> can later say exactly which commit changed a run's input.</p>
   <h3>HTTP (any URL; headers may reference env vars)</h3>
-  <pre class="code" data-lang="bash"><code>readproof resource add readproof://acme/pricing/table \
-  --source-type http --url https://pricing.internal/v3/table.json \
+  <pre class="code" data-lang="bash"><code><span class="c"># ${VAR} inside a header is resolved from the environment at
+# fetch time, so the token itself is never written to the store</span>
+readproof resource add readproof://acme/pricing/table \
+  --source-type http \
+  --url https://pricing.internal/v3/table.json \
   --header 'Authorization: Bearer ${PRICING_TOKEN}' \
   --policy allow_stale --max-age 15m</code></pre>
   <p><code>${VAR}</code> references are resolved from the server's environment at fetch time. As defense in depth, sensitive header values (<code>Authorization</code>, <code>Cookie</code>, anything matching <code>*token*</code>/<code>*key*</code>/<code>*secret*</code>…) are masked in every API response, in <code>readproof inspect</code>, and in evidence bundles. <code>ETag</code> and <code>Last-Modified</code> are recorded in snapshot provenance when the server sends them.</p>
@@ -374,9 +425,14 @@ readproof resource add readproof://acme/runbooks/oncall \
     </tbody>
   </table></div>
   <p>Inspect what you registered, and the history of what was observed:</p>
-  <pre class="code" data-lang="bash"><code>readproof resource list
-readproof inspect readproof://demo/policies/refunds      <span class="c"># source, policy, tags, current snapshot</span>
-readproof history readproof://demo/policies/refunds      <span class="c"># every snapshot, newest first, with TAGS column</span></code></pre>
+  <pre class="code" data-lang="bash"><code><span class="c"># everything registered, with source kind and policy</span>
+readproof resource list
+
+<span class="c"># source, policy, tags, and the current snapshot of one resource</span>
+readproof inspect readproof://demo/policies/refunds
+
+<span class="c"># every snapshot ever observed, newest first, with a TAGS column</span>
+readproof history readproof://demo/policies/refunds</code></pre>
 </section>
 
 <section id="runs">
@@ -384,37 +440,49 @@ readproof history readproof://demo/policies/refunds      <span class="c"># every
   <p class="lede">A <strong>run</strong> is the unit of work you want to be able to reproduce — one agent turn, one job, one eval case. Mounting a URI into a run resolves it <strong>and</strong> records it at the next position; committing freezes the run into a manifest.</p>
   <ol class="steps">
     <li><div>
-      <h4>Record a run</h4>
+      <h3>Record a run</h3>
       <p>Single shot form (start + mount + commit) or the three step form if your code mounts across time.</p>
-      <pre class="code" data-lang="bash"><code>readproof run --id run-a readproof://demo/policies/refunds readproof://demo/policies/tone
-<span class="c"># or, step by step:</span>
+      <pre class="code" data-lang="bash"><code><span class="c"># one shot: start + mount (in the order given) + commit</span>
+readproof run --id run-a \
+  readproof://demo/policies/refunds \
+  readproof://demo/policies/tone
+
+<span class="c"># or step by step, when your code mounts across time</span>
 readproof run start run-a
 readproof run mount run-a readproof://demo/policies/refunds
 readproof run mount run-a readproof://demo/policies/tone
 readproof run commit run-a</code></pre>
-      <pre class="term"><span class="m">Started run run-a
-Mounted readproof://demo/policies/refunds -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
-Committed manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP for run run-a (1 entry)</span></pre>
+      <pre class="term" aria-label="Output of readproof run: the run starts, one resource is mounted at position 0, and the manifest is committed"><span class="m">Started run run-a
+Mounted …/policies/refunds -&gt; snapshot snap_01M0JED935… (position 0)
+Committed manifest manifest_01M0JED936… for run run-a (1 entry)</span></pre>
     </div></li>
     <li><div>
-      <h4>Read the manifest</h4>
-      <pre class="code" data-lang="bash"><code>readproof manifest run-a        <span class="c"># by run id or manifest id</span></code></pre>
-      <pre class="term"><span class="m">Manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), created 2026-08-21T08:52:32Z, 1 entry
+      <h3>Read the manifest</h3>
+      <pre class="code" data-lang="bash"><code><span class="c"># takes a run id or a manifest id</span>
+readproof manifest run-a</code></pre>
+      <pre class="term" aria-label="Output of readproof manifest: one ordered entry with its snapshot id and content hash"><span class="m">Manifest manifest_01M0JED936… (run run-a),
+created 2026-08-21T15:18:10Z, 1 entry
 
-POS  URI                          SNAPSHOT                         CONTENT_HASH
-0    readproof://demo/policies/refunds  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93…</span></pre>
+POS  URI                                SNAPSHOT          CONTENT_HASH
+0    readproof://demo/policies/refunds  snap_01M0JED935…  sha256:c8b0bb21…</span></pre>
     </div></li>
     <li><div>
-      <h4>Change the world, run again, diff the inputs</h4>
+      <h3>Change the world, run again, diff the inputs</h3>
       <p>The <code>why:</code> line is the point: not just <strong>that</strong> the input changed, but <strong>which source revision</strong> and <strong>when it was observed</strong>.</p>
-      <pre class="code" data-lang="bash"><code>printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
-readproof run --id run-b readproof://demo/policies/refunds
-readproof diff run-a run-b</code></pre>
-      <pre class="term"><span class="m">--- run-a (manifest_01M0HRB5KJMHPS0X0GGXF853CP)
-+++ run-b (manifest_01M0HRB68SZDF1N6TTNXC0VQCT)
+      <pre class="code" data-lang="bash"><code><span class="c"># 1. the source changes; nobody tells the agent</span>
+printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
 
-~ readproof://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
-<span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 2026-08-21T08:52:32Z → 2026-08-21T08:52:33Z</span>
+<span class="c"># 2. a later run records the new bytes</span>
+readproof run --id run-b readproof://demo/policies/refunds
+
+<span class="c"># 3. compare what the two runs were given</span>
+readproof diff run-a run-b</code></pre>
+      <pre class="term" aria-label="Output of readproof diff: one changed resource, with the source revision and observation time on each side, then the unified diff"><span class="m">--- run-a (manifest_01M0JED936…)
++++ run-b (manifest_01M0JEDBE0…)
+
+~ readproof://demo/policies/refunds  (snap_01M0JED935… -&gt; snap_01M0JEDBDZ…)</span>
+<span class="pin">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456;
+       observed 2026-08-21T15:18:10Z → 2026-08-21T15:18:12Z</span>
 <span class="m">  --- a/readproof://demo/policies/refunds
   +++ b/readproof://demo/policies/refunds
   @@ -1,2 +1,2 @@
@@ -424,13 +492,14 @@ readproof diff run-a run-b</code></pre>
 1 resource changed, 0 added, 0 removed, 0 unchanged</span></pre>
     </div></li>
     <li><div>
-      <h4>Replay — the invariant</h4>
+      <h3>Replay — the invariant</h3>
       <p><code>replay</code> rebuilds a manifest's bytes from the content addressed store and hashes them again. It never contacts the source, so it works after the file changed, after the API key expired, after the repo was archived. Any mismatch or missing blob exits nonzero.</p>
-      <pre class="code" data-lang="bash"><code>readproof replay run-a</code></pre>
-      <pre class="term"><span class="m">Replaying manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), 1 entry
+      <pre class="code" data-lang="bash"><code><span class="c"># rebuild run-a's bytes from the store — no source fetch</span>
+readproof replay run-a</code></pre>
+      <pre class="term" aria-label="Output of readproof replay: recorded and replayed content hashes match and the original bytes are printed"><span class="m">Replaying manifest manifest_01M0JED936… (run run-a), 1 entry
 
 [0] readproof://demo/policies/refunds
-    materialization: mat_01M0HRB5KJHXZ6DHBAX3XN74NC
+    materialization: mat_01M0JED936…
     content_hash (recorded):  sha256:c8b0bb212e93…
     content_hash (replayed):  sha256:c8b0bb212e93…
     match: OK
@@ -447,23 +516,28 @@ readproof diff run-a run-b</code></pre>
 <section id="tags">
   <h2>Tags: <code>@prod</code> and friends</h2>
   <p class="lede">A tag is a named, movable pointer <code>(resource, tag) → snapshot</code>. It turns "the policy we reviewed on Tuesday" into something code can ask for by name — and something a manifest records.</p>
-  <pre class="code" data-lang="bash"><code><span class="c"># point prod at the snapshot run-a delivered</span>
-readproof tag set readproof://demo/policies/refunds prod snap_01M0HRB5KJ2HNJBYH2TV22BBT0
+  <pre class="code" data-lang="bash"><code><span class="c"># 1. point prod at the snapshot run-a was given</span>
+readproof tag set readproof://demo/policies/refunds prod \
+  snap_01M0JED935NT0FNG7BWT6DG7XP
 readproof tag list readproof://demo/policies/refunds
 readproof tag rm   readproof://demo/policies/refunds prod
 
-<span class="c"># resolve by tag: no fetch, policy not consulted</span>
+<span class="c"># 2. resolve by tag: no fetch, and the policy is not consulted</span>
 readproof get readproof://demo/policies/refunds@prod
 readproof run --id run-c readproof://demo/policies/refunds@prod
-readproof manifest run-c      <span class="c"># shows a REF column: prod</span></code></pre>
-  <pre class="term"><span class="m">uri:          readproof://demo/policies/refunds@prod</span>
-<span class="am">ref:          prod</span>
-<span class="m">snapshot:     snap_01M0HRB5KJ2HNJBYH2TV22BBT0
-content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
-freshness:    tagged (@prod -> snapshot snap_01M0HRB5KJ…, observed 2026-08-21T08:52:32Z, policy not consulted)
+
+<span class="c"># 3. the manifest records the ref it was mounted by (REF column)</span>
+readproof manifest run-c</code></pre>
+  <pre class="term" aria-label="Output of readproof get on a tagged URI: the tagged snapshot is delivered without consulting the freshness policy"><span class="c"># the file on disk now says 14 days — the tag still delivers 30</span>
+<span class="m">uri:          readproof://demo/policies/refunds@prod</span>
+<span class="pin">ref:          prod</span>
+<span class="m">snapshot:     snap_01M0JED935NT0FNG7BWT6DG7XP
+content_hash: sha256:c8b0bb212e93…
+freshness:    tagged (@prod -&gt; snapshot snap_01M0JED935…,
+              observed 2026-08-21T15:18:10Z, policy not consulted)
 
 --- content ---</span>
-<span class="hl">Products can be refunded within 30 days.</span>   <span class="c"># even though the file now says 14</span></pre>
+<span class="hl">Products can be refunded within 30 days.</span></pre>
   <ul>
     <li>Tag names match <code>^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$</code>; a tag can only point at a snapshot of its own resource.</li>
     <li>Manifest entries store the bare URI <strong>plus</strong> the <code>ref</code> they were mounted by — moving a tag later can never change what a committed manifest replays.</li>
@@ -475,37 +549,78 @@ freshness:    tagged (@prod -> snapshot snap_01M0HRB5KJ…, observed 2026-08-21T
 <section id="evidence">
   <h2>Evidence bundles</h2>
   <p class="lede">When someone asks "what did the agent actually see for this decision?", hand them a file. <code>readproof evidence export</code> produces an <a href="https://github.com/in-toto/attestation">in-toto Statement</a> whose subject digest is a Merkle root over the run's entries; <code>readproof evidence verify</code> checks it — offline if you like.</p>
-  <pre class="code" data-lang="bash"><code>readproof evidence export run-a --with-content --out bundle.json
-readproof evidence verify bundle.json             <span class="c"># also cross-checks against the store via replay</span>
-readproof evidence verify bundle.json --offline   <span class="c"># merkle root + embedded content only</span></code></pre>
-  <pre class="term"><span class="ok">evidence bundle written to bundle.json: 1 entry, merkle root 8482a7671b1d7ba1081f4a7b3a3e7400a3ab58dc3a3687430bae6fa316adbd68
-evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-hashed, replay match 1/1</span></pre>
+  <pre class="code" data-lang="bash"><code><span class="c"># 1. export: an in-toto Statement whose subject digest is a
+#    Merkle root over the run's ordered entries</span>
+readproof evidence export run-a --with-content --out bundle.json
+
+<span class="c"># 2. verify: recompute the root, re-hash the embedded content,
+#    then cross-check the store by replaying the run</span>
+readproof evidence verify bundle.json
+
+<span class="c"># 3. offline: root + embedded content only, no store needed</span>
+readproof evidence verify bundle.json --offline</code></pre>
+  <pre class="term" aria-label="Output of readproof evidence export and verify, showing the Merkle root and the replay cross-check"><span class="m">evidence bundle written to bundle.json: 1 entry,
+  merkle root a9b73469f1a6e956024399ac407d174cc71e5d74a66e5ce390af3d64102821be</span>
+
+<span class="ok">evidence verified: 1 entry, merkle root a9b73469f1a6…,
+  embedded content 1/1 re-hashed, replay match 1/1</span></pre>
   <p>Shape (trimmed):</p>
   <pre class="code" data-lang="json"><code>{
   <span class="k">"_type"</span>: <span class="s">"https://in-toto.io/Statement/v1"</span>,
-  <span class="k">"subject"</span>: [{ <span class="k">"name"</span>: <span class="s">"manifest_01M0…"</span>, <span class="k">"digest"</span>: { <span class="k">"sha256"</span>: <span class="s">"8482a767…"</span> } }],
+  <span class="k">"subject"</span>: [
+    { <span class="k">"name"</span>: <span class="s">"manifest_01M0…"</span>,
+      <span class="k">"digest"</span>: { <span class="k">"sha256"</span>: <span class="s">"a9b73469f1a6…"</span> } }
+  ],
   <span class="k">"predicateType"</span>: <span class="s">"urn:readproof:evidence:v0.3"</span>,
   <span class="k">"predicate"</span>: {
-    <span class="k">"run_id"</span>: <span class="s">"run-a"</span>, <span class="k">"manifest_id"</span>: <span class="s">"manifest_01M0…"</span>,
-    <span class="k">"merkle"</span>: { <span class="k">"algorithm"</span>: <span class="s">"sha256"</span>,
-                <span class="k">"leaf"</span>: <span class="s">"sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)"</span>,
-                <span class="k">"root"</span>: <span class="s">"8482a767…"</span> },
-    <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"uri"</span>: <span class="s">"readproof://demo/policies/refunds"</span>, <span class="k">"ref"</span>: <span class="s">"prod"</span>,
-                  <span class="k">"snapshot_id"</span>: <span class="s">"snap_01M0…"</span>, <span class="k">"content_hash"</span>: <span class="s">"sha256:c8b0bb21…"</span>,
-                  <span class="k">"source_revision"</span>: <span class="s">"sha256:c8b0bb212e93"</span>, <span class="k">"observed_at"</span>: <span class="s">"2026-08-21T08:52:32Z"</span>,
-                  <span class="k">"content_type"</span>: <span class="s">"text/markdown"</span>, <span class="k">"bytes"</span>: <span class="n">41</span>,
-                  <span class="k">"provenance"</span>: { <span class="k">"path"</span>: <span class="s">"policies/refunds.md"</span>, <span class="k">"source_type"</span>: <span class="s">"filesystem"</span> },
-                  <span class="k">"content_b64"</span>: <span class="s">"UHJvZHVjdHMgY2FuIGJl…"</span> }],
-    <span class="k">"resources"</span>: [{ <span class="k">"uri"</span>: <span class="s">"readproof://demo/policies/refunds"</span>,
-                    <span class="k">"source"</span>: { <span class="k">"kind"</span>: <span class="s">"http"</span>, <span class="k">"config"</span>: { <span class="k">"http"</span>: { <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"[REDACTED]"</span> } } } },
-                    <span class="k">"policy"</span>: { <span class="k">"strategy"</span>: <span class="s">"require_fresh"</span> } }],
-    <span class="k">"replay"</span>: { <span class="k">"all_match"</span>: <span class="n">true</span>, <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"match"</span>: <span class="n">true</span> }] }
+    <span class="k">"run_id"</span>: <span class="s">"run-a"</span>,
+    <span class="k">"manifest_id"</span>: <span class="s">"manifest_01M0…"</span>,
+    <span class="k">"merkle"</span>: {
+      <span class="k">"algorithm"</span>: <span class="s">"sha256"</span>,
+      <span class="k">"leaf"</span>:
+        <span class="s">"sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)"</span>,
+      <span class="k">"root"</span>: <span class="s">"a9b73469f1a6…"</span>
+    },
+    <span class="k">"entries"</span>: [
+      {
+        <span class="k">"position"</span>: <span class="n">0</span>,
+        <span class="k">"uri"</span>: <span class="s">"readproof://demo/policies/refunds"</span>,
+        <span class="k">"ref"</span>: <span class="s">"prod"</span>,
+        <span class="k">"snapshot_id"</span>: <span class="s">"snap_01M0…"</span>,
+        <span class="k">"content_hash"</span>: <span class="s">"sha256:c8b0bb21…"</span>,
+        <span class="k">"source_revision"</span>: <span class="s">"sha256:c8b0bb212e93"</span>,
+        <span class="k">"observed_at"</span>: <span class="s">"2026-08-21T15:18:10Z"</span>,
+        <span class="k">"content_type"</span>: <span class="s">"text/markdown"</span>,
+        <span class="k">"bytes"</span>: <span class="n">41</span>,
+        <span class="k">"provenance"</span>: {
+          <span class="k">"path"</span>: <span class="s">"policies/refunds.md"</span>,
+          <span class="k">"source_type"</span>: <span class="s">"filesystem"</span>
+        },
+        <span class="k">"content_b64"</span>: <span class="s">"UHJvZHVjdHMgY2FuIGJl…"</span>
+      }
+    ],
+    <span class="k">"resources"</span>: [
+      {
+        <span class="k">"uri"</span>: <span class="s">"readproof://demo/policies/refunds"</span>,
+        <span class="k">"source"</span>: {
+          <span class="k">"kind"</span>: <span class="s">"http"</span>,
+          <span class="k">"config"</span>: {
+            <span class="k">"http"</span>: { <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"[REDACTED]"</span> } }
+          }
+        },
+        <span class="k">"policy"</span>: { <span class="k">"strategy"</span>: <span class="s">"require_fresh"</span> }
+      }
+    ],
+    <span class="k">"replay"</span>: {
+      <span class="k">"all_match"</span>: <span class="n">true</span>,
+      <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"match"</span>: <span class="n">true</span> }]
+    }
   }
 }</code></pre>
   <div class="grid">
-    <div class="card"><h4>What it proves</h4><p>That these bytes (by hash, optionally embedded) were delivered for this run, in this order, under these resource definitions, and that the store can still reproduce them. The root ties the whole run to one digest.</p></div>
-    <div class="card"><h4>What it doesn't</h4><p>That the model <strong>used</strong> them, or that the source was authoritative. Bundles aren't signed yet (roadmap: cosign/<code>in-toto</code> attestation). Tamper with an entry and <code>verify</code> fails; reroot a forged bundle and only the store cross check catches it — so keep <code>--offline</code> for transport, not trust.</p></div>
-    <div class="card"><h4>Where it fits</h4><p>EU AI Act Art. 12 automatic logging (Annex III systems, from 2 Aug 2026) and SOC 2 "what data did the agent consider" reviews want exactly this record. Not legal advice — what you owe depends on your system and jurisdiction.</p></div>
+    <div class="card"><h3>What it proves</h3><p>That these bytes (by hash, optionally embedded) were delivered for this run, in this order, under these resource definitions, and that the store can still reproduce them. The root ties the whole run to one digest.</p></div>
+    <div class="card"><h3>What it doesn't</h3><p>That the model <strong>used</strong> them, or that the source was authoritative. Bundles aren't signed yet (roadmap: cosign/<code>in-toto</code> attestation). Tamper with an entry and <code>verify</code> fails; reroot a forged bundle and only the store cross check catches it — so keep <code>--offline</code> for transport, not trust.</p></div>
+    <div class="card"><h3>Where it fits</h3><p>EU AI Act Art. 12 automatic logging (Annex III systems, from 2 Aug 2026) and SOC 2 "what data did the agent consider" reviews want exactly this record. Not legal advice — what you owe depends on your system and jurisdiction.</p></div>
   </div>
   <p>The same bundle can be built client side from the TypeScript SDK (<code>buildEvidence</code>) with a byte identical Merkle root, and exported by an agent through the MCP tool <code>readproof_evidence_export</code>.</p>
 </section>
@@ -514,22 +629,35 @@ evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-has
   <p class="eyebrow">integrate</p>
   <h2>Client/server mode &amp; HTTP API</h2>
   <p class="lede"><code>readproofd</code> is the same engine behind an HTTP API, backed by Postgres + an S3-compatible store (MinIO in dev). Teams, services, and the MCP server share one history.</p>
-  <pre class="code" data-lang="bash"><code><span class="c"># full stack from a clean clone: Postgres + MinIO + readproofd (+ an OTel collector)</span>
-cp .env.example .env        <span class="c"># change the dev-only credentials</span>
+  <pre class="code" data-lang="bash"><code><span class="c"># 1. the full stack from a clean clone: Postgres, MinIO,
+#    readproofd, and an OTel collector</span>
+cp .env.example .env
+<span class="c"># change the dev-only credentials in .env before starting</span>
 docker compose up -d --build
-curl http://localhost:8080/healthz      <span class="c"># ok</span>
+curl http://localhost:8080/healthz
+<span class="c"># -&gt; ok</span>
 
-<span class="c"># point the CLI at it — every command works identically</span>
+<span class="c"># 2. point the CLI at it — every command works identically</span>
 export READPROOF_SERVER_URL=http://localhost:8080
-readproof resource add readproof://demo/hello-world --source-type http \
-  --url https://raw.githubusercontent.com/octocat/Hello-World/master/README --policy require_fresh
+readproof resource add readproof://demo/hello-world \
+  --source-type http \
+  --url https://raw.githubusercontent.com/octocat/Hello-World/master/README \
+  --policy require_fresh
 readproof get readproof://demo/hello-world</code></pre>
   <div class="warn"><b>Containerized readproofd can't see your host filesystem.</b> Use GitHub/HTTP sources there, or mount the files. For local on the host work, run <code>readproofd</code> directly in embedded mode: <code>go build -o readproofd ./cmd/readproofd &amp;&amp; ./readproofd --addr :8080 --data-dir ~/.readproof</code> (omit <code>--postgres-dsn</code>).</div>
   <h3><code>readproofd</code> flags (all also settable as <code>READPROOFD_*</code> env vars)</h3>
-  <pre class="code" data-lang="bash"><code>readproofd --addr :8080 \
-     --postgres-dsn 'postgres://readproof:***@localhost:5434/readproof?sslmode=disable' \
-     --s3-endpoint localhost:9000 --s3-access-key … --s3-secret-key … --s3-bucket readproof-blobs [--s3-use-ssl] \
-     --api-key "$READPROOFD_API_KEY"      <span class="c"># when set, every request except /healthz needs Authorization: Bearer &lt;key&gt;</span></code></pre>
+  <pre class="code" data-lang="bash"><code><span class="c"># metadata in Postgres, blobs in any S3-compatible store
+# DSN shape: postgres://user:pass@host:5434/readproof?sslmode=disable</span>
+readproofd --addr :8080 \
+  --postgres-dsn "$READPROOFD_POSTGRES_DSN" \
+  --s3-endpoint localhost:9000 \
+  --s3-access-key … --s3-secret-key … \
+  --s3-bucket readproof-blobs \
+  --s3-use-ssl \
+  --api-key "$READPROOFD_API_KEY"
+
+<span class="c"># with --api-key set, every request except /healthz needs
+#   Authorization: Bearer &lt;key&gt;</span></code></pre>
   <h3>Endpoints</h3>
   <div class="scroll"><table>
     <thead><tr><th>Method · path</th><th>What</th></tr></thead>
@@ -543,48 +671,65 @@ readproof get readproof://demo/hello-world</code></pre>
       <tr><td><code>GET /healthz</code></td><td>Liveness (unauthenticated)</td></tr>
     </tbody>
   </table></div>
-  <pre class="code" data-lang="bash"><code>curl -s -X POST http://localhost:8080/v1/resolve \
-  -H 'Authorization: Bearer ***' -H 'Content-Type: application/json' \
-  -d '{"uri":"readproof://demo/policies/refunds@prod"}' | jq '.resource.ref, .snapshot.content_hash, .freshness.status'</code></pre>
+  <pre class="code" data-lang="bash"><code><span class="c"># resolve one URI (an @tag is honored) and pick three fields out</span>
+curl -s -X POST http://localhost:8080/v1/resolve \
+  -H 'Authorization: Bearer ***' \
+  -H 'Content-Type: application/json' \
+  -d '{"uri":"readproof://demo/policies/refunds@prod"}' \
+  | jq '.resource.ref, .snapshot.content_hash, .freshness.status'</code></pre>
   <p>Full request/response schemas: <code>docs/api.md</code>.</p>
 </section>
 
 <section id="sdk">
   <h2>TypeScript SDK</h2>
   <p class="lede"><code>@readproof/sdk</code> is a typed, zero dependency client for <code>readproofd</code> (Node 18+ <code>fetch</code>). Every method maps to one endpoint; <code>buildEvidence</code> composes a bundle client side.</p>
-  <pre class="code" data-lang="bash"><code>cd sdk/typescript &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; npm link   <span class="c"># not on a registry yet</span></code></pre>
+  <pre class="code" data-lang="bash"><code><span class="c"># not on a registry yet — build it from the repo and link it</span>
+cd sdk/typescript &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; npm link</code></pre>
   <pre class="code" data-lang="ts"><code><span class="k">import</span> { Readproof, buildEvidence, encodeEvidence } <span class="k">from</span> <span class="s">"@readproof/sdk"</span>;
 
-<span class="k">const</span> readproof = <span class="k">new</span> Readproof({ endpoint: <span class="s">"http://localhost:8080"</span>, apiKey: process.env.READPROOF_API_KEY });
+<span class="k">const</span> readproof = <span class="k">new</span> Readproof({
+  endpoint: <span class="s">"http://localhost:8080"</span>,
+  apiKey: process.env.READPROOF_API_KEY,
+});
 
 <span class="c">// one-off resolve</span>
-<span class="k">const</span> policy = <span class="k">await</span> readproof.resolve(<span class="s">"readproof://acme/policies/refunds"</span>);
-policy.content;                  <span class="c">// the bytes, decoded to text</span>
-policy.snapshot.content_hash;    <span class="c">// "sha256:…"</span>
+<span class="k">const</span> policy = <span class="k">await</span> readproof.resolve(
+  <span class="s">"readproof://acme/policies/refunds"</span>);
+policy.content;                <span class="c">// the bytes, decoded to text</span>
+policy.snapshot.content_hash;  <span class="c">// "sha256:…"</span>
 
-<span class="c">// record a run: mount = resolve + append to the manifest (starts lazily)</span>
+<span class="c">// a run: mount = resolve + append to the manifest (starts lazily)</span>
 <span class="k">const</span> run = readproof.run({ id: <span class="s">`turn-${turnId}`</span> });
-<span class="k">const</span> refunds = <span class="k">await</span> run.mount(<span class="s">"readproof://acme/policies/refunds@prod"</span>);   <span class="c">// pinned by tag</span>
-<span class="k">const</span> customer = <span class="k">await</span> run.mount(<span class="s">`readproof://acme/customers/${customerId}`</span>);
+<span class="k">const</span> refunds = <span class="k">await</span> run.mount(
+  <span class="s">"readproof://acme/policies/refunds@prod"</span>);   <span class="c">// pinned by tag</span>
+<span class="k">const</span> customer = <span class="k">await</span> run.mount(
+  <span class="s">`readproof://acme/customers/${customerId}`</span>);
 <span class="k">const</span> manifest = <span class="k">await</span> run.commit();
-manifest.manifest_id;            <span class="c">// store this next to the model call / checkpoint</span>
+
+<span class="c">// store this id next to the model call, or in the checkpoint</span>
+manifest.manifest_id;
 
 <span class="c">// tags</span>
-<span class="k">await</span> readproof.setTag(<span class="s">"readproof://acme/policies/refunds"</span>, <span class="s">"prod"</span>, policy.snapshot.id);
+<span class="k">await</span> readproof.setTag(
+  <span class="s">"readproof://acme/policies/refunds"</span>, <span class="s">"prod"</span>, policy.snapshot.id);
 <span class="k">await</span> readproof.listTags(<span class="s">"readproof://acme/policies/refunds"</span>);
-refunds.freshness.status;        <span class="c">// "use_tag"</span>
-refunds.resource.ref;            <span class="c">// "prod"</span>
+refunds.freshness.status;      <span class="c">// "use_tag"</span>
+refunds.resource.ref;          <span class="c">// "prod"</span>
 
 <span class="c">// diff two runs, with the why</span>
 <span class="k">const</span> diff = <span class="k">await</span> readproof.diff(<span class="s">"turn-41"</span>, <span class="s">"turn-42"</span>);
 <span class="k">for</span> (<span class="k">const</span> e <span class="k">of</span> diff.entries) <span class="k">if</span> (e.status === <span class="s">"changed"</span>)
-  console.log(e.uri, e.source_revision_a, <span class="s">"-&gt;"</span>, e.source_revision_b, e.unified_diff);
+  console.log(e.uri, e.source_revision_a, <span class="s">"-&gt;"</span>,
+              e.source_revision_b, e.unified_diff);
 
 <span class="c">// replay and evidence</span>
 <span class="k">const</span> replay = <span class="k">await</span> readproof.replay(manifest.manifest_id);
-replay.entries.every((e) =&gt; e.match);                          <span class="c">// true</span>
-<span class="k">const</span> bundle = <span class="k">await</span> buildEvidence(readproof, manifest.manifest_id, { withContent: <span class="k">true</span> });
-<span class="k">await</span> fs.writeFile(<span class="s">"bundle.json"</span>, encodeEvidence(bundle));     <span class="c">// `readproof evidence verify` accepts it</span></code></pre>
+replay.entries.every((e) =&gt; e.match);        <span class="c">// true</span>
+
+<span class="k">const</span> bundle = <span class="k">await</span> buildEvidence(
+  readproof, manifest.manifest_id, { withContent: <span class="k">true</span> });
+<span class="c">// `readproof evidence verify` accepts this file</span>
+<span class="k">await</span> fs.writeFile(<span class="s">"bundle.json"</span>, encodeEvidence(bundle));</code></pre>
   <p>Errors are <code>ReadproofError</code>s carrying the HTTP status and server message (an unknown tag names both URI and tag). <code>content</code> fields are UTF-8 text; for binary sources prefer the Go exporter for evidence.</p>
 </section>
 
@@ -592,11 +737,13 @@ replay.entries.every((e) =&gt; e.match);                          <span class="c
   <h2>MCP: use Readproof from Claude Code, Claude Desktop, Cursor</h2>
   <p class="lede"><code>readproof mcp</code> is a stdio MCP server. Registered documents become readable <code>readproof://</code> resources (with provenance in <code>_meta</code>), and resolve / runs / diff / replay / tags / evidence become 13 tools the model can call.</p>
   <h3>Claude Code</h3>
-  <pre class="code" data-lang="bash"><code><span class="c"># embedded store</span>
-claude mcp add readproof -- /abs/path/to/readproof mcp --data-dir /abs/path/to/.readproof
+  <pre class="code" data-lang="bash"><code><span class="c"># 1. embedded store — one local .readproof directory</span>
+claude mcp add readproof -- \
+  /abs/path/to/readproof mcp --data-dir /abs/path/to/.readproof
 
-<span class="c"># against a running readproofd (API key via env, not argv)</span>
-claude mcp add readproof --env READPROOF_API_KEY=sk-… -- /abs/path/to/readproof mcp --server https://readproofd.internal</code></pre>
+<span class="c"># 2. against a running readproofd (API key via env, never argv)</span>
+claude mcp add readproof --env READPROOF_API_KEY=sk-… -- \
+  /abs/path/to/readproof mcp --server https://readproofd.internal</code></pre>
   <h3>Claude Desktop (<code>claude_desktop_config.json</code>) · Cursor (<code>.cursor/mcp.json</code>)</h3>
   <pre class="code" data-lang="json"><code>{
   <span class="k">"mcpServers"</span>: {
@@ -638,28 +785,56 @@ claude mcp add readproof --env READPROOF_API_KEY=sk-… -- /abs/path/to/readproo
   <pre class="code" data-lang="ts"><code><span class="c">// examples/langgraph-ts/src/graph.ts (condensed)</span>
 <span class="k">const</span> GraphState = Annotation.Root({
   question: Annotation&lt;string&gt;,
-  readproof_manifest_id: Annotation&lt;string&gt;,          <span class="c">// lands in the checkpoint with the rest of state</span>
-  readproof_entries: Annotation&lt;MountedEntry[]&gt;({ reducer: (_p, n) =&gt; n, default: () =&gt; [] }),
+  <span class="c">// this one line lands in the checkpoint with the rest of state</span>
+  readproof_manifest_id: Annotation&lt;string&gt;,
+  readproof_entries: Annotation&lt;MountedEntry[]&gt;({
+    reducer: (_p, n) =&gt; n, default: () =&gt; [],
+  }),
   answer: Annotation&lt;string&gt;,
 });
 
 <span class="k">async function</span> loadContext(_s: GraphStateType, config: RunnableConfig) {
-  <span class="k">const</span> run = ctxClient().run({ id: <span class="s">`langgraph-${threadIdOf(config)}`</span> });
+  <span class="k">const</span> run = ctxClient().run({
+    id: <span class="s">`langgraph-${threadIdOf(config)}`</span>,
+  });
   <span class="k">const</span> entries = [];
-  <span class="k">for</span> (<span class="k">const</span> uri <span class="k">of</span> CONTEXT_RESOURCES) {              <span class="c">// e.g. readproof://demo/policies/refunds, …/tone</span>
+
+  <span class="c">// e.g. readproof://demo/policies/refunds, …/tone</span>
+  <span class="k">for</span> (<span class="k">const</span> uri <span class="k">of</span> CONTEXT_RESOURCES) {
     <span class="k">const</span> r = <span class="k">await</span> run.mount(uri);
-    entries.push({ uri, snapshot_id: r.snapshot.id, content_hash: r.snapshot.content_hash, content: r.content });
+    entries.push({
+      uri,
+      snapshot_id: r.snapshot.id,
+      content_hash: r.snapshot.content_hash,
+      content: r.content,
+    });
   }
   <span class="k">const</span> manifest = <span class="k">await</span> run.commit();
-  <span class="k">return</span> { readproof_manifest_id: manifest.manifest_id, readproof_entries: entries };
+  <span class="k">return</span> {
+    readproof_manifest_id: manifest.manifest_id,
+    readproof_entries: entries,
+  };
 }
-<span class="c">// answer_question prompts the model with exactly `readproof_entries[*].content` — not a second read.</span></code></pre>
-  <pre class="code" data-lang="bash"><code>cd sdk/typescript &amp;&amp; npm ci &amp;&amp; npm run build
-go build -o readproofd ./cmd/readproofd &amp;&amp; ./readproofd --addr :8080 --data-dir /tmp/readproof-langgraph &amp;      <span class="c"># host-side, so it can read the fixture files</span>
+
+<span class="c">// answer_question prompts the model with exactly
+// `readproof_entries[*].content` — never a second read.</span></code></pre>
+  <pre class="code" data-lang="bash"><code><span class="c"># 1. build the SDK</span>
+cd sdk/typescript &amp;&amp; npm ci &amp;&amp; npm run build
+
+<span class="c"># 2. readproofd on the host, so it can read the fixture files</span>
+go build -o readproofd ./cmd/readproofd
+./readproofd --addr :8080 --data-dir /tmp/readproof-langgraph &amp;
+
+<span class="c"># 3. run the graph — a fake in-memory model unless
+#    ANTHROPIC_API_KEY is set — and print the manifest id</span>
 cd examples/langgraph-ts &amp;&amp; npm ci &amp;&amp; npm run build
-npm run start      <span class="c"># runs the graph with a fake in-memory model (real one if ANTHROPIC_API_KEY is set), prints the manifest id</span>
-printf 'Products can be refunded within 14 days.\n' &gt; ../refund-agent/policies/refunds.md
-npm run replay     <span class="c"># replays the checkpointed manifest: still "30 days", flags the live source as CHANGED</span></code></pre>
+npm run start
+
+<span class="c"># 4. change the source, then replay the checkpointed manifest:
+#    still "30 days", with the live source flagged CHANGED</span>
+printf 'Products can be refunded within 14 days.\n' \
+  &gt; ../refund-agent/policies/refunds.md
+npm run replay</code></pre>
   <p>Same shape works for Temporal/Restate activities (put <code>readproof.resolve</code> in an activity, the manifest id in the event history) and for plain request handlers (log the manifest id with the request id).</p>
 </section>
 
@@ -667,10 +842,15 @@ npm run replay     <span class="c"># replays the checkpointed manifest: still "3
   <h2>DeepSeek Harness</h2>
   <p class="lede"><a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a> (<code>dsh</code>) is DeepSeek's open source agent harness where every capability is a plugin and every context injection is logged. Readproof ships as a native <strong>bundle</strong> for it — the same 13 tools as the MCP server, registered through the harness's own tool service — plus a zero code MCP overlay.</p>
   <h3>Install as a bundle</h3>
-  <pre class="code" data-lang="bash"><code><span class="c"># a reachable readproofd (or let the plugin spawn one), then:</span>
+  <pre class="code" data-lang="bash"><code><span class="c"># 1. a reachable readproofd (or let the plugin spawn one)</span>
 go build -o readproofd ./cmd/readproofd
-dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof
-dsh web                                   <span class="c"># boots the web profile with the plugin mounted</span></code></pre>
+
+<span class="c"># 2. add the bundle to the web profile</span>
+dsh plugin --profile web add \
+  ./integrations/deepseek-harness/dsh-plugin-readproof
+
+<span class="c"># 3. boot the profile with the plugin mounted</span>
+dsh web</code></pre>
   <p>Local dev without installing: <code>dsh web --patch ./integrations/deepseek-harness/readproof-plugin.cordis.yml</code> (set <code>__READPROOF_REPO__</code> to your absolute repo path first). Zero code alternative: <code>readproof-mcp.cordis.yml</code> runs <code>readproof mcp</code> over stdio through <code>@deepseek-ai/dsh-mcp-client</code>; tools appear as <code>mcp__readproof__readproof_*</code>.</p>
   <h3>What the plugin does</h3>
   <div class="scroll"><table>
@@ -689,7 +869,12 @@ dsh web                                   <span class="c"># boots the web profil
   <h2>Support agent example (open model on Ollama)</h2>
   <p class="lede">A complete, runnable agent in <code>examples/support-agent</code>: a customer support agent answers tickets from three policy documents governed by Readproof, using any chat model Ollama serves (no API key). Every ticket is one run; the manifest id is stored next to the answer.</p>
   <pre class="code" data-lang="bash"><code>cd examples/support-agent &amp;&amp; npm install
-OLLAMA_MODEL=llama3.2 npm run scenario      <span class="c"># or SUPPORT_FAKE_MODEL=1 npm run scenario (no Ollama)</span></code></pre>
+
+<span class="c"># the whole story against a local model</span>
+OLLAMA_MODEL=llama3.2 npm run scenario
+
+<span class="c"># or with no Ollama and no network at all</span>
+SUPPORT_FAKE_MODEL=1 npm run scenario</code></pre>
   <p>The scenario builds <code>readproof</code>/<code>readproofd</code>, starts a throwaway server, registers the policies (<code>refunds</code> require_fresh, <code>shipping</code> allow_stale 1h, <code>tone</code> pinned <code>@prod</code>), answers a ticket, edits the refund policy from 30 to 14 days, answers again (the decision flips), then <code>diff</code> names the revision that changed, <code>replay</code> returns the 30 day bytes the first answer saw, <code>evidence</code> exports a bundle the Go CLI verifies, and an edit to the house style changes nothing until <code>promote</code> moves the tag. Seven end to end tests run against a real server with a deterministic fake model.</p>
   <p><a href="../examples/support-agent/">Read the complete guide</a> — architecture, every file and command, the real transcript, tests, environment variables, and how to extend it.</p>
 </section>
@@ -697,15 +882,31 @@ OLLAMA_MODEL=llama3.2 npm run scenario      <span class="c"># or SUPPORT_FAKE_MO
 <section id="otel">
   <h2>Observability</h2>
   <p class="lede">Every stage is traced; set <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> and spans flow. Unset, instrumentation is a no op. Content is never attached to spans or metrics.</p>
-  <pre class="term"><span class="m">readproof.run.start                         readproof.run.id=r
-readproof.run.mount                         readproof.run.id=r · readproof.resource.uri=readproof://demo/policies/refunds · readproof.resource.ref=prod · readproof.manifest.position=0
-├─ readproof.resolve                        readproof.snapshot.content_hash=sha256:c8b0… · readproof.snapshot.source_revision=sha256:c8b0bb212e93
-│  ├─ readproof.resource.lookup                 readproof.policy.decision=use_tag · gen_ai.data_source.id=readproof://demo
+  <pre class="term" aria-label="Span tree for one run: run.start, run.mount with a nested resolve and its child spans, and run.commit carrying the manifest Merkle root"><span class="c"># one mount of a tagged resource, spans indented, attributes below each</span>
+<span class="m">readproof.run.start
+     readproof.run.id=r
+
+readproof.run.mount
+     readproof.run.id=r · readproof.manifest.position=0
+├─ readproof.resolve
+│      readproof.resource.uri=readproof://demo/policies/refunds
+│      readproof.resource.ref=prod
+│      readproof.snapshot.content_hash=sha256:c8b0…
+│      readproof.snapshot.source_revision=sha256:c8b0bb212e93
+│      readproof.policy.strategy=require_fresh
+│      readproof.policy.decision=use_tag</span>
+<span class="pin">│      gen_ai.data_source.id=readproof://demo</span>
+<span class="m">│  ├─ readproof.resource.lookup
+│  ├─ readproof.policy.evaluate
 │  ├─ readproof.tag.lookup
-│  ├─ readproof.cache.lookup                readproof.cache.hit=true
+│  ├─ readproof.cache.lookup     readproof.cache.hit=true
 │  └─ readproof.materialize
 └─ readproof.manifest.append
-readproof.run.commit                        readproof.manifest.id=manifest_… · readproof.manifest.entries=1 · readproof.manifest.merkle_root=8482a767…</span></pre>
+
+readproof.run.commit
+     readproof.manifest.id=manifest_…
+     readproof.manifest.entries=1</span>
+<span class="hl">     readproof.manifest.merkle_root=a9b73469f1a6…</span></pre>
   <ul>
     <li><code>readproof.manifest.merkle_root</code> on the commit span equals the evidence bundle's subject digest — a trace and a bundle join on one field.</li>
     <li><code>gen_ai.data_source.id</code> follows the OpenTelemetry GenAI semantic conventions (<code>readproof://&lt;namespace&gt;</code>), so Phoenix, Langfuse, LangSmith, Datadog, Honeycomb can correlate retrieval by source. The proposal to carry <code>content_hash</code>/<code>source_revision</code>/<code>uri</code> on <code>gen_ai.retrieval.documents</code> is in <code>docs/observability.md</code>.</li>
@@ -736,7 +937,7 @@ readproof.run.commit                        readproof.manifest.id=manifest_… �
 <section id="faq">
   <h2>FAQ &amp; status</h2>
   <h3>Does Readproof replace my RAG pipeline / vector DB?</h3>
-  <p>No. Readproof is about the <strong>source documents</strong> and what a run actually received. Keep retrieving however you do; mount what you retrieved (or the documents you retrieved from) so the run is reproducible. Derived chunk materializations are on the roadmap; v0.2 delivers raw bytes only.</p>
+  <p>No. Readproof is about the <strong>source documents</strong> and what a run actually received. Keep retrieving however you do; mount what you retrieved (or the documents you retrieved from) so the run is reproducible. Derived chunk materializations are on the roadmap; v0.3 delivers raw bytes only.</p>
   <h3>What happens when the source is unreachable?</h3>
   <p><code>require_fresh</code> fails the resolve (no silent staleness). <code>allow_stale</code> serves the cached snapshot if within <code>--max-age</code>. <code>@tag</code> never touches the source. <code>replay</code> never touches the source either.</p>
   <h3>How is this different from logging tool outputs in my tracing tool?</h3>
@@ -750,6 +951,57 @@ readproof.run.commit                        readproof.manifest.id=manifest_… �
 </main>
 </div>
 
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fbzz.github.io/readproof/docs/#article",
+      "headline": "Readproof documentation",
+      "name": "Readproof documentation",
+      "description": "Install Readproof, register a document, record a run, then diff, replay and export it. Covers sources and freshness policies, tags, evidence bundles, server mode, the TypeScript SDK, MCP, LangGraph, OpenTelemetry, and the CLI.",
+      "url": "https://fbzz.github.io/readproof/docs/",
+      "inLanguage": "en",
+      "dateModified": "2026-08-21",
+      "image": "https://fbzz.github.io/readproof/og.png",
+      "proficiencyLevel": "Beginner",
+      "dependencies": "Go 1.26 or later for the CLI; Node 18 or later for the TypeScript SDK",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Readproof",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "softwareVersion": "0.3.1",
+        "url": "https://fbzz.github.io/readproof/",
+        "codeRepository": "https://github.com/fbzz/readproof",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Readproof",
+        "url": "https://fbzz.github.io/readproof/",
+        "sameAs": ["https://github.com/fbzz/readproof"]
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Readproof",
+        "url": "https://fbzz.github.io/readproof/",
+        "sameAs": ["https://github.com/fbzz/readproof"]
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://fbzz.github.io/readproof/docs/#breadcrumbs",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Readproof", "item": "https://fbzz.github.io/readproof/" },
+        { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://fbzz.github.io/readproof/docs/" }
+      ]
+    }
+  ]
+}
+</script>
 <script>
   (function () {
     if (!navigator.clipboard) return;
