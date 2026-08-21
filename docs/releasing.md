@@ -12,6 +12,14 @@ Everything else — the version in the binaries, the version in the packages,
 the CHANGELOG heading — is set **before** the tag, by hand, in one commit.
 The tag is the last thing that happens.
 
+> **The existing `v0.3.0` tag predates the module path move.** At that tag
+> `go.mod` still says `module readproof`, so
+> `go install github.com/fbzz/readproof/cmd/readproof@v0.3.0` fails with a
+> module-path mismatch and no amount of proxy patience fixes it. The first
+> tag cut *after* that change — `v0.3.1` in the examples below — is the
+> first installable one. Do not retag `v0.3.0`; the proxy caches tags
+> immutably.
+
 ## One-time setup
 
 These are owner actions. None of them is done yet; each is listed with the
