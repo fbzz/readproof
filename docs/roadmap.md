@@ -4,7 +4,7 @@ What comes after the v0.2 MVP ([`mvp.md`](mvp.md)), roughly in priority
 order. Each line is a real gap, not a wish — most are things the current
 code notes as a limitation. Nothing here is a commitment or a date.
 
-1. **LICENSE, public repo.** The rename to Readproof landed in v0.3.0: the
+1. **LICENSE (done: Apache-2.0), public repo.** The rename to Readproof landed in v0.3.0: the
    evidence `predicateType` URN and the `readproof://` scheme both bake the
    name in, so it had to happen before anyone depended on either. LICENSE
    remains an owner decision that blocks publishing at all.

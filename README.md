@@ -424,6 +424,10 @@ CI (`.github/workflows/ci.yml`) runs Go build/vet/gofmt/test, the TS SDK's
 build and tests, the LangGraph example's build, the Support Agent
 example's build and end-to-end tests, and a Docker Compose integration
 test — including a CLI-driven rerun of the reference demo against the
-built `readproofd` image — on every push and PR. No LICENSE yet; this is a
+built `readproofd` image — on every push and PR. Licensed under Apache-2.0 (see `LICENSE`).
 private-repo checkpoint, not a public release, and the name is a
 placeholder that will change before launch.
+
+## License
+
+Apache-2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).

@@ -4,7 +4,11 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - Unreleased
+## [0.3.0] - 2026-08-21
+
+### Added
+
+- `LICENSE` (Apache-2.0) and `NOTICE`.
 
 Renamed Ctx → Readproof (breaking: module path, binaries, `readproof://`
 scheme, env vars, MCP tool names, OTel names, evidence predicateType, npm
