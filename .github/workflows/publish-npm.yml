@@ -84,8 +84,12 @@ jobs:
           if npm view "$name@$version" version >/dev/null 2>&1; then
             echo "$name@$version is already on the registry — skipping."
           else
-            # scripts/prepack.mjs rewrites the file: @readproof/sdk
-            # dependency to the published semver inside the tarball, and
-            # postpack puts the working tree back.
+            # The repo depends on the SDK via file:; the published manifest
+            # must name the semver range. npm sends the manifest it reads from
+            # package.json, so rewrite it before publishing.
+            sdk_version="$(node -p "require('../../../sdk/typescript/package.json').version")"
+            node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.dependencies['@readproof/sdk']='^'+process.argv[1];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');" "$sdk_version"
+            echo "publishing with @readproof/sdk ^$sdk_version"
             npm publish $PROVENANCE --access public
+            git checkout -- package.json
           fi

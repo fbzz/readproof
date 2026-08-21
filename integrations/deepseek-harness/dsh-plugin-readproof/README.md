@@ -289,12 +289,13 @@ whole procedure.
 
 ### How the SDK dependency works in this repository
 
-`package.json` depends on the published `@readproof/sdk` (semver), which is
-what `npm install dsh-plugin-readproof` resolves. Inside this monorepo an npm
-`overrides` entry points the same dependency at `file:../../../sdk/typescript`,
-so `npm ci && npm test` here exercises the unreleased SDK while the published
-manifest stays correct for consumers (overrides only apply to the root project
-that declares them, never to people installing this package).
+In this monorepo `package.json` depends on `@readproof/sdk` as
+`file:../../../sdk/typescript`, so `npm ci && npm test` exercises the
+unreleased SDK. The publish step (`.github/workflows/publish-npm.yml`, or a
+manual publish following the same two lines) rewrites that dependency to the
+published semver range **before** `npm publish`, because npm sends the
+manifest it read from `package.json`, not the one inside the tarball.
+Consumers therefore see `"@readproof/sdk": "^<version>"`.
 
 #   "@readproof/sdk": "^0.3.1",
 ```

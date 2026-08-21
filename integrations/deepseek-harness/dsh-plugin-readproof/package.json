@@ -58,7 +58,7 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@readproof/sdk": "^0.3.1",
+    "@readproof/sdk": "file:../../../sdk/typescript",
     "@deepseek-ai/schemastery": "3.18.1"
   },
   "peerDependencies": {
@@ -74,8 +74,5 @@
     "@deepseek-ai/dsh-tools": "0.1.1-rc.1",
     "@types/node": "22.20.1",
     "typescript": "5.9.3"
-  },
-  "overrides": {
-    "@readproof/sdk": "file:../../../sdk/typescript"
   }
 }
