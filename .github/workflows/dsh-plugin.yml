@@ -7,14 +7,14 @@ on:
 
 jobs:
   dsh-plugin:
-    name: dsh-plugin-ctx build + test
+    name: dsh-plugin-readproof build + test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # The plugin's tests build ctxd and ctx from this repository and drive
-      # a real server, so the Go toolchain is a test dependency, not just a
-      # build one.
+      # The plugin's tests build readproofd and readproof from this
+      # repository and drive a real server, so the Go toolchain is a test
+      # dependency, not just a build one.
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -23,9 +23,9 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: integrations/deepseek-harness/dsh-plugin-ctx/package-lock.json
+          cache-dependency-path: integrations/deepseek-harness/dsh-plugin-readproof/package-lock.json
 
-      # The plugin consumes @ctx/sdk as a file: dependency, so the SDK's
+      # The plugin consumes @readproof/sdk as a file: dependency, so the SDK's
       # dist/ has to exist before the plugin's own build can resolve it.
       - name: Build the SDK the plugin depends on
         working-directory: sdk/typescript
@@ -34,7 +34,7 @@ jobs:
           npm run build
 
       - name: Install, build, and test the plugin
-        working-directory: integrations/deepseek-harness/dsh-plugin-ctx
+        working-directory: integrations/deepseek-harness/dsh-plugin-readproof
         run: |
           npm ci
           npm test

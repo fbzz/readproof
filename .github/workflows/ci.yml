@@ -53,7 +53,7 @@ jobs:
           cache: npm
           cache-dependency-path: examples/langgraph-ts/package-lock.json
 
-      # The example consumes @ctx/sdk as a file: dependency, so the SDK's
+      # The example consumes @readproof/sdk as a file: dependency, so the SDK's
       # dist/ has to exist before its own build can resolve the types.
       - name: Build the SDK the example depends on
         working-directory: sdk/typescript
@@ -61,7 +61,7 @@ jobs:
           npm ci
           npm run build
 
-      - name: Build the example (build only — running it needs a live ctxd)
+      - name: Build the example (build only — running it needs a live readproofd)
         working-directory: examples/langgraph-ts
         run: |
           npm ci
@@ -72,8 +72,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # The example's tests build ctx and ctxd themselves and run a throwaway
-      # ctxd on a free port, so this job needs the Go toolchain too.
+      # The example's tests build readproof and readproofd themselves and
+      # run a throwaway readproofd on a free port, so this job needs the Go
+      # toolchain too.
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -104,7 +105,7 @@ jobs:
         run: npm test
 
   integration:
-    name: Docker Compose integration (Postgres + MinIO + ctxd)
+    name: Docker Compose integration (Postgres + MinIO + readproofd)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -113,7 +114,7 @@ jobs:
           go-version-file: go.mod
       - run: docker compose up -d --build
 
-      - name: Wait for ctxd to report healthy
+      - name: Wait for readproofd to report healthy
         run: |
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/healthz; then
@@ -121,41 +122,42 @@ jobs:
             fi
             sleep 2
           done
-          echo "ctxd did not become healthy in time"
+          echo "readproofd did not become healthy in time"
           docker compose logs
           exit 1
 
       - name: Run the full test suite against the composed stack
         env:
-          CTX_TEST_POSTGRES_DSN: postgres://ctx:ctx_dev_password@localhost:5434/ctx?sslmode=disable
-          CTX_TEST_MINIO_ENDPOINT: localhost:9000
-          CTX_TEST_MINIO_ACCESS_KEY: ctxadmin
-          CTX_TEST_MINIO_SECRET_KEY: ctx_dev_password_minio
+          READPROOF_TEST_POSTGRES_DSN: postgres://readproof:readproof_dev_password@localhost:5434/readproof?sslmode=disable
+          READPROOF_TEST_MINIO_ENDPOINT: localhost:9000
+          READPROOF_TEST_MINIO_ACCESS_KEY: readproofadmin
+          READPROOF_TEST_MINIO_SECRET_KEY: readproof_dev_password_minio
         run: go test ./...
 
-      - name: Reference demo, driven by the CLI, against the built ctxd image
+      - name: Reference demo, driven by the CLI, against the built readproofd image
         run: |
           set -e
-          go build -o /tmp/ctx ./cmd/ctx
+          go build -o /tmp/readproof ./cmd/readproof
 
-          # A containerized ctxd has no access to the runner's filesystem, so
-          # this uses an HTTP source (reachable via host.docker.internal) —
-          # the same technique documented in the README for local testing.
+          # A containerized readproofd has no access to the runner's
+          # filesystem, so this uses an HTTP source (reachable via
+          # host.docker.internal) — the same technique documented in the
+          # README for local testing.
           mkdir -p /tmp/demo
           printf 'Products can be refunded within 30 days.\n' > /tmp/demo/refunds.md
           python3 -m http.server 8765 --directory /tmp/demo &
           sleep 1
 
-          export CTX_SERVER_URL=http://localhost:8080
-          /tmp/ctx resource add ctx://ci/policies/refunds \
+          export READPROOF_SERVER_URL=http://localhost:8080
+          /tmp/readproof resource add readproof://ci/policies/refunds \
             --source-type http --url http://host.docker.internal:8765/refunds.md --policy require_fresh
-          /tmp/ctx run --id ci-run-a ctx://ci/policies/refunds
+          /tmp/readproof run --id ci-run-a readproof://ci/policies/refunds
 
           printf 'Products can be refunded within 14 days.\n' > /tmp/demo/refunds.md
-          /tmp/ctx run --id ci-run-b ctx://ci/policies/refunds
+          /tmp/readproof run --id ci-run-b readproof://ci/policies/refunds
 
-          /tmp/ctx diff ci-run-a ci-run-b
-          /tmp/ctx replay ci-run-a | tee /tmp/replay.out
+          /tmp/readproof diff ci-run-a ci-run-b
+          /tmp/readproof replay ci-run-a | tee /tmp/replay.out
           grep -q "Replay verified: SHA256 match for 1/1 entries." /tmp/replay.out
 
       - name: docker compose logs (on failure)

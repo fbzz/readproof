@@ -4,7 +4,74 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - Unreleased
+
+Renamed Ctx → Readproof (breaking: module path, binaries, `readproof://`
+scheme, env vars, MCP tool names, OTel names, evidence predicateType, npm
+package/class names). Nothing else changed: no behaviour, no wire shapes,
+no storage layout. The full mapping is in
+[`docs/rename.md`](docs/rename.md).
+
+### Changed
+
+- **Go module** `ctx` → `readproof`; every import path follows, as does
+  `-ldflags "-X readproof/internal/version.Commit=…"`.
+- **Binaries.** `ctx` → `readproof` and `ctxd` → `readproofd`: the cobra
+  command name, the help text, the `readproof:` / `readproofd:` error
+  prefixes, the Compose service, and the Docker image entrypoint.
+- **URI scheme** `ctx://` → `readproof://`. Namespaces and paths are
+  unchanged, but every stored URI string is not, so an existing data
+  directory or database has to be re-registered rather than upgraded.
+  Because the URI is part of the Merkle leaf, evidence bundles for the same
+  documents now have different roots.
+- **Environment variables.** `CTX_*` → `READPROOF_*` and `CTXD_*` →
+  `READPROOFD_*` (`READPROOF_HOME`, `READPROOF_SERVER_URL`,
+  `READPROOF_API_KEY`, `READPROOF_ENDPOINT`, `READPROOF_TEST_*`,
+  `READPROOFD_*`). Default local data directory `.ctx` → `.readproof`.
+- **MCP.** Server name `ctx` → `readproof`, every tool `ctx_*` →
+  `readproof_*`, resource template `readproof://{namespace}/{+path}`.
+  Harness allowlists move from `mcp__ctx__ctx_*` to
+  `mcp__readproof__readproof_*`.
+- **OpenTelemetry.** Tracer and meter name `ctx` → `readproof`, spans and
+  attributes `ctx.*` → `readproof.*`, metrics `ctx_*` → `readproof_*`, and
+  `gen_ai.data_source.id` is now `readproof://<namespace>`. Existing
+  dashboards and alerts query names that no longer exist.
+- **Evidence.** `predicateType` `urn:ctx:evidence:v0.2` →
+  `urn:readproof:evidence:v0.3` and exporter name `ctx` → `readproof`, in
+  both the Go and TypeScript exporters. A verifier pinned to the old URN
+  rejects new bundles.
+- **TypeScript SDK.** Package `@ctx/sdk` → `@readproof/sdk`, class `Ctx` →
+  `Readproof`, `CtxOptions` → `ReadproofOptions`, `CtxError` →
+  `ReadproofError`. Method names are unchanged.
+- **DeepSeek Harness plugin.** `dsh-plugin-ctx` → `dsh-plugin-readproof`,
+  plugin name `readproof`, default `toolPrefix` `readproof_`, overlays
+  `readproof-mcp.cordis.yml` and `readproof-plugin.cordis.yml`,
+  `__CTX_REPO__` → `__READPROOF_REPO__`.
+- **Compose dev environment.** Database, user, MinIO root user, passwords,
+  bucket, and volume names are all `readproof*` (`readproof`,
+  `readproof_dev_password`, `readproofadmin`, `readproof-blobs`).
+
+### Migration
+
+1. `go build -o readproof ./cmd/readproof` and
+   `go build -o readproofd ./cmd/readproofd`.
+2. `mv ~/.ctx ~/.readproof`, then re-register resources: stored `ctx://`
+   URIs are not rewritten.
+3. Rename environment variables `CTX_*` → `READPROOF_*` and `CTXD_*` →
+   `READPROOFD_*`; rename Compose credentials or keep the old ones by
+   setting them explicitly in `.env`.
+4. Swap `@ctx/sdk` for `@readproof/sdk` and `new Ctx(…)` for
+   `new Readproof(…)`.
+5. Re-add the MCP server under its new name
+   (`claude mcp add readproof -- /abs/path/to/readproof mcp …`) and update
+   tool allowlists.
+6. Repoint OTel dashboards from `ctx.*` / `ctx_*` to `readproof.*` /
+   `readproof_*`.
+7. Update evidence verifiers to accept `urn:readproof:evidence:v0.3`.
+
 ## [0.2.0] - 2026-08-21
+
+*(released under the name Ctx)*
 
 The release that turns the v0.1 walking skeleton into something usable
 from outside the repo: movable tags, diffs that explain themselves,
@@ -14,9 +81,9 @@ status: [`docs/mvp.md`](docs/mvp.md).
 ### Added
 
 - **Tags and `@ref` resolution.** A tag is a named, movable pointer
-  `(resource_uri, tag) → snapshot_id`. `ctx tag set|list|rm`, and any URI
-  argument may carry a trailing `@<tag>` (`ctx get`, `ctx inspect`,
-  `ctx run mount`, `ctx run --id`, `POST /v1/resolve`,
+  `(resource_uri, tag) → snapshot_id`. `readproof tag set|list|rm`, and any URI
+  argument may carry a trailing `@<tag>` (`readproof get`, `readproof inspect`,
+  `readproof run mount`, `readproof run --id`, `POST /v1/resolve`,
   `POST /v1/runs/mount`, SDK `resolve()`/`mount()`), which delivers exactly
   that snapshot: no source fetch, and the resource's freshness policy is
   not consulted (decision `use_tag`). An unknown tag is an error naming
@@ -26,45 +93,50 @@ status: [`docs/mvp.md`](docs/mvp.md).
 - **Tag endpoints**: `PUT /v1/tags`, `GET /v1/tags?uri=`,
   `DELETE /v1/tags?uri=&tag=`, with wire types and both `client.Client`
   implementations.
-- **Evidence bundles** (`internal/evidence`, `ctx evidence`). `ctx evidence
-  export <manifest-or-run> [--with-content] [--out f]` writes an in-toto
-  Statement v1 whose subject digest is a Merkle root over the manifest's
-  entries, carrying per-entry identity, redacted resource definitions, and
-  a live replay check. `ctx evidence verify <bundle> [--offline]`
-  recomputes the root, re-hashes embedded content, and cross-checks the
-  store by replay, printing every check and exiting non-zero on failure.
-  Documented in [`docs/evidence.md`](docs/evidence.md), including the
-  EU AI Act Art. 12 / SOC 2 framing and an explicit not-legal-advice note.
+- **Evidence bundles** (`internal/evidence`, `readproof evidence`).
+  `readproof evidence export <manifest-or-run> [--with-content] [--out f]`
+  writes an in-toto Statement v1 whose subject digest is a Merkle root
+  over the manifest's entries, carrying per-entry identity, redacted
+  resource definitions, and a live replay check. `readproof evidence
+  verify <bundle> [--offline]` recomputes the root, re-hashes embedded
+  content, and cross-checks the store by replay, printing every check and
+  exiting non-zero on failure. Documented in
+  [`docs/evidence.md`](docs/evidence.md), including the EU AI Act Art. 12
+  / SOC 2 framing and an explicit not-legal-advice note.
 - **`internal/merkle`**: the single implementation of the manifest digest
   rule (leaf = `sha256(position_be_uint32 ‖ 0x00 ‖ uri ‖ 0x00 ‖
   content_hash)`, root over leaves in position order), shared by evidence
-  export and the `ctx.run.commit` span, with fixed test vectors.
-- **OpenTelemetry GenAI attributes and run spans.** `ctx.resolve` now
-  carries `ctx.snapshot.content_hash`, `ctx.snapshot.source_revision`,
-  `ctx.snapshot.observed_at`, `ctx.materialization.bytes`,
-  `ctx.source.type`, `ctx.policy.strategy`, `ctx.policy.decision`,
-  `ctx.resource.ref`, and `gen_ai.data_source.id` (= `ctx://<namespace>`).
-  New spans `ctx.run.start`, `ctx.run.mount` (parenting that mount's
-  `ctx.resolve` and `ctx.manifest.append`), `ctx.run.commit` (with
-  `ctx.manifest.merkle_root`), and `ctx.tag.lookup`. New metrics
-  `ctx_run_committed_total` and `ctx_tag_resolve_total`. Content is never
-  attached to a span or metric; tests assert that. Full reference:
+  export and the `readproof.run.commit` span, with fixed test vectors.
+- **OpenTelemetry GenAI attributes and run spans.** `readproof.resolve`
+  now carries `readproof.snapshot.content_hash`,
+  `readproof.snapshot.source_revision`, `readproof.snapshot.observed_at`,
+  `readproof.materialization.bytes`, `readproof.source.type`,
+  `readproof.policy.strategy`, `readproof.policy.decision`,
+  `readproof.resource.ref`, and `gen_ai.data_source.id` (=
+  `readproof://<namespace>`). New spans `readproof.run.start`,
+  `readproof.run.mount` (parenting that mount's `readproof.resolve` and
+  `readproof.manifest.append`), `readproof.run.commit` (with
+  `readproof.manifest.merkle_root`), and `readproof.tag.lookup`. New
+  metrics `readproof_run_committed_total` and
+  `readproof_tag_resolve_total`. Content is never attached to a span or
+  metric; tests assert that. Full reference:
   [`docs/observability.md`](docs/observability.md).
 - **TypeScript SDK**: `setTag` / `listTags` / `deleteTag`, `@tag` support
   in `resolve()` and `mount()`, per-side diff provenance fields, and
   `buildEvidence()` / `encodeEvidence()` / `merkleRoot()` / `merkleLeaf()`
-  — a client-side bundle with the same Merkle root as `ctx evidence
+  — a client-side bundle with the same Merkle root as `readproof evidence
   export`, using only `node:crypto`.
-- **MCP server**: `ctx mcp` serves registered resources over stdio
+- **MCP server**: `readproof mcp` serves registered resources over stdio
   (`resources/list`, `resources/read` via the template
-  `ctx://{namespace}/{+path}`, `@tag` honored, per-content `_meta` with
-  snapshot id / content hash / source revision / observed-at / decision)
-  and 13 tools (`ctx_resolve`, `ctx_run_*`, `ctx_manifest`, `ctx_diff`,
-  `ctx_replay`, `ctx_tag_*`, `ctx_evidence_export`, …), reusing
-  `--data-dir` / `--server` / `--api-key`. Official Go MCP SDK. See
+  `readproof://{namespace}/{+path}`, `@tag` honored, per-content `_meta`
+  with snapshot id / content hash / source revision / observed-at /
+  decision) and 13 tools (`readproof_resolve`, `readproof_run_*`,
+  `readproof_manifest`, `readproof_diff`, `readproof_replay`,
+  `readproof_tag_*`, `readproof_evidence_export`, …), reusing `--data-dir`
+  / `--server` / `--api-key`. Official Go MCP SDK. See
   [`docs/mcp.md`](docs/mcp.md).
 - **LangGraph.js example** ([`examples/langgraph-ts`](examples/langgraph-ts)):
-  a two-node graph that mounts `ctx://` resources in a node, records the
+  a two-node graph that mounts `readproof://` resources in a node, records the
   manifest id in the checkpoint, and replays it byte-for-byte from a
   second process after the source has changed. Pinned dependencies; built
   in CI.
@@ -81,19 +153,20 @@ status: [`docs/mvp.md`](docs/mvp.md).
   with a 60-second walkthrough of the register → run → tag → edit → diff →
   replay → evidence loop, and sections for tags, evidence, MCP, and the
   updated observability surface.
-- **`ctx diff` is provenance-aware.** Every changed entry gets a one-line
-  `why:` before its unified diff — `source revision X → Y; observed T1 →
-  T2`, plus `; ref <a> → <b>` when either side was mounted by tag.
-  `diff.EntryDiff` and the wire/SDK types carry each side's
+- **`readproof diff` is provenance-aware.** Every changed entry gets a
+  one-line `why:` before its unified diff — `source revision X → Y;
+  observed T1 → T2`, plus `; ref <a> → <b>` when either side was mounted
+  by tag. `diff.EntryDiff` and the wire/SDK types carry each side's
   `SourceRevision`, `ObservedAt`, and `Ref`.
-- **`ctx history` and `ctx manifest`** show tag information: a `TAGS`
-  column on history, a `REF` column on manifests that mounted by tag.
-- **`ctx get` / `ctx inspect`** report a tagged resolve as `tagged (@<tag>
-  -> snapshot …, policy not consulted)`.
+- **`readproof history` and `readproof manifest`** show tag information:
+  a `TAGS` column on history, a `REF` column on manifests that mounted by
+  tag.
+- **`readproof get` / `readproof inspect`** report a tagged resolve as
+  `tagged (@<tag> -> snapshot …, policy not consulted)`.
 - The HTTP source adapter records `etag` / `last_modified` in snapshot
   provenance when the origin sends them.
-- `ctx.policy.decision` is the canonical attribute name for the value
-  `ctx.freshness.status` also holds; the latter is kept for existing
+- `readproof.policy.decision` is the canonical attribute name for the value
+  `readproof.freshness.status` also holds; the latter is kept for existing
   dashboards.
 - Storage: migration `0002` (SQLite and Postgres) adds the `tags` table
   and a `ref` column on `manifest_entries` and `run_mounts`. It applies
@@ -102,30 +175,33 @@ status: [`docs/mvp.md`](docs/mvp.md).
 
 ### Fixed
 
-- `ctx run commit` / `POST /v1/runs/commit` / MCP `ctx_run_commit` on a run
-  that was never started used to succeed with an empty manifest; it now
-  fails with `run: not found` (HTTP 404). Committing an already-committed
-  run used to mint a second manifest; it now fails with
-  `run: already committed` (HTTP 409). `run mount` applies the same guards
-  before resolving, so a bogus run id can no longer create snapshots or
-  orphan mount rows.
-- Runtime errors no longer dump the cobra usage block (`ctx: <error>` once,
-  non-zero exit); genuine usage errors (missing args, unknown flags) still
-  show usage.
-- `ctx version` / `ctx --version` / `ctxd --version` report a single
-  `internal/version` source (`0.2.0`, `+<sha>` via `-ldflags -X
-  ctx/internal/version.Commit=…`); the evidence exporter and MCP server
-  version strings read the same constant in Go and TS.
+- `readproof run commit` / `POST /v1/runs/commit` / MCP
+  `readproof_run_commit` on a run that was never started used to succeed
+  with an empty manifest; it now fails with `run: not found` (HTTP 404).
+  Committing an already-committed run used to mint a second manifest; it
+  now fails with `run: already committed` (HTTP 409). `run mount` applies
+  the same guards before resolving, so a bogus run id can no longer create
+  snapshots or orphan mount rows.
+- Runtime errors no longer dump the cobra usage block (`readproof:
+  <error>` once, non-zero exit); genuine usage errors (missing args,
+  unknown flags) still show usage.
+- `readproof version` / `readproof --version` / `readproofd --version`
+  report a single `internal/version` source (`0.2.0`, `+<sha>` via
+  `-ldflags -X readproof/internal/version.Commit=…`); the evidence
+  exporter and MCP server version strings read the same constant in Go and
+  TS.
 
 
-- **`ctx replay` is strict**: it exits non-zero if any entry's bytes fail
-  to reproduce their recorded SHA256, or if a blob is missing. There is no
-  lenient mode; regression tests cover a corrupted blob, a missing blob,
-  and an intact store.
+- **`readproof replay` is strict**: it exits non-zero if any entry's
+  bytes fail to reproduce their recorded SHA256, or if a blob is missing.
+  There is no lenient mode; regression tests cover a corrupted blob, a
+  missing blob, and an intact store.
 - Evidence bundles carry each entry's `ref`, so a bundle records how a
   snapshot was chosen — descriptive only, never part of the Merkle leaf.
 
 ## [0.1.0] - 2026-08-19
+
+*(released under the name Ctx)*
 
 The walking skeleton: the full resolve → manifest → diff → replay loop,
 proven end-to-end against live infrastructure (milestones M1–M8).
@@ -140,18 +216,19 @@ proven end-to-end against live infrastructure (milestones M1–M8).
 - Freshness policies: `require_fresh`, `allow_stale`, `pinned`.
 - Two storage backends behind one domain interface: embedded SQLite +
   local disk, and PostgreSQL + an S3-compatible object store.
-- `ctx` CLI (`resource`, `get`, `inspect`, `history`, `run`, `manifest`,
-  `diff`, `replay`) and the `ctxd` server, both driven through
+- `readproof` CLI (`resource`, `get`, `inspect`, `history`, `run`, `manifest`,
+  `diff`, `replay`) and the `readproofd` server, both driven through
   `internal/client` so embedded and client/server mode cannot drift.
 - HTTP API with the `internal/wire` JSON contract, documented in
   [`docs/api.md`](docs/api.md).
 - `docker compose up -d --build`: Postgres, MinIO, an OTel collector, and
-  `ctxd` built from this repo's `Dockerfile`, healthy from a clean clone.
+  `readproofd` built from this repo's `Dockerfile`, healthy from a clean
+  clone.
 - OpenTelemetry tracing and metrics across the resolve pipeline, no-op
   without `OTEL_EXPORTER_OTLP_ENDPOINT`.
-- TypeScript SDK (`@ctx/sdk`): typed client, no runtime dependencies.
+- TypeScript SDK (`@readproof/sdk`): typed client, no runtime dependencies.
 - Security baseline: no plaintext credentials at rest, `${VAR}` header
-  references resolved from ctxd's environment, response redaction
+  references resolved from readproofd's environment, response redaction
   (`internal/redact`), optional `--api-key` bearer auth, dependency
   scanning.
 - Reference demo ([`examples/refund-agent`](examples/refund-agent)) and

@@ -1,5 +1,6 @@
-# Local dev infrastructure for Ctx. Grows across the v0.1 launch milestones
-# (Postgres + MinIO land in M1, ctxd in M4, the OTel collector in M5).
+# Local dev infrastructure for Readproof. Grows across the v0.1 launch
+# milestones (Postgres + MinIO land in M1, readproofd in M4, the OTel
+# collector in M5).
 #
 # ⚠️  DEV-ONLY CREDENTIALS: every default below is a placeholder meant for
 # local development only. Do not reuse these values, or this compose file
@@ -9,15 +10,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ctx}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctx_dev_password}
-      POSTGRES_DB: ${POSTGRES_DB:-ctx}
+      POSTGRES_USER: ${POSTGRES_USER:-readproof}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-readproof_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-readproof}
     ports:
       - "5434:5432"
     volumes:
-      - ctx_postgres_data:/var/lib/postgresql/data
+      - readproof_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ctx} -d ${POSTGRES_DB:-ctx}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-readproof} -d ${POSTGRES_DB:-readproof}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,13 +27,13 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-ctxadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ctx_dev_password_minio}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-readproofadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-readproof_dev_password_minio}
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - ctx_minio_data:/data
+      - readproof_minio_data:/data
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s
@@ -48,7 +49,7 @@ services:
       - "4317:4317"
       - "4318:4318"
 
-  ctxd:
+  readproofd:
     build:
       context: .
       dockerfile: Dockerfile
@@ -67,15 +68,15 @@ services:
       otel-collector:
         condition: service_started
     environment:
-      CTXD_ADDR: ":8080"
-      CTXD_POSTGRES_DSN: "postgres://${POSTGRES_USER:-ctx}:${POSTGRES_PASSWORD:-ctx_dev_password}@postgres:5432/${POSTGRES_DB:-ctx}?sslmode=disable"
-      CTXD_S3_ENDPOINT: "minio:9000"
-      CTXD_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-ctxadmin}
-      CTXD_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-ctx_dev_password_minio}
-      CTXD_S3_BUCKET: "ctx-blobs"
-      # Empty by default (unauthenticated) — set CTXD_API_KEY in .env to
+      READPROOFD_ADDR: ":8080"
+      READPROOFD_POSTGRES_DSN: "postgres://${POSTGRES_USER:-readproof}:${POSTGRES_PASSWORD:-readproof_dev_password}@postgres:5432/${POSTGRES_DB:-readproof}?sslmode=disable"
+      READPROOFD_S3_ENDPOINT: "minio:9000"
+      READPROOFD_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-readproofadmin}
+      READPROOFD_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-readproof_dev_password_minio}
+      READPROOFD_S3_BUCKET: "readproof-blobs"
+      # Empty by default (unauthenticated) — set READPROOFD_API_KEY in .env to
       # require it. See .env.example.
-      CTXD_API_KEY: ${CTXD_API_KEY:-}
+      READPROOFD_API_KEY: ${READPROOFD_API_KEY:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
     ports:
       - "8080:8080"
@@ -86,5 +87,5 @@ services:
       retries: 10
 
 volumes:
-  ctx_postgres_data:
-  ctx_minio_data:
+  readproof_postgres_data:
+  readproof_minio_data:
