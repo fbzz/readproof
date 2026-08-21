@@ -1,7 +1,7 @@
-export { Ctx } from "./client.js";
-export type { CtxOptions, RunOptions } from "./client.js";
+export { Readproof } from "./client.js";
+export type { ReadproofOptions, RunOptions } from "./client.js";
 export { Run } from "./run.js";
-export { CtxError } from "./errors.js";
+export { ReadproofError } from "./errors.js";
 export type {
   DiffEntry,
   DiffResult,

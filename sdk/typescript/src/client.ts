@@ -1,4 +1,4 @@
-import { CtxError } from "./errors.js";
+import { ReadproofError } from "./errors.js";
 import { Run } from "./run.js";
 import type {
   DiffResult,
@@ -12,8 +12,8 @@ import type {
   Tag,
 } from "./types.js";
 
-export interface CtxOptions {
-  /** Base URL of a running ctxd, e.g. "http://localhost:8080". */
+export interface ReadproofOptions {
+  /** Base URL of a running readproofd, e.g. "http://localhost:8080". */
   endpoint: string;
   /** Sent as "Authorization: Bearer <apiKey>" if the server has --api-key set. */
   apiKey?: string;
@@ -22,7 +22,7 @@ export interface CtxOptions {
 }
 
 export interface RunOptions {
-  /** Run id — must be unique per run against a given ctxd instance. */
+  /** Run id — must be unique per run against a given readproofd instance. */
   id: string;
 }
 
@@ -62,20 +62,20 @@ function isErrorResponse(v: unknown): v is { error: string } {
 }
 
 /**
- * Ctx is the TypeScript SDK client for a running ctxd. Every method maps
- * 1:1 to one of ctxd's HTTP API endpoints.
+ * Readproof is the TypeScript SDK client for a running readproofd. Every method maps
+ * 1:1 to one of readproofd's HTTP API endpoints.
  *
  * ```ts
- * const ctx = new Ctx({ endpoint: "http://localhost:8080" });
- * const policy = await ctx.resolve("ctx://acme/policies/refunds");
+ * const rp = new Readproof({ endpoint: "http://localhost:8080" });
+ * const policy = await rp.resolve("readproof://acme/policies/refunds");
  * ```
  */
-export class Ctx {
+export class Readproof {
   private readonly endpoint: string;
   private readonly apiKey?: string;
   private readonly fetchImpl: typeof fetch;
 
-  constructor(options: CtxOptions) {
+  constructor(options: ReadproofOptions) {
     this.endpoint = options.endpoint.replace(/\/+$/, "");
     this.apiKey = options.apiKey;
     this.fetchImpl = options.fetch ?? fetch;
@@ -84,7 +84,7 @@ export class Ctx {
   /**
    * Resolve a context resource to its current content and metadata.
    *
-   * `uri` may carry a trailing `@<tag>` (`ctx://acme/policies/refunds@prod`),
+   * `uri` may carry a trailing `@<tag>` (`readproof://acme/policies/refunds@prod`),
    * which delivers exactly that tagged snapshot: no source fetch, and the
    * resource's freshness policy is not consulted
    * (`freshness.status === "use_tag"`).
@@ -152,7 +152,7 @@ export class Ctx {
   }
 
   /**
-   * Begin a context run: `ctx.run({ id }).mount(uri)...commit()`. The run
+   * Begin a context run: `rp.run({ id }).mount(uri)...commit()`. The run
    * starts lazily on the first `mount()` call — every resolved resource
    * becomes an ordered entry in the manifest produced by `commit()`.
    */
@@ -200,12 +200,12 @@ export class Ctx {
     try {
       parsed = text.length > 0 ? JSON.parse(text) : undefined;
     } catch {
-      throw new CtxError(`ctx: invalid JSON response from ${path}: ${text}`, res.status);
+      throw new ReadproofError(`readproof: invalid JSON response from ${path}: ${text}`, res.status);
     }
 
     if (!res.ok) {
       const message = isErrorResponse(parsed) ? parsed.error : `unexpected status ${res.status}`;
-      throw new CtxError(`ctxd: ${message}`, res.status);
+      throw new ReadproofError(`readproofd: ${message}`, res.status);
     }
 
     return parsed as T;

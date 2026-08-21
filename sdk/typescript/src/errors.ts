@@ -1,9 +1,9 @@
-export class CtxError extends Error {
+export class ReadproofError extends Error {
   readonly status?: number;
 
   constructor(message: string, status?: number) {
     super(message);
-    this.name = "CtxError";
+    this.name = "ReadproofError";
     this.status = status;
   }
 }

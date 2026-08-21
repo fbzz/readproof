@@ -1,5 +1,5 @@
 // These types mirror internal/wire/wire.go exactly — the JSON contract
-// ctxd's HTTP API speaks. Field names are kept snake_case (unconverted, as
+// readproofd's HTTP API speaks. Field names are kept snake_case (unconverted, as
 // they appear on the wire) so this file stays a direct, unambiguous
 // reflection of the server contract rather than an independently
 // maintained mapping that can drift from it.
@@ -84,7 +84,7 @@ export interface Tag {
 }
 
 // FreshnessStatus matches policy.Decision.String() on the Go side.
-// "use_tag" is a `ctx://ns/path@tag` resolve: exactly that snapshot, no
+// "use_tag" is a `readproof://ns/path@tag` resolve: exactly that snapshot, no
 // source fetch, policy not consulted.
 export type FreshnessStatus = "fetch" | "use_current" | "use_pinned" | "use_tag";
 
@@ -111,7 +111,7 @@ export interface ResolveResult {
 
 export interface ManifestEntry {
   position: number;
-  /** Always the bare ctx://ns/path — the tag, if any, is in `ref`. */
+  /** Always the bare readproof://ns/path — the tag, if any, is in `ref`. */
   uri: string;
   ref?: string;
   snapshot_id: string;

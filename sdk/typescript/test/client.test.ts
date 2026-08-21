@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 
-import { Ctx, CtxError } from "../src/index.js";
+import { Readproof, ReadproofError } from "../src/index.js";
 
 function startMockServer(handler: http.RequestListener): Promise<{ url: string; close: () => Promise<void> }> {
   return new Promise((resolve) => {
@@ -31,7 +31,7 @@ test("resolve decodes base64 content and typed fields", async () => {
     assert.equal(req.method, "POST");
     assert.equal(req.url, "/v1/resolve");
     const parsed = JSON.parse(await readBody(req));
-    assert.equal(parsed.uri, "ctx://demo/policies/refunds");
+    assert.equal(parsed.uri, "readproof://demo/policies/refunds");
 
     res.setHeader("Content-Type", "application/json");
     res.end(
@@ -63,8 +63,8 @@ test("resolve decodes base64 content and typed fields", async () => {
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const result = await ctx.resolve("ctx://demo/policies/refunds");
+    const rp = new Readproof({ endpoint: url });
+    const result = await rp.resolve("readproof://demo/policies/refunds");
     assert.equal(result.content, "hello");
     assert.equal(result.snapshot.id, "snap_1");
     assert.equal(result.freshness.status, "fetch");
@@ -125,7 +125,7 @@ test("run.mount starts the run then mounts, commit produces a manifest", async (
           manifest_id: "manifest_1",
           run_id: "run-a",
           created_at: "2026-01-01T00:00:00Z",
-          entries: [{ position: 0, uri: "ctx://demo/x", snapshot_id: "snap_1", materialization_id: "mat_1", content_hash: "sha256:abc" }],
+          entries: [{ position: 0, uri: "readproof://demo/x", snapshot_id: "snap_1", materialization_id: "mat_1", content_hash: "sha256:abc" }],
         }),
       );
       return;
@@ -135,15 +135,15 @@ test("run.mount starts the run then mounts, commit produces a manifest", async (
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const run = ctx.run({ id: "run-a" });
-    const mounted = await run.mount("ctx://demo/x");
+    const rp = new Readproof({ endpoint: url });
+    const run = rp.run({ id: "run-a" });
+    const mounted = await run.mount("readproof://demo/x");
     assert.equal(mounted.content, "x");
 
     const manifest = await run.commit();
     assert.equal(manifest.manifest_id, "manifest_1");
     assert.equal(manifest.entries.length, 1);
-    assert.equal(manifest.entries[0]?.uri, "ctx://demo/x");
+    assert.equal(manifest.entries[0]?.uri, "readproof://demo/x");
 
     assert.deepEqual(calls, ["POST /v1/runs", "POST /v1/runs/mount", "POST /v1/runs/commit"]);
   } finally {
@@ -167,9 +167,9 @@ test("run.mount only starts the run once across multiple mounts", async () => {
         JSON.stringify({
           position: 0,
           resolve: {
-            resource: { uri: "ctx://demo/x", policy: { strategy: "require_fresh" } },
+            resource: { uri: "readproof://demo/x", policy: { strategy: "require_fresh" } },
             snapshot: {
-              id: "snap_1", resource_uri: "ctx://demo/x", source_revision: "r",
+              id: "snap_1", resource_uri: "readproof://demo/x", source_revision: "r",
               content_hash: "sha256:abc", observed_at: "2026-01-01T00:00:00Z",
               created_at: "2026-01-01T00:00:00Z", content_type: "text/plain", bytes: 1, provenance: {},
             },
@@ -189,29 +189,29 @@ test("run.mount only starts the run once across multiple mounts", async () => {
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const run = ctx.run({ id: "run-b" });
-    await run.mount("ctx://demo/x");
-    await run.mount("ctx://demo/x");
+    const rp = new Readproof({ endpoint: url });
+    const run = rp.run({ id: "run-b" });
+    await run.mount("readproof://demo/x");
+    await run.mount("readproof://demo/x");
     assert.equal(startCalls, 1);
   } finally {
     await close();
   }
 });
 
-test("non-2xx responses throw CtxError with the server's error message", async () => {
+test("non-2xx responses throw ReadproofError with the server's error message", async () => {
   const { url, close } = await startMockServer((_req, res) => {
     res.statusCode = 404;
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "resource: not found: ctx://demo/missing" }));
+    res.end(JSON.stringify({ error: "resource: not found: readproof://demo/missing" }));
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
+    const rp = new Readproof({ endpoint: url });
     await assert.rejects(
-      () => ctx.getResource("ctx://demo/missing"),
+      () => rp.getResource("readproof://demo/missing"),
       (err: unknown) => {
-        assert.ok(err instanceof CtxError);
+        assert.ok(err instanceof ReadproofError);
         assert.equal(err.status, 404);
         assert.match(err.message, /resource: not found/);
         return true;
@@ -231,8 +231,8 @@ test("apiKey is sent as an Authorization: Bearer header", async () => {
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url, apiKey: "secret-key" });
-    await ctx.listResources();
+    const rp = new Readproof({ endpoint: url, apiKey: "secret-key" });
+    await rp.listResources();
     assert.equal(receivedAuth, "Bearer secret-key");
   } finally {
     await close();
@@ -248,8 +248,8 @@ test("no apiKey means no Authorization header is sent", async () => {
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    await ctx.listResources();
+    const rp = new Readproof({ endpoint: url });
+    await rp.listResources();
     assert.equal(receivedAuth, undefined);
   } finally {
     await close();

@@ -1,7 +1,7 @@
-# @ctx/sdk
+# @readproof/sdk
 
-TypeScript SDK for [Ctx](../../README.md) — talks to a running `ctxd` over
-HTTP. Every method maps 1:1 to one of `ctxd`'s API endpoints; see the root
+TypeScript SDK for [Readproof](../../README.md) — talks to a running `readproofd` over
+HTTP. Every method maps 1:1 to one of `readproofd`'s API endpoints; see the root
 README's "HTTP API" section for the full list. `buildEvidence` is the one
 exception: it composes an evidence bundle client-side out of those calls.
 
@@ -13,17 +13,17 @@ Not yet published to a registry. Install locally from this repo:
 cd sdk/typescript
 npm install
 npm run build
-npm link              # or: npm pack, then npm install /path/to/ctx-sdk-*.tgz
+npm link              # or: npm pack, then npm install /path/to/readproof-sdk-*.tgz
 ```
 
 ## Usage
 
 ```ts
-import { Ctx } from "@ctx/sdk";
+import { Readproof } from "@readproof/sdk";
 
-const ctx = new Ctx({ endpoint: "http://localhost:8080" });
+const rp = new Readproof({ endpoint: "http://localhost:8080" });
 
-const policy = await ctx.resolve("ctx://acme/policies/refunds");
+const policy = await rp.resolve("readproof://acme/policies/refunds");
 console.log(policy.content, policy.snapshot.id, policy.snapshot.content_hash);
 ```
 
@@ -31,13 +31,13 @@ console.log(policy.content, policy.snapshot.id, policy.snapshot.content_hash);
 
 Mounting a resource inside a `run` resolves it *and* records it as the next
 ordered entry in the manifest `commit()` produces — the same effect as the
-CLI's `ctx run --id <run-id> <uri>`:
+CLI's `readproof run --id <run-id> <uri>`:
 
 ```ts
-const run = ctx.run({ id: "run_9182" });
+const run = rp.run({ id: "run_9182" });
 
-const refundPolicy = await run.mount("ctx://acme/policies/refunds");
-const customer = await run.mount(`ctx://acme/customers/${customerId}`);
+const refundPolicy = await run.mount("readproof://acme/policies/refunds");
+const customer = await run.mount(`readproof://acme/customers/${customerId}`);
 
 const manifest = await run.commit();
 ```
@@ -52,9 +52,9 @@ A tag is a named, movable pointer from a resource to one of its snapshots
 `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
 
 ```ts
-await ctx.setTag("ctx://acme/policies/refunds", "prod", policy.snapshot.id);
-await ctx.listTags("ctx://acme/policies/refunds");  // Tag[], sorted by name
-await ctx.deleteTag("ctx://acme/policies/refunds", "prod");
+await rp.setTag("readproof://acme/policies/refunds", "prod", policy.snapshot.id);
+await rp.listTags("readproof://acme/policies/refunds");  // Tag[], sorted by name
+await rp.deleteTag("readproof://acme/policies/refunds", "prod");
 ```
 
 `resolve()` and `run().mount()` both accept a trailing `@<tag>`, which
@@ -62,14 +62,14 @@ delivers exactly that snapshot: **no source fetch, and the resource's
 freshness policy is not consulted.**
 
 ```ts
-const pinned = await ctx.resolve("ctx://acme/policies/refunds@prod");
+const pinned = await rp.resolve("readproof://acme/policies/refunds@prod");
 pinned.freshness.status;   // "use_tag"
 pinned.resource.ref;       // "prod"
 
-await run.mount("ctx://acme/policies/refunds@prod");
+await run.mount("readproof://acme/policies/refunds@prod");
 ```
 
-An unknown tag throws a `CtxError` naming both the URI and the tag.
+An unknown tag throws a `ReadproofError` naming both the URI and the tag.
 Manifest entries record the bare `uri` plus the `ref` they were mounted by,
 so moving a tag afterwards can never change what a committed manifest
 replays.
@@ -82,14 +82,14 @@ Diff entries carry per-side provenance — the *why* behind a change:
 a side whose manifest contains that URI.
 
 ```ts
-const diff = await ctx.diff("run-a", "run-b");
+const diff = await rp.diff("run-a", "run-b");
 for (const entry of diff.entries) {
   if (entry.status !== "changed") continue;
   console.log(entry.uri, entry.source_revision_a, "->", entry.source_revision_b);
   console.log(entry.unified_diff);
 }
 
-const replay = await ctx.replay("run-a");
+const replay = await rp.replay("run-a");
 console.log(replay.entries.every((e) => e.match)); // -> true
 ```
 
@@ -99,13 +99,13 @@ console.log(replay.entries.every((e) => e.match)); // -> true
 Statement](../../docs/evidence.md) for a manifest id or run id, using only
 public SDK calls (`getManifest` / `getSnapshot` / `getResource` /
 `replay`). For the same manifest it produces the same Merkle root — and
-byte-identical JSON apart from `generated_at` / `verified_at` — as `ctx
-evidence export`, and `ctx evidence verify` accepts it.
+byte-identical JSON apart from `generated_at` / `verified_at` — as `rp
+evidence export`, and `readproof evidence verify` accepts it.
 
 ```ts
-import { Ctx, buildEvidence, encodeEvidence } from "@ctx/sdk";
+import { Readproof, buildEvidence, encodeEvidence } from "@readproof/sdk";
 
-const bundle = await buildEvidence(ctx, "run-a", { withContent: true });
+const bundle = await buildEvidence(rp, "run-a", { withContent: true });
 console.log(bundle.subject[0].digest.sha256);   // the merkle root
 await fs.writeFile("bundle.json", encodeEvidence(bundle));
 ```
@@ -123,10 +123,10 @@ carries raw bytes through.
 npm install
 npm run build     # tsc -> dist/
 npm test          # build, then run node --test against dist/test/
-npm run example   # build, then run examples/resolve.ts against $CTX_ENDPOINT (default http://localhost:8080)
+npm run example   # build, then run examples/resolve.ts against $READPROOF_ENDPOINT (default http://localhost:8080)
 ```
 
-`npm run example` needs a running `ctxd` — from the repo root:
+`npm run example` needs a running `readproofd` — from the repo root:
 `docker compose up -d --build`.
 
 ## Notes
@@ -138,4 +138,4 @@ npm run example   # build, then run examples/resolve.ts against $CTX_ENDPOINT (d
   serialize on the Go side.
 - Consumer/dependency tracking (spec's `consumer` field on a run) isn't
   implemented server-side yet, so it isn't exposed here either — only
-  `run_id` threading, which `ctxd` does support.
+  `run_id` threading, which `readproofd` does support.

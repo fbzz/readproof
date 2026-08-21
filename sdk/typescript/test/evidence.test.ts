@@ -4,7 +4,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 
 import {
-  Ctx,
+  Readproof,
   buildEvidence,
   encodeEvidence,
   merkleLeaf,
@@ -26,10 +26,10 @@ function startMockServer(handler: http.RequestListener): Promise<{ url: string; 
   });
 }
 
-const entryA = { position: 0, uri: "ctx://demo/policies/refunds", content_hash: "sha256:aaaa" };
-const entryB = { position: 1, uri: "ctx://demo/policies/shipping", content_hash: "sha256:bbbb" };
-const entryC = { position: 2, uri: "ctx://demo/faq", content_hash: "sha256:cccc" };
-const entryD = { position: 3, uri: "ctx://demo/tos", content_hash: "sha256:dddd" };
+const entryA = { position: 0, uri: "readproof://demo/policies/refunds", content_hash: "sha256:aaaa" };
+const entryB = { position: 1, uri: "readproof://demo/policies/shipping", content_hash: "sha256:bbbb" };
+const entryC = { position: 2, uri: "readproof://demo/faq", content_hash: "sha256:cccc" };
+const entryD = { position: 3, uri: "readproof://demo/tos", content_hash: "sha256:dddd" };
 
 // The same fixed vectors internal/evidence/merkle_test.go asserts. They were
 // produced by an independent implementation of the documented rule, so these
@@ -73,15 +73,15 @@ const manifestResponse = {
   run_id: "run-audit-1",
   created_at: "2026-03-01T10:00:00Z",
   entries: [
-    { position: 0, uri: "ctx://demo/policies/refunds", snapshot_id: "snap_1", materialization_id: "mat_1", content_hash: refundsHash },
-    { position: 1, uri: "ctx://demo/policies/shipping", snapshot_id: "snap_2", materialization_id: "mat_2", content_hash: shippingHash },
+    { position: 0, uri: "readproof://demo/policies/refunds", snapshot_id: "snap_1", materialization_id: "mat_1", content_hash: refundsHash },
+    { position: 1, uri: "readproof://demo/policies/shipping", snapshot_id: "snap_2", materialization_id: "mat_2", content_hash: shippingHash },
   ],
 };
 
 const snapshots: Record<string, unknown> = {
   snap_1: {
     id: "snap_1",
-    resource_uri: "ctx://demo/policies/refunds",
+    resource_uri: "readproof://demo/policies/refunds",
     source_revision: "sha256:c8b0bb212e93",
     content_hash: refundsHash,
     observed_at: "2026-03-01T09:59:00Z",
@@ -92,7 +92,7 @@ const snapshots: Record<string, unknown> = {
   },
   snap_2: {
     id: "snap_2",
-    resource_uri: "ctx://demo/policies/shipping",
+    resource_uri: "readproof://demo/policies/shipping",
     source_revision: "sha256:14b635244186",
     content_hash: shippingHash,
     observed_at: "2026-03-01T09:59:30Z",
@@ -104,8 +104,8 @@ const snapshots: Record<string, unknown> = {
 };
 
 const resources: Record<string, unknown> = {
-  "ctx://demo/policies/refunds": {
-    uri: "ctx://demo/policies/refunds",
+  "readproof://demo/policies/refunds": {
+    uri: "readproof://demo/policies/refunds",
     namespace: "demo",
     path: "policies/refunds",
     source: { kind: "filesystem", filesystem: { path: "/srv/policies/refunds.md" } },
@@ -113,8 +113,8 @@ const resources: Record<string, unknown> = {
     created_at: "2026-03-01T09:00:00Z",
     updated_at: "2026-03-01T09:59:00Z",
   },
-  "ctx://demo/policies/shipping": {
-    uri: "ctx://demo/policies/shipping",
+  "readproof://demo/policies/shipping": {
+    uri: "readproof://demo/policies/shipping",
     namespace: "demo",
     path: "policies/shipping",
     source: {
@@ -132,7 +132,7 @@ const replayResponse = {
   entries: [
     {
       position: 0,
-      uri: "ctx://demo/policies/refunds",
+      uri: "readproof://demo/policies/refunds",
       materialization_id: "mat_1",
       recorded_hash: refundsHash,
       replayed_hash: refundsHash,
@@ -141,7 +141,7 @@ const replayResponse = {
     },
     {
       position: 1,
-      uri: "ctx://demo/policies/shipping",
+      uri: "readproof://demo/policies/shipping",
       materialization_id: "mat_2",
       recorded_hash: shippingHash,
       replayed_hash: shippingHash,
@@ -151,7 +151,7 @@ const replayResponse = {
   ],
 };
 
-/** A ctxd stand-in serving the fixtures above; unknown resources 404. */
+/** A readproofd stand-in serving the fixtures above; unknown resources 404. */
 function startCtxdMock(): Promise<{ url: string; close: () => Promise<void> }> {
   return startMockServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -195,8 +195,8 @@ const fixedNow = () => new Date("2026-03-01T12:00:00Z");
 test("buildEvidence produces an in-toto statement rooted at the merkle root", async () => {
   const { url, close } = await startCtxdMock();
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const bundle = await buildEvidence(ctx, "run-audit-1", { withContent: true, now: fixedNow });
+    const rp = new Readproof({ endpoint: url });
+    const bundle = await buildEvidence(rp, "run-audit-1", { withContent: true, now: fixedNow });
 
     assert.equal(bundle._type, EVIDENCE_STATEMENT_TYPE);
     assert.equal(bundle.predicateType, EVIDENCE_PREDICATE_TYPE);
@@ -207,13 +207,13 @@ test("buildEvidence produces an in-toto statement rooted at the merkle root", as
     assert.equal(bundle.predicate.run_id, "run-audit-1");
     assert.equal(bundle.predicate.manifest_created_at, "2026-03-01T10:00:00Z");
     assert.equal(bundle.predicate.generated_at, "2026-03-01T12:00:00.000Z");
-    assert.equal(bundle.predicate.exporter.name, "ctx");
+    assert.equal(bundle.predicate.exporter.name, "readproof");
 
     // Entries are hydrated from the snapshots, not just copied from the
     // manifest.
     assert.equal(bundle.predicate.entries.length, 2);
     const first = bundle.predicate.entries[0];
-    assert.equal(first?.uri, "ctx://demo/policies/refunds");
+    assert.equal(first?.uri, "readproof://demo/policies/refunds");
     assert.equal(first?.snapshot_id, "snap_1");
     assert.equal(first?.source_revision, "sha256:c8b0bb212e93");
     assert.equal(first?.observed_at, "2026-03-01T09:59:00Z");
@@ -245,8 +245,8 @@ test("buildEvidence produces an in-toto statement rooted at the merkle root", as
 test("buildEvidence redacts credential-bearing source headers", async () => {
   const { url, close } = await startCtxdMock();
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const bundle = await buildEvidence(ctx, "run-audit-1", { now: fixedNow });
+    const rp = new Readproof({ endpoint: url });
+    const bundle = await buildEvidence(rp, "run-audit-1", { now: fixedNow });
 
     const headers = bundle.predicate.resources[1]?.source.config.http?.headers ?? {};
     assert.equal(headers["Authorization"], "[REDACTED]");
@@ -260,8 +260,8 @@ test("buildEvidence redacts credential-bearing source headers", async () => {
 test("buildEvidence omits content unless asked, and encodes with a trailing newline", async () => {
   const { url, close } = await startCtxdMock();
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const bundle = await buildEvidence(ctx, "run-audit-1", { now: fixedNow });
+    const rp = new Readproof({ endpoint: url });
+    const bundle = await buildEvidence(rp, "run-audit-1", { now: fixedNow });
 
     for (const entry of bundle.predicate.entries) {
       assert.equal(entry.content_b64, undefined);
@@ -313,8 +313,8 @@ test("buildEvidence records a deregistered resource as missing instead of failin
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const bundle = await buildEvidence(ctx, "run-audit-1", { now: fixedNow });
+    const rp = new Readproof({ endpoint: url });
+    const bundle = await buildEvidence(rp, "run-audit-1", { now: fixedNow });
 
     assert.equal(bundle.predicate.resources.length, 2);
     for (const resource of bundle.predicate.resources) {
@@ -350,8 +350,8 @@ test("buildEvidence records a replay failure rather than throwing", async () => 
   });
 
   try {
-    const ctx = new Ctx({ endpoint: url });
-    const bundle = await buildEvidence(ctx, "run-audit-1", { withContent: true, now: fixedNow });
+    const rp = new Readproof({ endpoint: url });
+    const bundle = await buildEvidence(rp, "run-audit-1", { withContent: true, now: fixedNow });
 
     assert.equal(bundle.predicate.replay.all_match, false);
     assert.match(bundle.predicate.replay.error ?? "", /blob: not found/);
