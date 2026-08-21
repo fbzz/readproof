@@ -10,8 +10,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Remediation of the August 2026 pre-launch audit
 ([`docs/security-audit-2026-08.md`](docs/security-audit-2026-08.md)). Every
-finding is closed except RP-07 (repository hygiene) and RP-15 (no in-process
-TLS or rate limiting — now documented as a reverse-proxy deployment).
+finding is closed except RP-15 (no in-process TLS or rate limiting — now
+documented as a reverse-proxy deployment).
 
 **⚠️ Breaking defaults for `readproofd`.** A resource definition tells the
 server which file to read, which address to connect to, and which of its own

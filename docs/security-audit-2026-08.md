@@ -19,9 +19,11 @@ memory-safety-class bug was found and fixed (arbitrary file read via an
 unvalidated content hash). Dependency scanning is clean.
 
 > **Update — remediation on `security-hardening`.** Everything in the table
-> below except RP-07 and RP-15 has since been fixed; the Status column is
-> current, the prose that follows is the report as written and still describes
-> each finding as it was found. RP-01, RP-02 and RP-04 were implemented along
+> below except RP-15 has since been fixed; the Status column is current, the
+> prose that follows is the report as written and still describes each finding
+> as it was found. (RP-07 turned out to be closed already: `7543df8` deleted
+> the `dsh-plugin-ctx` tree during the rename, before this branch.) RP-01,
+> RP-02 and RP-04 were implemented along
 > the lines the recommendations set out, and the trust boundary is now
 > enforced rather than only documented: `readproofd` refuses filesystem
 > sources, `${VAR}` header expansion and private network targets by default,
@@ -44,7 +46,7 @@ worst-case impact in a deployment the project warns against.
 | RP-04 | Medium | `source/http` | No SSRF address restriction: loopback, link-local and `169.254.169.254` are reachable, and redirects into them are followed | **Fixed** |
 | RP-05 | Medium | `api` | Request bodies were read unbounded into memory on an unauthenticated-by-default server | **Fixed** |
 | RP-06 | Medium | `source/http` | Response bodies were read unbounded, with no per-fetch timeout | **Fixed** |
-| RP-07 | Medium | repo hygiene | 583 tracked files of vendored `node_modules/` and stale `dist/` under a pre-rename directory | Ignore rule added; removal open |
+| RP-07 | Medium | repo hygiene | 583 tracked files of vendored `node_modules/` and stale `dist/` under a pre-rename directory | **Fixed** (removed by `7543df8`) |
 | RP-08 | Medium | DSH plugin | `readproof_evidence_export --with-content` bypasses the 1 MiB inline content cap | **Fixed** |
 | RP-09 | Medium | `Dockerfile` | The `readproofd` container runs as root | **Fixed** |
 | RP-10 | Low | `cmd/readproofd` | Only `ReadHeaderTimeout` was set; slow-read/slow-write peers pinned goroutines | **Fixed** |
@@ -526,6 +528,15 @@ validated ticket id in the support-agent example (RP-21), a minimal child
 environment for the spawned `readproofd` (RP-22), and "integrity-checked"
 wording wherever "tamper-evident" stood unqualified (RP-23).
 
-**Still open.** RP-07 (removing the tracked `dsh-plugin-ctx` tree — repository
-hygiene, no behaviour) and RP-15 (no in-process TLS or rate limiting, now
-documented as a reverse-proxy deployment in `docs/api.md`).
+**Still open.** RP-15 only: `readproofd` has no in-process TLS termination or
+rate limiting, and gains none here. It is documented instead — `docs/api.md`
+now states the supported deployment (behind a reverse proxy that terminates
+TLS and limits request rates), which is the honest answer until one of the two
+is built.
+
+**Not carried out.** The report's optional extras: `redirect: "error"` on the
+SDK's fetch (a legitimate proxy redirect would break, and the concern is
+integrity rather than credentials — the Authorization header is not forwarded
+cross-origin), `npm audit --omit=dev` as a plugin CI step, and `url.PathEscape`
+on the GitHub adapter's path interpolation (tidiness; no privilege is gained,
+since the caller already chooses the whole resource definition).
