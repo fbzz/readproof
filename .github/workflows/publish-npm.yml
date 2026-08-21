@@ -41,6 +41,8 @@ jobs:
         working-directory: sdk/typescript
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # npm provenance attestations are only accepted from public repositories
+          PROVENANCE: ${{ github.event.repository.private && '' || '--provenance' }}
         run: |
           set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
@@ -55,7 +57,7 @@ jobs:
           if npm view "$name@$version" version >/dev/null 2>&1; then
             echo "$name@$version is already on the registry — skipping."
           else
-            npm publish --provenance --access public
+            npm publish $PROVENANCE --access public
           fi
 
       - name: Build and test dsh-plugin-readproof
@@ -69,6 +71,8 @@ jobs:
         working-directory: integrations/deepseek-harness/dsh-plugin-readproof
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # npm provenance attestations are only accepted from public repositories
+          PROVENANCE: ${{ github.event.repository.private && '' || '--provenance' }}
         run: |
           set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
@@ -83,5 +87,5 @@ jobs:
             # scripts/prepack.mjs rewrites the file: @readproof/sdk
             # dependency to the published semver inside the tarball, and
             # postpack puts the working tree back.
-            npm publish --provenance --access public
+            npm publish $PROVENANCE --access public
           fi
