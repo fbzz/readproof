@@ -96,7 +96,8 @@
 
   /* Hero */
   .hero { padding: 96px 0 64px; }
-  .hero .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+  .hero .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; align-items: start; }
+  .hero .term { max-width: 800px; }
   h1 { font-size: 60px; line-height: 1; font-weight: 700; letter-spacing: -.03em; max-width: 680px; margin-bottom: 24px; background: linear-gradient(90deg, var(--h1a), var(--h1b)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hero .sub { font-size: 20px; line-height: 28px; color: var(--ink-2); max-width: 680px; margin-bottom: 24px; }
   .hero .cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
@@ -105,7 +106,7 @@
   .proof li { display: inline-flex; align-items: center; gap: 8px; }
   .proof b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
   .proof svg { width: 16px; height: 16px; color: var(--ok); }
-  @media (max-width: 960px) { .hero .grid { grid-template-columns: 1fr; gap: 32px; } h1 { font-size: 48px; } .hero { padding: 96px 0 48px; } }
+  @media (max-width: 960px) { .hero .grid { gap: 32px; } h1 { font-size: 48px; } .hero { padding: 96px 0 48px; } }
 
   /* Terminal */
   .term { background: var(--panel); color: var(--panel-ink); border: 1px solid var(--panel-rule); border-radius: 16px; padding: 16px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 0; }
@@ -218,7 +219,7 @@
   <div class="wrap grid">
     <div>
       <p class="eyebrow rv">Open source · for teams running AI agents</p>
-      <h1 class="rv">Know exactly what<br>your agent read.<br>Prove it a year later.</h1>
+      <h1 class="rv">Know exactly what<br>your agent read.<br>Prove it years later.</h1>
       <p class="sub rv">Ctx gives every document an agent reads a stable identity, a freshness policy, and a content addressed snapshot. Each run becomes a manifest you can diff against another, replay byte for byte, and export as evidence.</p>
       <div class="cta rv">
         <a class="btn primary" href="docs/#install">Run the 60 second quickstart <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg></a>
@@ -407,7 +408,7 @@ $ ctx evidence export run-a --out bundle.json
   if (reduce || !('IntersectionObserver' in window)) { rv.forEach(function (el) { el.classList.add('in'); }); }
   else {
     var io = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } }); }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
-    rv.forEach(function (el) { io.observe(el); });
+    rv.forEach(function (el) { if (el.getBoundingClientRect().top < window.innerHeight) { el.classList.add('in'); } else { io.observe(el); } });
   }
   // Tagline: split into words, light each one as it crosses the trigger line
   var tl = document.querySelector('[data-words]');
