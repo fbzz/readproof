@@ -1,139 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Readproof Support Agent</title>
-<meta name="description" content="The complete guide to examples/support-agent: a customer-support agent answering tickets from Readproof-governed policies with an open model on Ollama — architecture, every file, every command, the real transcript, tests, environment, and how to extend it.">
+<meta name="description" content="The complete guide to examples/support-agent: a customer support agent answering tickets from Readproof governed policies with an open model on Ollama — architecture, every file, every command, the real transcript, tests, environment, and how to extend it.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Erp%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
 <style>
   :root {
-    --bg: #0A0B09; --surface: #101210; --surface-2: #151814;
-    --ink: #E9F1E6; --ink-2: #A9B7A5; --muted: #6D7C69;
-    --rule: #222A20; --rule-strong: #33402E;
-    --accent: #B8FF29; --accent-ink: #B8FF29; --accent-contrast: #0A0B09; --accent-dim: rgba(184,255,41,.09);
-    --cyan: #4FE3FF; --cyan-dim: rgba(79,227,255,.09); --amber: #FFC24D; --red: #FF6B6B;
-    --panel: #060705; --panel-ink: #D7E2D2; --panel-muted: #75836F; --panel-rule: #1C231A;
-    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-    --display: "Space Grotesk", var(--mono), sans-serif;
+    --bg: #000000; --surface: #181818; --raised: #1F1F1F; --hover: #272727; --rule: #313131;
+    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #737373;
+    --accent: #4ADE80; --accent-contrast: #000000;
+    --amber: #FBBF24;
+    --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(0.32,0.72,0,1);
   }
   @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg: #FAFBF6; --surface: #FFFFFF; --surface-2: #F0F3EA;
-      --ink: #14170F; --ink-2: #454E3E; --muted: #6E7864;
-      --rule: #DFE4D4; --rule-strong: #C4CCB4;
-      --accent: #3E6C00; --accent-ink: #355C00; --accent-contrast: #FFFFFF; --accent-dim: rgba(62,108,0,.08);
-      --cyan: #0E7490; --cyan-dim: rgba(14,116,144,.08); --amber: #8A5800; --red: #B42318;
-      --panel: #0C0E0A; --panel-ink: #D7E2D2; --panel-muted: #75836F; --panel-rule: #232B1E;
+    :root {
+      --bg: #FFFFFF; --surface: #FAFAFA; --raised: #F5F5F5; --hover: #EFEFEF; --rule: #E5E5E5;
+      --ink: #000000; --ink-2: #666666; --muted: #8A8A8A;
+      --accent: #15803D; --accent-contrast: #FFFFFF;
+      --amber: #8A5800;
     }
   }
-  :root[data-theme="light"] {
-    --bg: #FAFBF6; --surface: #FFFFFF; --surface-2: #F0F3EA;
-    --ink: #14170F; --ink-2: #454E3E; --muted: #6E7864;
-    --rule: #DFE4D4; --rule-strong: #C4CCB4;
-    --accent: #3E6C00; --accent-ink: #355C00; --accent-contrast: #FFFFFF; --accent-dim: rgba(62,108,0,.08);
-    --cyan: #0E7490; --cyan-dim: rgba(14,116,144,.08); --amber: #8A5800; --red: #B42318;
-    --panel: #0C0E0A; --panel-ink: #D7E2D2; --panel-muted: #75836F; --panel-rule: #232B1E;
-  }
-
   * { box-sizing: border-box; }
   html { background: var(--bg); scroll-behavior: smooth; }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 22px; -webkit-font-smoothing: antialiased; }
-  a { color: var(--accent-ink); text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
-  a:hover { text-decoration-color: var(--accent); }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  code { font-family: var(--mono); font-size: 13px; line-height: 20px; background: var(--surface-2); border: 1px solid var(--rule); padding: 0 4px; color: var(--ink); }
-  pre code { background: none; border: 0; padding: 0; font-size: inherit; line-height: inherit; color: inherit; }
-  h1, h2, h3, h4 { font-family: var(--display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
-  h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.06; font-weight: 700; margin-bottom: 20px; max-width: 24ch; }
-  h2 { font-size: 28px; line-height: 34px; font-weight: 700; margin-bottom: 12px; scroll-margin-top: 24px; }
-  h3 { font-size: 18px; line-height: 26px; font-weight: 700; margin: 28px 0 8px; scroll-margin-top: 24px; }
-  h4 { font-size: 14px; line-height: 22px; font-weight: 700; margin: 18px 0 6px; }
-  p { margin: 0 0 14px; max-width: 72ch; text-wrap: pretty; }
-  ul, ol { margin: 0 0 14px; padding-left: 20px; max-width: 72ch; }
-  li { margin: 0 0 6px; }
-  li::marker { color: var(--muted); }
-  strong { font-weight: 700; color: var(--ink); }
-  .eyebrow { font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 14px; }
-  .eyebrow::before { content: "// "; color: var(--accent); }
-  .lede { font-size: 17px; line-height: 27px; color: var(--ink-2); margin: 0 0 24px; max-width: 66ch; }
-  .muted { color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 24px; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); text-decoration: none; transition: color .7s var(--ease); }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  code { font-family: var(--mono); font-size: 14px; line-height: 20px; background: var(--raised); padding: 2px 6px; border-radius: 6px; }
+  pre code { background: none; padding: 0; color: inherit; }
+  strong { font-weight: 700; }
+  p, li { text-wrap: pretty; }
 
-  /* layout */
-  .shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 40px; max-width: 1200px; margin: 0 auto; padding: 0 24px 96px; }
-  nav.side { position: sticky; top: 0; align-self: start; height: 100vh; box-sizing: border-box; overflow-y: auto; padding: 28px 0 40px; border-right: 1px solid var(--rule); }
-  nav.side .brand { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--ink); text-decoration: none; display: block; margin: 0 0 4px; }
-  nav.side .sub { font-size: 12px; line-height: 16px; color: var(--muted); margin: 0 0 20px; }
+  /* Shell */
+  .shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; max-width: 1200px; margin: 0 auto; padding: 0 24px 96px; }
+  nav.side { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 32px 0 40px; }
+  nav.side .brand { font-weight: 700; font-size: 18px; line-height: 28px; display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; }
+  nav.side .brand small { font-family: var(--mono); font-weight: 400; font-size: 12px; line-height: 16px; color: var(--muted); }
+  nav.side .tag { font-size: 14px; line-height: 20px; color: var(--muted); margin: 0 0 24px; }
   nav.side ol { list-style: none; margin: 0; padding: 0; }
-  nav.side li { margin: 0; }
-  nav.side ol a { display: block; padding: 5px 0 5px 12px; color: var(--ink-2); text-decoration: none; font-size: 13px; border-left: 2px solid transparent; margin-left: -1px; }
-  nav.side ol a:hover { color: var(--ink); border-left-color: var(--accent); }
-  nav.side .grp { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px 12px; }
-  main { min-width: 0; padding-top: 28px; }
-  section { margin: 0 0 64px; }
+  nav.side li { margin: 2px 0; }
+  nav.side ol a { display: block; padding: 6px 12px; color: var(--ink-2); text-decoration: none; font-size: 14px; line-height: 20px; font-weight: 500; border-radius: 9999px; transition: all .7s var(--ease); }
+  nav.side ol a:hover { color: var(--ink); background: var(--hover); text-decoration: none; }
+  nav.side .group { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 24px 0 8px 12px; }
+  main { max-width: 800px; min-width: 0; padding-top: 32px; }
   @media (max-width: 900px) {
     .shell { grid-template-columns: 1fr; gap: 0; padding: 0 16px 64px; }
-    nav.side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); padding: 16px 0 10px; }
-    nav.side ol { display: flex; flex-wrap: wrap; gap: 2px 6px; }
-    nav.side .grp { display: none; }
-    nav.side ol a { border-left: 0; padding: 4px 8px; border: 1px solid var(--rule); margin: 2px 0; }
+    nav.side { position: static; height: auto; padding: 24px 0 16px; border-bottom: 1px solid var(--rule); }
+    nav.side ol { display: flex; flex-wrap: wrap; gap: 4px; }
+    nav.side .group { display: none; }
+    nav.side ol a { padding: 4px 12px; background: var(--surface); font-size: 14px; }
   }
 
-  /* blocks */
-  .term { background: var(--panel); color: var(--panel-ink); border: 1px solid var(--panel-rule); padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 19px; overflow-x: auto; margin: 12px 0 18px; }
-  .term .p { color: var(--accent); } .term .m { color: var(--panel-muted); } .term .ok { color: var(--accent); } .term .pin { color: var(--amber); } .term .cy { color: var(--cyan); } .term .hl { color: #fff; font-weight: 600; } .term .c { color: var(--panel-muted); } .term .bad { color: var(--red); }
-  .code { background: var(--panel); color: var(--panel-ink); border: 1px solid var(--panel-rule); padding: 14px 16px; font-size: 12.5px; line-height: 19px; overflow-x: auto; margin: 12px 0 18px; position: relative; }
-  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 0; right: 0; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--panel-muted); padding: 4px 8px; border-left: 1px solid var(--panel-rule); border-bottom: 1px solid var(--panel-rule); }
-  .code .k { color: var(--cyan); } .code .s { color: var(--accent); } .code .c { color: var(--panel-muted); } .code .n { color: var(--amber); }
-  .scroll { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); margin: 12px 0 18px; }
-  table { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 20px; }
-  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-  thead th { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--surface-2); }
-  tbody tr:last-child td { border-bottom: 0; }
-  td code { white-space: nowrap; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 14px 0 18px; }
-  .card { background: var(--surface); border: 1px solid var(--rule); padding: 16px 18px 12px; }
-  .card h4 { margin: 0 0 6px; }
-  .card p { font-size: 13px; line-height: 20px; color: var(--ink-2); margin: 0 0 6px; }
-  .card .tag { display: inline-block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: 6px; }
-  .card .tag.amber { color: var(--amber); } .card .tag.cyan { color: var(--cyan); }
-  .note { border: 1px solid var(--rule-strong); border-left: 3px solid var(--accent); background: var(--accent-dim); padding: 12px 14px; margin: 14px 0 18px; max-width: 76ch; font-size: 13px; line-height: 20px; }
-  .note.warn { border-left-color: var(--amber); background: rgba(255,194,77,.08); }
-  .note b { font-weight: 700; }
-  ol.steps { list-style: none; padding: 0; counter-reset: s; max-width: none; }
-  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 10px; padding: 16px 0; border-top: 1px solid var(--rule); margin: 0; }
-  ol.steps > li::before { content: counter(s, decimal-leading-zero); font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--accent); padding-top: 2px; }
-  ol.steps h4 { margin: 0 0 6px; font-size: 15px; }
-  ol.steps .term, ol.steps .code { margin: 8px 0 6px; }
-  .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 10px 18px; border: 1px solid var(--accent); color: var(--accent-ink); background: transparent; text-decoration: none; transition: background .12s, color .12s; }
-  .btn.primary { background: var(--accent); color: var(--accent-contrast); }
-  .btn:hover { text-decoration: none; background: var(--accent); color: var(--accent-contrast); }
-  .btn:active { transform: translateY(1px); }
-  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 22px; }
-  figure { margin: 14px 0 22px; }
-  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink); }
-  figcaption { font-size: 12.5px; line-height: 19px; color: var(--muted); margin-top: 8px; max-width: 76ch; }
-  kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--rule-strong); padding: 0 4px; }
-  .tree { white-space: pre; }
-  .foot { border-top: 1px solid var(--rule); padding-top: 16px; font-size: 12.5px; color: var(--muted); }
-</style>
+  /* Type */
+  h1 { font-weight: 700; font-size: 48px; line-height: 1; letter-spacing: -.02em; margin: 0 0 24px; text-wrap: balance; }
+  h2 { font-weight: 700; font-size: 30px; line-height: 36px; letter-spacing: -.02em; margin: 0 0 12px; text-wrap: balance; scroll-margin-top: 24px; }
+  h3 { font-weight: 600; font-size: 18px; line-height: 28px; margin: 32px 0 8px; scroll-margin-top: 24px; }
+  section { margin: 64px 0; padding-top: 0; }
+  .lede { font-size: 18px; line-height: 28px; color: var(--ink-2); margin: 0 0 16px; max-width: 66ch; }
+  p { margin: 0 0 16px; max-width: 70ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; max-width: 70ch; }
+  li { margin: 0 0 8px; }
+  li::marker { color: var(--accent); }
+  .eyebrow { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
 
+  /* Hero */
+  .hero { padding: 0 0 8px; }
+  .hero .lede { font-size: 18px; line-height: 28px; }
+  .hero .thesis { font-size: 18px; line-height: 28px; font-weight: 500; color: var(--ink-2); border-left: none; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); padding: 16px 24px; margin: 24px 0; max-width: 56ch; }
+  .cta { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 24px; }
+  .btn { display: inline-block; font-family: var(--sans); font-weight: 600; font-size: 14px; line-height: 20px; padding: 8px 12px; border-radius: 9999px; border: 1px solid var(--rule); color: var(--ink); background: var(--surface); text-decoration: none; transition: all .7s var(--ease); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+  .btn:hover { text-decoration: none; background: var(--hover); transform: translateY(-1px); }
+  .btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
+
+  /* Terminal / code */
+  pre { margin: 0; }
+  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
+  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 10px; right: 60px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .code .copy { position: absolute; top: 8px; right: 8px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
+  .code .copy:hover { color: var(--accent); border-color: var(--accent); background: transparent; }
+  .term .p { color: var(--accent); font-weight: 600; }
+  .term .cy { color: var(--ink); }
+  .term .am { color: var(--amber); }
+  .term .pin { color: var(--amber); }
+  .term .m { color: var(--ink-2); }
+  .term .ok { color: var(--accent); }
+  .term .c { color: var(--muted); }
+  .term .hl { color: var(--ink); font-weight: 600; }
+  .code .k { color: var(--ink); font-weight: 600; }
+  .code .s { color: var(--accent); }
+  .code .c { color: var(--muted); }
+  .code .n { color: var(--amber); }
+
+  /* Cards, tables, callouts */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; transition: all .7s var(--ease); }
+  .card:hover { background: var(--raised); transform: translateY(-2px); }
+  .card h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  .card h4 code { font-size: 14px; }
+  .card p { font-size: 14px; line-height: 20px; color: var(--ink-2); margin: 0 0 8px; }
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); margin: 16px 0 24px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 20px; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--raised); }
+  tbody tr:last-child td { border-bottom: none; }
+  td code, th code { white-space: nowrap; }
+  .note, .warn { border-radius: 16px; padding: 16px 24px; margin: 24px 0; font-size: 14px; line-height: 20px; max-width: 72ch; border: 1px solid; }
+  .note { background: var(--surface); border-color: var(--accent); }
+  .warn { background: var(--surface); border-color: var(--amber); color: var(--ink); }
+  .note b, .warn b { font-weight: 700; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; white-space: nowrap; vertical-align: 1px; border: 1px solid currentColor; }
+  .chip.pin { color: var(--amber); }
+  .chip.ok { color: var(--accent); }
+  .chip.acc { color: var(--ink-2); }
+
+  /* Steps */
+  ol.steps { list-style: none; padding: 0; counter-reset: s; max-width: none; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 16px; padding: 24px 0; margin: 0; }
+  ol.steps > li + li { border-top: 1px solid var(--rule); }
+  ol.steps > li::before { content: counter(s, decimal-leading-zero); font-family: var(--mono); font-weight: 600; font-size: 18px; line-height: 28px; color: var(--accent); }
+  ol.steps h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  ol.steps p { max-width: 70ch; }
+  ol.steps .code, ol.steps .term { margin: 8px 0 8px; }
+
+  /* Figure */
+  figure { margin: 24px 0; }
+  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink-2); }
+  figcaption { font-size: 14px; line-height: 20px; color: var(--muted); margin-top: 12px; max-width: 72ch; }
+
+  .foot { border-top: 1px solid var(--rule); padding-top: 24px; font-size: 14px; line-height: 20px; color: var(--muted); }
+  kbd { font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 6px; padding: 0 .35em; background: var(--surface); }
+
+  .skip { position: fixed; left: 16px; top: -64px; z-index: 60; background: var(--accent); color: var(--accent-contrast); padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: top .7s var(--ease); }
+  .skip:focus { top: 16px; }
+</style>
+<style>
+  /* guide-only additions, same tokens as the docs page */
+  .card .tag { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
+  .card .tag.amber { color: var(--amber); } .card .tag.cyan { color: var(--ink-2); }
+  .card h4 code { font-size: 14px; }
+  .tree { white-space: pre; }
+  .term .bad { color: #F87171; }
+  .muted { color: var(--muted); }
+  nav.side .tag a { color: var(--accent); }
+  h4 { font-weight: 600; font-size: 16px; line-height: 24px; margin: 24px 0 8px; }
+  .code[data-lang]::before { right: 16px; }
+</style>
+</head>
+<body>
+<a class="skip" href="#top">Skip to content</a>
 <div class="shell">
 <nav class="side" aria-label="Sections">
-  <a class="brand" href="#top">Readproof · support agent</a>
-  <p class="sub">examples/support-agent — the complete guide</p>
+  <p class="brand"><a href="../../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.3.0</small></p>
+  <p class="tag">example · <a href="../../">home</a> · <a href="../../docs/">docs</a></p>
   <ol>
     <li><a href="#overview">Overview</a></li>
     <li><a href="#arch">Architecture</a></li>
     <li><a href="#policies">The three policies</a></li>
     <li><a href="#ticket">How a ticket is answered</a></li>
     <li><a href="#model">The model layer (Ollama)</a></li>
-    <li class="grp">Use it</li>
+    <li class="group">Use it</li>
     <li><a href="#run">Run it</a></li>
     <li><a href="#scenario">The scenario, step by step</a></li>
     <li><a href="#commands">Command reference</a></li>
     <li><a href="#env">Environment variables</a></li>
-    <li class="grp">Under the hood</li>
+    <li class="group">Under the hood</li>
     <li><a href="#files">Every file</a></li>
     <li><a href="#record">The ticket record</a></li>
     <li><a href="#tests">Tests and CI</a></li>
@@ -148,11 +188,11 @@
   <p class="eyebrow">examples/support-agent · Readproof 0.3.0 · open model on Ollama</p>
   <h1>A support agent you can replay, diff, and prove.</h1>
   <p class="lede">A customer-support agent answers tickets from three policy documents. Every ticket is one <strong>Readproof run</strong>: the agent mounts the policies, hands the model exactly those bytes, commits a manifest, and stores the manifest id next to the answer. When a policy changes, <code>diff</code> names which document moved and why, <code>replay</code> reconstructs the exact text the old answer was based on, and <code>evidence</code> exports a bundle the Go CLI verifies — while the house-style document, mounted by tag, does not move until someone promotes it.</p>
-  <div class="row">
+  <div class="cta">
     <a class="btn primary" href="#run">Run it in one command</a>
     <a class="btn" href="#scenario">Read the real transcript</a>
   </div>
-  <div class="cards">
+  <div class="grid">
     <div class="card"><span class="tag">no Claude, no API key</span><h4>Open model via Ollama</h4><p>Any chat model Ollama serves: local (<code>llama3.2</code>), remote, or Ollama Cloud (<code>deepseek-v4-flash:cloud</code> was used for the transcript). A deterministic fake model runs the whole story with no network at all.</p></div>
     <div class="card"><span class="tag cyan">three freshness contracts</span><h4>Same agent, different rules per document</h4><p><code>refunds</code> is <code>require_fresh</code> (money), <code>shipping</code> is <code>allow_stale</code> for an hour, <code>tone</code> is mounted as <code>@prod</code> — edits are inert until promoted.</p></div>
     <div class="card"><span class="tag amber">provable</span><h4>Replay, diff, evidence</h4><p>Every guarantee is a property of Readproof, not the model: swap the model or use the fake one and the replay still matches, the diff still names the revision, the Go verifier still passes.</p></div>
@@ -281,7 +321,7 @@ I bought headphones 20 days ago. Can I still get a refund?</code></pre>
 <section id="model">
   <p class="eyebrow">src/model.ts</p>
   <h2>The model layer</h2>
-  <div class="cards">
+  <div class="grid">
     <div class="card"><h4>Model resolution</h4><p>1. <code>OLLAMA_MODEL</code> wins. 2. Otherwise <code>ollama.list()</code> and the first model whose name does not contain <code>embed</code> (Ollama happily lists <code>nomic-embed-text</code>, which cannot chat). 3. Otherwise: <code>set OLLAMA_MODEL or: ollama pull llama3.2</code>.</p></div>
     <div class="card"><h4>Where Ollama is</h4><p>The <code>ollama</code> JS client (0.6.3) does <strong>not</strong> read <code>OLLAMA_HOST</code> — it hardcodes <code>127.0.0.1:11434</code>. The example reads the variable itself and passes <code>new Ollama({ host })</code>, so a remote or cloud-backed Ollama works with one env var.</p></div>
     <div class="card"><h4>Errors</h4><p>Connection failures (<code>ECONNREFUSED</code>, <code>fetch failed</code>, DNS) become one line naming <code>OLLAMA_HOST</code> and asking whether <code>ollama serve</code> is running. Everything else is passed through.</p></div>
@@ -571,7 +611,7 @@ test/agent.test.ts     7 end-to-end tests against a real readproofd with the fak
 <section id="extend">
   <p class="eyebrow">Next</p>
   <h2>Extend it</h2>
-  <div class="cards">
+  <div class="grid">
     <div class="card"><h4>Add a policy</h4><p>Append an entry to <code>POLICY_RESOURCES</code> in <code>src/config.ts</code> (uri, name, file, policy, optional <code>mountRef</code>) and drop the file in <code>context/policies/</code>. <code>setup</code> registers it; <code>mountSpecs()</code> mounts it in order; the manifest, diff, replay, and evidence pick it up unchanged.</p></div>
     <div class="card"><h4>Govern a GitHub or HTTP document</h4><p>Swap <code>policySource()</code> to <code>{ kind: "github", github: { owner, repo, path, ref } }</code> or <code>{ kind: "http", http: { url, headers } }</code>; the source revision becomes the commit SHA or ETag, and <code>diff</code> names it. Then a containerized <code>readproofd</code> works too.</p></div>
     <div class="card"><h4>Swap the model</h4><p><code>OLLAMA_MODEL=…</code> for any Ollama model; for another provider replace <code>answer()</code> in <code>src/model.ts</code> — keep the rule that the prompt is built only from <code>entries</code>.</p></div>
@@ -581,3 +621,21 @@ test/agent.test.ts     7 end-to-end tests against a real readproofd with the fak
 </section>
 </main>
 </div>
+<script>
+  (function () {
+    if (!navigator.clipboard) return;
+    document.querySelectorAll('pre.code').forEach(function (pre) {
+      var b = document.createElement('button');
+      b.className = 'copy'; b.type = 'button'; b.textContent = 'copy'; b.setAttribute('aria-label', 'Copy code');
+      b.addEventListener('click', function () {
+        var code = pre.querySelector('code');
+        navigator.clipboard.writeText((code ? code.innerText : pre.innerText)).then(function () {
+          b.textContent = 'copied'; setTimeout(function () { b.textContent = 'copy'; }, 1400);
+        });
+      });
+      pre.appendChild(b);
+    });
+  })();
+</script>
+</body>
+</html>
