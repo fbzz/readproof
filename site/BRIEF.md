@@ -1,4 +1,4 @@
-# Website brief — Ctx (landing page + documentation)
+# Website brief — Readproof (landing page + documentation)
 
 Paste this whole file into the model you want to build the site. Fill in the
 **Style direction** section first; everything else is fixed product truth.
@@ -7,7 +7,7 @@ Paste this whole file into the model you want to build the site. Fill in the
 
 ## 1. The job
 
-Build a small static website for **Ctx**, an open source infrastructure tool
+Build a small static website for **Readproof**, an open source infrastructure tool
 for AI agents: a **landing page** (`site/index.html`) and a **documentation
 page** (`site/docs/index.html`), plus a branded `site/404.html`.
 
@@ -31,8 +31,8 @@ Hard constraints:
   made up statistics. Real numbers you may use are in section 4.
 - No "Lorem ipsum", no placeholder brands, no exclamation marks, sentence case
   headings, plain engineer to engineer voice, no marketing clichés.
-- Name caveat: the product is currently called **Ctx** (CLI `ctx`, server
-  `ctxd`, URI scheme `ctx://`). The name will change before public launch, so
+- Name caveat: the product is currently called **Readproof** (CLI `readproof`, server
+  `readproofd`, URI scheme `readproof://`). The name will change before public launch, so
   keep it as a plain word mark (no logo needed) and make it easy to swap.
 
 Deliverables: the three HTML files, and a short note listing anything you
@@ -61,16 +61,16 @@ The owner did not like the style of these. Content and structure were fine.
 
 ---
 
-## 3. What Ctx is (use this positioning)
+## 3. What Readproof is (use this positioning)
 
-**One line:** Ctx is the lockfile and replay primitive for what AI agents read.
+**One line:** Readproof is the lockfile and replay primitive for what AI agents read.
 
 **Thesis (quote it somewhere):** "Models are probabilistic, but many context
 failures are infrastructural. Agent reliability is bounded by context
 reliability."
 
 **What it does:** every external document an agent consumes (a policy file, a
-GitHub file, an HTTP resource) gets a **stable identity** (`ctx://<namespace>/<path>`),
+GitHub file, an HTTP resource) gets a **stable identity** (`readproof://<namespace>/<path>`),
 a **freshness policy** (`require_fresh` | `allow_stale` with a max age | pin a
 reviewed snapshot by `@tag`), and a **content addressed snapshot** (SHA256).
 Every agent run is recorded as an immutable **manifest** — the ordered list of
@@ -83,7 +83,7 @@ over the run).
 **What it is not:** not a vector database, not a RAG tool, not an observability
 tool, not a prompt registry, not a memory system. It sits underneath those.
 It complements install-time lockfiles (Microsoft APM, `skills-lock.json`,
-the "agent.lock" idea) which pin *static* agent configuration; Ctx pins the
+the "agent.lock" idea) which pin *static* agent configuration; Readproof pins the
 *runtime documents, per run*. Do not call it a "context layer" or "context
 platform" (crowded, generic labels).
 
@@ -100,7 +100,7 @@ incident workflows.
 **Primary action on the landing page:** click through to the docs quickstart
 ("run the 60 second quickstart"). There is no signup form and no backend.
 **Risk reversal:** no signup, no services, one Go binary, nothing leaves your
-machine; delete the `.ctx` directory to uninstall.
+machine; delete the `.readproof` directory to uninstall.
 
 **Typical objections to answer (FAQ):** is it a vector DB; does it replace my
 tracing tool; do I need a server; which sources; how are credentials handled;
@@ -122,7 +122,7 @@ Cursor; what is the license / why will the name change.
 - Evidence follows the in-toto Statement v1 shape; Merkle vectors were checked
   against an independent implementation; tamper tests must fail.
 - CI on every push: Go build/vet/test, SDK tests, and a Docker Compose
-  integration run that replays the demo against the built `ctxd` image.
+  integration run that replays the demo against the built `readproofd` image.
 - The MCP server uses the official Go MCP SDK and is tested through a real
   MCP client over both the embedded and the remote (HTTP) paths.
 
@@ -132,12 +132,12 @@ Cursor; what is the license / why will the name change.
 
 ### 5.1 Concepts
 - **Source** — where bytes live: `filesystem`, `github`, `http`. Credentials
-  are read from the `ctx`/`ctxd` process environment at fetch time, never stored.
-- **Resource** — stable logical identity `ctx://<namespace>/<path>`.
+  are read from the `readproof`/`readproofd` process environment at fetch time, never stored.
+- **Resource** — stable logical identity `readproof://<namespace>/<path>`.
 - **Policy** — `require_fresh` (re-verify on every resolve; unchanged bytes
   dedupe to the same content hash) | `allow_stale --max-age <duration>`
   (reuse while younger than the TTL; `0` = never refresh once a snapshot
-  exists). Pinning is done with **tags**: `ctx://ns/path@prod` resolves to the
+  exists). Pinning is done with **tags**: `readproof://ns/path@prod` resolves to the
   tagged snapshot with no fetch and the policy not consulted.
 - **Snapshot** — immutable observation: `sha256:…` content hash, source
   revision (commit SHA for GitHub, content hash prefix for files, ETag/etc for
@@ -148,37 +148,37 @@ Cursor; what is the license / why will the name change.
   Order is an invariant.
 - **Evidence bundle** — in-toto Statement v1: `subject[0].digest.sha256` is a
   Merkle root over entries (leaf = `sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)`),
-  `predicateType` currently `urn:ctx:evidence:v0.2`, predicate carries entries
+  `predicateType` currently `urn:readproof:evidence:v0.3`, predicate carries entries
   (with optional `content_b64`), redacted resource definitions, and a replay
-  check. `ctx evidence verify` recomputes the root, re-hashes embedded content,
+  check. `readproof evidence verify` recomputes the root, re-hashes embedded content,
   and (unless `--offline`) cross-checks against the store via replay.
 
 ### 5.2 CLI (exact surface)
 ```
-ctx resource add <uri> --source-type filesystem|github|http [--path p] [--owner o --repo r --ref main] [--url u] [--header 'K: V']... --policy require_fresh|allow_stale [--max-age 1h]
-ctx resource list · ctx inspect <uri>[@tag] · ctx history <uri> · ctx get <uri>[@tag]
-ctx run --id <run> <uri>[@tag]...        # one shot: start + mount + commit
-ctx run start <run> · ctx run mount <run> <uri>[@tag] · ctx run commit <run>
-ctx manifest <manifest-id|run-id> · ctx diff <a> <b> · ctx replay <manifest-id|run-id>
-ctx tag set <uri> <tag> <snapshot-id> · ctx tag list <uri> · ctx tag rm <uri> <tag>
-ctx evidence export <target> [--with-content] [--out file] · ctx evidence verify <bundle.json> [--offline]
-ctx mcp                                   # stdio MCP server
-ctx version
-Global flags: --data-dir <dir> (embedded; default .ctx or $CTX_HOME) · --server <url> / $CTX_SERVER_URL · --api-key / $CTX_API_KEY
+readproof resource add <uri> --source-type filesystem|github|http [--path p] [--owner o --repo r --ref main] [--url u] [--header 'K: V']... --policy require_fresh|allow_stale [--max-age 1h]
+readproof resource list · readproof inspect <uri>[@tag] · readproof history <uri> · readproof get <uri>[@tag]
+readproof run --id <run> <uri>[@tag]...        # one shot: start + mount + commit
+readproof run start <run> · readproof run mount <run> <uri>[@tag] · readproof run commit <run>
+readproof manifest <manifest-id|run-id> · readproof diff <a> <b> · readproof replay <manifest-id|run-id>
+readproof tag set <uri> <tag> <snapshot-id> · readproof tag list <uri> · readproof tag rm <uri> <tag>
+readproof evidence export <target> [--with-content] [--out file] · readproof evidence verify <bundle.json> [--offline]
+readproof mcp                                   # stdio MCP server
+readproof version
+Global flags: --data-dir <dir> (embedded; default .readproof or $READPROOF_HOME) · --server <url> / $READPROOF_SERVER_URL · --api-key / $READPROOF_API_KEY
 ```
 HTTP header values may reference environment variables: `--header 'Authorization: Bearer ${PRICING_TOKEN}'`
-(resolved at fetch time; sensitive headers are masked in API responses, `ctx inspect`, and evidence bundles).
+(resolved at fetch time; sensitive headers are masked in API responses, `readproof inspect`, and evidence bundles).
 `GITHUB_TOKEN` is read from the environment for GitHub sources.
 
-### 5.3 Verbatim outputs (ctx 0.2.0, 2026-08-21; trim IDs/hashes for width if needed)
+### 5.3 Verbatim outputs (readproof 0.2.0, 2026-08-21; trim IDs/hashes for width if needed)
 ```
-$ ctx resource add ctx://demo/policies/refunds --source-type filesystem --path policies/refunds.md --policy require_fresh
-Registered resource ctx://demo/policies/refunds
+$ readproof resource add readproof://demo/policies/refunds --source-type filesystem --path policies/refunds.md --policy require_fresh
+Registered resource readproof://demo/policies/refunds
   source: filesystem
   policy: require_fresh
 
-$ ctx get ctx://demo/policies/refunds
-uri:          ctx://demo/policies/refunds
+$ readproof get readproof://demo/policies/refunds
+uri:          readproof://demo/policies/refunds
 snapshot:     snap_01M0HRB5GNVBJ1MYZXCPHA51VZ
 content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
 freshness:    fresh (observed 2026-08-21T08:52:32Z, policy require_fresh)
@@ -189,43 +189,43 @@ content_type: text/markdown
 --- content ---
 Products can be refunded within 30 days.
 
-$ ctx run --id run-a ctx://demo/policies/refunds
+$ readproof run --id run-a readproof://demo/policies/refunds
 Started run run-a
-Mounted ctx://demo/policies/refunds -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
+Mounted readproof://demo/policies/refunds -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
 Committed manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP for run run-a (1 entry)
 
-$ ctx manifest run-a
+$ readproof manifest run-a
 Manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), created 2026-08-21T08:52:32Z, 1 entry
 
 POS  URI                          SNAPSHOT                         CONTENT_HASH
-0    ctx://demo/policies/refunds  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
+0    readproof://demo/policies/refunds  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
 
-$ ctx tag set ctx://demo/policies/refunds prod snap_01M0HRB5KJ2HNJBYH2TV22BBT0
-Tagged ctx://demo/policies/refunds@prod -> snap_01M0HRB5KJ2HNJBYH2TV22BBT0
-  resolve it with: ctx get ctx://demo/policies/refunds@prod
+$ readproof tag set readproof://demo/policies/refunds prod snap_01M0HRB5KJ2HNJBYH2TV22BBT0
+Tagged readproof://demo/policies/refunds@prod -> snap_01M0HRB5KJ2HNJBYH2TV22BBT0
+  resolve it with: readproof get readproof://demo/policies/refunds@prod
 
 $ printf 'Products can be refunded within 14 days.\n' > policies/refunds.md
-$ ctx run --id run-b ctx://demo/policies/refunds
+$ readproof run --id run-b readproof://demo/policies/refunds
 Started run run-b
-Mounted ctx://demo/policies/refunds -> snapshot snap_01M0HRB68RV3WBGM6JE7QR19TA (position 0)
+Mounted readproof://demo/policies/refunds -> snapshot snap_01M0HRB68RV3WBGM6JE7QR19TA (position 0)
 Committed manifest manifest_01M0HRB68SZDF1N6TTNXC0VQCT for run run-b (1 entry)
 
-$ ctx diff run-a run-b
+$ readproof diff run-a run-b
 --- run-a (manifest_01M0HRB5KJMHPS0X0GGXF853CP)
 +++ run-b (manifest_01M0HRB68SZDF1N6TTNXC0VQCT)
 
-~ ctx://demo/policies/refunds  (snap_01M0HRB5KJ2HNJBYH2TV22BBT0 -> snap_01M0HRB68RV3WBGM6JE7QR19TA)
+~ readproof://demo/policies/refunds  (snap_01M0HRB5KJ2HNJBYH2TV22BBT0 -> snap_01M0HRB68RV3WBGM6JE7QR19TA)
   why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 2026-08-21T08:52:32Z → 2026-08-21T08:52:33Z
-  --- a/ctx://demo/policies/refunds
-  +++ b/ctx://demo/policies/refunds
+  --- a/readproof://demo/policies/refunds
+  +++ b/readproof://demo/policies/refunds
   @@ -1,2 +1,2 @@
   -Products can be refunded within 30 days.
   +Products can be refunded within 14 days.
 
 1 resource changed, 0 added, 0 removed, 0 unchanged
 
-$ ctx get ctx://demo/policies/refunds@prod
-uri:          ctx://demo/policies/refunds@prod
+$ readproof get readproof://demo/policies/refunds@prod
+uri:          readproof://demo/policies/refunds@prod
 ref:          prod
 snapshot:     snap_01M0HRB5KJ2HNJBYH2TV22BBT0
 content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
@@ -237,16 +237,16 @@ content_type: text/markdown
 --- content ---
 Products can be refunded within 30 days.
 
-$ ctx history ctx://demo/policies/refunds
+$ readproof history readproof://demo/policies/refunds
 SNAPSHOT                         OBSERVED              REVISION             TAGS
 snap_01M0HRB68RV3WBGM6JE7QR19TA  2026-08-21T08:52:33Z  sha256:8f4b00474456  -
 snap_01M0HRB5KJ2HNJBYH2TV22BBT0  2026-08-21T08:52:32Z  sha256:c8b0bb212e93  prod
 snap_01M0HRB5GNVBJ1MYZXCPHA51VZ  2026-08-21T08:52:32Z  sha256:c8b0bb212e93  -
 
-$ ctx replay run-a
+$ readproof replay run-a
 Replaying manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), 1 entry
 
-[0] ctx://demo/policies/refunds
+[0] readproof://demo/policies/refunds
     materialization: mat_01M0HRB5KJHXZ6DHBAX3XN74NC
     content_hash (recorded):  sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
     content_hash (replayed):  sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
@@ -257,21 +257,21 @@ Products can be refunded within 30 days.
 
 Replay verified: SHA256 match for 1/1 entries.
 
-$ ctx run --id run-c ctx://demo/policies/refunds@prod
-Mounted ctx://demo/policies/refunds@prod -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
+$ readproof run --id run-c readproof://demo/policies/refunds@prod
+Mounted readproof://demo/policies/refunds@prod -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
 Committed manifest manifest_01M0HRB6SEQQ37906N5HJ4EP1Z for run run-c (1 entry)
 
-$ ctx manifest run-c
+$ readproof manifest run-c
 POS  URI                          REF   SNAPSHOT                         CONTENT_HASH
-0    ctx://demo/policies/refunds  prod  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93…
+0    readproof://demo/policies/refunds  prod  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93…
 
-$ ctx evidence export run-a --with-content --out bundle.json
+$ readproof evidence export run-a --with-content --out bundle.json
 evidence bundle written to bundle.json: 1 entry, merkle root 8482a7671b1d7ba1081f4a7b3a3e7400a3ab58dc3a3687430bae6fa316adbd68
-$ ctx evidence verify bundle.json
+$ readproof evidence verify bundle.json
 evidence verified: 1 entry, merkle root 8482a7671b1d7ba1081f4a7b3a3e7400a3ab58dc3a3687430bae6fa316adbd68, embedded content 1/1 re-hashed, replay match 1/1
 
-$ ctx inspect ctx://demo/policies/refunds
-Resource:  ctx://demo/policies/refunds
+$ readproof inspect readproof://demo/policies/refunds
+Resource:  readproof://demo/policies/refunds
 Namespace: demo
 Path:      policies/refunds
 Source:   type: filesystem  path: policies/refunds.md
@@ -279,28 +279,28 @@ Policy:   strategy: require_fresh  max_age: n/a
 Tags:     prod -> snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (updated 2026-08-21T08:52:33Z)
 Current snapshot: snap_01M0HRB68RV3WBGM6JE7QR19TA  observed 2026-08-21T08:52:33Z  source_revision sha256:8f4b00474456
 
-$ ctx version
-ctx 0.2.0
+$ readproof version
+readproof 0.2.0
 ```
 Strict replay: any hash mismatch or missing blob exits non zero.
 Unknown run on `run commit`/`run mount` → error (HTTP 404); committing twice → error (HTTP 409).
 
 ### 5.4 Install and modes
 ```
-git clone <repo> ctx && cd ctx
-go build -o ctx ./cmd/ctx           # Go 1.26+
-# embedded mode: everything in ./.ctx (SQLite + blobs), no services
+git clone <repo> readproof && cd readproof
+go build -o readproof ./cmd/readproof           # Go 1.26+
+# embedded mode: everything in ./.readproof (SQLite + blobs), no services
 
 # client/server mode
-docker compose up -d --build        # Postgres + MinIO + ctxd + OTel collector (dev credentials are placeholders; override via .env)
+docker compose up -d --build        # Postgres + MinIO + readproofd + OTel collector (dev credentials are placeholders; override via .env)
 curl http://localhost:8080/healthz  # ok
-export CTX_SERVER_URL=http://localhost:8080
-# containerized ctxd cannot see the host filesystem: use GitHub/HTTP sources there, or run ctxd on the host:
-go build -o ctxd ./cmd/ctxd && ./ctxd --addr :8080 --data-dir ~/.ctx
-# ctxd flags (also CTXD_* env): --addr, --data-dir | --postgres-dsn --s3-endpoint --s3-access-key --s3-secret-key --s3-bucket --s3-use-ssl, --api-key, --version
+export READPROOF_SERVER_URL=http://localhost:8080
+# containerized readproofd cannot see the host filesystem: use GitHub/HTTP sources there, or run readproofd on the host:
+go build -o readproofd ./cmd/readproofd && ./readproofd --addr :8080 --data-dir ~/.readproof
+# readproofd flags (also READPROOFD_* env): --addr, --data-dir | --postgres-dsn --s3-endpoint --s3-access-key --s3-secret-key --s3-bucket --s3-use-ssl, --api-key, --version
 ```
 
-### 5.5 HTTP API (ctxd)
+### 5.5 HTTP API (readproofd)
 ```
 POST /v1/resources · GET /v1/resources · GET /v1/resources/get?uri= · GET /v1/resources/history?uri=
 GET  /v1/snapshots?id=
@@ -309,57 +309,57 @@ POST /v1/resolve {uri}            (uri may carry @tag)
 POST /v1/runs · POST /v1/runs/mount · POST /v1/runs/commit
 GET  /v1/manifests?target= · GET /v1/diff?a=&b= · GET /v1/replay?target=
 GET  /healthz
-Auth: optional `Authorization: Bearer <key>` when ctxd runs with --api-key.
+Auth: optional `Authorization: Bearer <key>` when readproofd runs with --api-key.
 ```
 
-### 5.6 TypeScript SDK (`@ctx/sdk`, Node 18+, zero deps; not on a registry yet: build from `sdk/typescript`)
+### 5.6 TypeScript SDK (`@readproof/sdk`, Node 18+, zero deps; not on a registry yet: build from `sdk/typescript`)
 ```ts
-import { Ctx, buildEvidence, encodeEvidence } from "@ctx/sdk";
-const ctx = new Ctx({ endpoint: "http://localhost:8080", apiKey: process.env.CTX_API_KEY });
-const policy = await ctx.resolve("ctx://acme/policies/refunds");     // policy.content, policy.snapshot.id, policy.snapshot.content_hash
-const run = ctx.run({ id: "run_9182" });                               // starts lazily on first mount
-await run.mount("ctx://acme/policies/refunds@prod");                   // pinned by tag: freshness.status === "use_tag", resource.ref === "prod"
-await run.mount(`ctx://acme/customers/${customerId}`);
+import { Readproof, buildEvidence, encodeEvidence } from "@readproof/sdk";
+const readproof = new Readproof({ endpoint: "http://localhost:8080", apiKey: process.env.READPROOF_API_KEY });
+const policy = await readproof.resolve("readproof://acme/policies/refunds");     // policy.content, policy.snapshot.id, policy.snapshot.content_hash
+const run = readproof.run({ id: "run_9182" });                               // starts lazily on first mount
+await run.mount("readproof://acme/policies/refunds@prod");                   // pinned by tag: freshness.status === "use_tag", resource.ref === "prod"
+await run.mount(`readproof://acme/customers/${customerId}`);
 const manifest = await run.commit();                                   // manifest.manifest_id
-await ctx.setTag("ctx://acme/policies/refunds", "prod", policy.snapshot.id);
-await ctx.listTags("ctx://acme/policies/refunds"); await ctx.deleteTag("ctx://acme/policies/refunds", "prod");
-const diff = await ctx.diff("run-a", "run-b");                         // entries[].status, unified_diff, source_revision_a/_b, observed_at_a/_b, ref_a/_b
-const replay = await ctx.replay("run-a");                              // entries.every(e => e.match)
-const bundle = await buildEvidence(ctx, "run-a", { withContent: true }); // same Merkle root as `ctx evidence export`
+await readproof.setTag("readproof://acme/policies/refunds", "prod", policy.snapshot.id);
+await readproof.listTags("readproof://acme/policies/refunds"); await readproof.deleteTag("readproof://acme/policies/refunds", "prod");
+const diff = await readproof.diff("run-a", "run-b");                         // entries[].status, unified_diff, source_revision_a/_b, observed_at_a/_b, ref_a/_b
+const replay = await readproof.replay("run-a");                              // entries.every(e => e.match)
+const bundle = await buildEvidence(readproof, "run-a", { withContent: true }); // same Merkle root as `readproof evidence export`
 await fs.writeFile("bundle.json", encodeEvidence(bundle));
 ```
-Errors are `CtxError` with HTTP status and message.
+Errors are `ReadproofError` with HTTP status and message.
 
-### 5.7 MCP (`ctx mcp`, stdio)
+### 5.7 MCP (`readproof mcp`, stdio)
 ```
-claude mcp add ctx -- /abs/path/to/ctx mcp --data-dir /abs/path/to/.ctx
-claude mcp add ctx --env CTX_API_KEY=sk-... -- /abs/path/to/ctx mcp --server https://ctxd.internal
+claude mcp add readproof -- /abs/path/to/readproof mcp --data-dir /abs/path/to/.readproof
+claude mcp add readproof --env READPROOF_API_KEY=sk-... -- /abs/path/to/readproof mcp --server https://readproofd.internal
 ```
-Claude Desktop / Cursor: `{"mcpServers":{"ctx":{"command":"/abs/path/to/ctx","args":["mcp","--data-dir","/abs/path/to/.ctx"]}}}`
-Resources: registered docs as `ctx://` resources via template `ctx://{namespace}/{+path}`; `@tag` honored; each read carries `_meta`
+Claude Desktop / Cursor: `{"mcpServers":{"readproof":{"command":"/abs/path/to/readproof","args":["mcp","--data-dir","/abs/path/to/.readproof"]}}}`
+Resources: registered docs as `readproof://` resources via template `readproof://{namespace}/{+path}`; `@tag` honored; each read carries `_meta`
 `{uri, ref, snapshot_id, content_hash, source_revision, observed_at, decision, materialization_id, content_type, bytes}`.
-Tools (13): ctx_resources_list, ctx_resolve, ctx_history, ctx_run_start, ctx_run_mount, ctx_run_commit, ctx_manifest, ctx_diff,
-ctx_replay, ctx_tag_set, ctx_tag_list, ctx_tag_delete, ctx_evidence_export. Inline content capped at 1 MiB with a truncation marker.
-Stdio = local trust; `--server` mode inherits ctxd's API key auth. Resolve/mount have side effects (may create snapshots).
+Tools (13): readproof_resources_list, readproof_resolve, readproof_history, readproof_run_start, readproof_run_mount, readproof_run_commit, readproof_manifest, readproof_diff,
+readproof_replay, readproof_tag_set, readproof_tag_list, readproof_tag_delete, readproof_evidence_export. Inline content capped at 1 MiB with a truncation marker.
+Stdio = local trust; `--server` mode inherits readproofd's API key auth. Resolve/mount have side effects (may create snapshots).
 
 ### 5.8 LangGraph example (`examples/langgraph-ts`)
-A `load_context` node does `ctx.run({id: "langgraph-<thread_id>"}).mount(uri)` for each URI, `commit()`s, and stores
-`ctx_manifest_id` (plus the mounted bytes) in graph state, which lands in the checkpoint (`graph.getState(config)`).
+A `load_context` node does `readproof.run({id: "langgraph-<thread_id>"}).mount(uri)` for each URI, `commit()`s, and stores
+`readproof_manifest_id` (plus the mounted bytes) in graph state, which lands in the checkpoint (`graph.getState(config)`).
 `answer_question` prompts the model with exactly those bytes. `npm run replay` replays the checkpointed manifest and
 shows the original bytes even after the source file changed (it flags the live source as CHANGED).
-Run: build the SDK, start `ctxd` on the host in embedded mode, `npm ci && npm run build && npm run start && npm run replay`.
+Run: build the SDK, start `readproofd` on the host in embedded mode, `npm ci && npm run build && npm run start && npm run replay`.
 Default model is a fake in-memory model; a real one is used if `ANTHROPIC_API_KEY` is set.
 
 ### 5.9 Observability
-Set `OTEL_EXPORTER_OTLP_ENDPOINT` to export; unset = no op. Spans: `ctx.run.start`, `ctx.run.mount` (parents `ctx.resolve`
-and `ctx.manifest.append`), `ctx.run.commit` (`ctx.manifest.id`, `ctx.manifest.entries`, `ctx.manifest.merkle_root` — equal to
-the evidence bundle's subject digest), `ctx.resolve` (`ctx.resource.uri`, `ctx.resource.ref`, `ctx.snapshot.id`,
-`ctx.snapshot.content_hash`, `ctx.snapshot.source_revision`, `ctx.snapshot.observed_at`, `ctx.policy.strategy`,
-`ctx.policy.decision`, `ctx.source.type`, `ctx.materialization.bytes`, `gen_ai.data_source.id` = `ctx://<namespace>`),
-`ctx.resource.lookup`, `ctx.policy.evaluate`, `ctx.tag.lookup`, `ctx.cache.lookup`, `ctx.source.fetch`, `ctx.snapshot.create`,
-`ctx.materialize`, `ctx.manifest.append`. Content is never attached to spans or metrics. Metrics: ctx_resolve_total/_duration_seconds/
-_errors_total, ctx_cache_hit_total/_miss_total, ctx_source_fetch_*, ctx_snapshot_created_total, ctx_manifest_created_total,
-ctx_run_committed_total, ctx_tag_resolve_total.
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to export; unset = no op. Spans: `readproof.run.start`, `readproof.run.mount` (parents `readproof.resolve`
+and `readproof.manifest.append`), `readproof.run.commit` (`readproof.manifest.id`, `readproof.manifest.entries`, `readproof.manifest.merkle_root` — equal to
+the evidence bundle's subject digest), `readproof.resolve` (`readproof.resource.uri`, `readproof.resource.ref`, `readproof.snapshot.id`,
+`readproof.snapshot.content_hash`, `readproof.snapshot.source_revision`, `readproof.snapshot.observed_at`, `readproof.policy.strategy`,
+`readproof.policy.decision`, `readproof.source.type`, `readproof.materialization.bytes`, `gen_ai.data_source.id` = `readproof://<namespace>`),
+`readproof.resource.lookup`, `readproof.policy.evaluate`, `readproof.tag.lookup`, `readproof.cache.lookup`, `readproof.source.fetch`, `readproof.snapshot.create`,
+`readproof.materialize`, `readproof.manifest.append`. Content is never attached to spans or metrics. Metrics: readproof_resolve_total/_duration_seconds/
+_errors_total, readproof_cache_hit_total/_miss_total, readproof_source_fetch_*, readproof_snapshot_created_total, readproof_manifest_created_total,
+readproof_run_committed_total, readproof_tag_resolve_total.
 
 ### 5.10 Roadmap (in order) and status
 Rename + LICENSE + public repo · Python SDK · trace context propagation over the HTTP API · MCP HTTP transport · a policy file
@@ -392,7 +392,7 @@ Single page with a sticky table of contents. Keep these anchor ids (the landing 
 Content to cover under each: overview/thesis; mechanism + the six concepts (+ tags, evidence); install & first resolve
 (verbatim output); sources (filesystem/GitHub/HTTP with the header env var pattern) and policies table; runs/manifest/diff/replay
 walkthrough with verbatim output; tags workflow; evidence export/verify + bundle shape + what it proves/doesn't + Art. 12/SOC 2
-note (not legal advice); server mode, ctxd flags, endpoint table, a curl example; SDK examples; MCP setup for Claude Code /
+note (not legal advice); server mode, readproofd flags, endpoint table, a curl example; SDK examples; MCP setup for Claude Code /
 Claude Desktop / Cursor + tool table + "try it" prompts; LangGraph pattern; observability span tree + attributes; CLI cheat sheet;
 FAQ & status/roadmap. A link back to the landing (`../`).
 

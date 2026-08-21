@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ctx Docs</title>
-<meta name="description" content="Ctx documentation: install, sources, runs, tags, evidence bundles, server mode, SDK, MCP, LangGraph, observability, CLI reference.">
+<title>Readproof Docs</title>
+<meta name="description" content="Readproof documentation: install, sources, runs, tags, evidence bundles, server mode, SDK, MCP, LangGraph, observability, CLI reference.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Ectx%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,7 +150,7 @@
 
 <div class="shell">
 <nav class="side" aria-label="Sections">
-  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">ctx</a> <small>v0.2.0</small></p>
+  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.2.0</small></p>
   <p class="tag">docs · <a href="../">home</a></p>
   <ol>
     <li><a href="#overview">Overview</a></li>
@@ -175,9 +175,9 @@
 
 <main>
 <section class="hero" id="overview">
-  <p class="eyebrow">documentation · ctx 0.2.0</p>
+  <p class="eyebrow">documentation · readproof 0.2.0</p>
   <h1>Give your agent's context a lockfile.</h1>
-  <p class="lede">Ctx records <strong>exactly</strong> which bytes an agent read — every policy, document, or dataset, by content hash — so any run can be diffed against another, replayed byte for byte without touching the live source, and exported as evidence.</p>
+  <p class="lede">Readproof records <strong>exactly</strong> which bytes an agent read — every policy, document, or dataset, by content hash — so any run can be diffed against another, replayed byte for byte without touching the live source, and exported as evidence.</p>
   <p class="thesis">Models are probabilistic, but many context failures are infrastructural. Agent reliability is bounded by context reliability.</p>
   <div class="cta">
     <a class="btn primary" href="#install">Quickstart (embedded, no services)</a>
@@ -186,27 +186,27 @@
   </div>
 
   <pre class="term"><span class="c"># The whole idea in six commands. Real output, hashes trimmed.</span>
-<span class="p">$</span> ctx resource add ctx://demo/policies/refunds --source-type filesystem --path policies/refunds.md --policy require_fresh
-<span class="p">$</span> ctx run --id run-a ctx://demo/policies/refunds
-<span class="m">Mounted ctx://demo/policies/refunds -> snapshot snap_01M0HRB5KJ… (position 0)</span>
+<span class="p">$</span> readproof resource add readproof://demo/policies/refunds --source-type filesystem --path policies/refunds.md --policy require_fresh
+<span class="p">$</span> readproof run --id run-a readproof://demo/policies/refunds
+<span class="m">Mounted readproof://demo/policies/refunds -> snapshot snap_01M0HRB5KJ… (position 0)</span>
 <span class="m">Committed manifest manifest_01M0HRB5KJ… for run run-a (1 entry)</span>
-<span class="p">$</span> ctx tag set ctx://demo/policies/refunds prod snap_01M0HRB5KJ…        <span class="c"># promote what run-a saw</span>
+<span class="p">$</span> readproof tag set readproof://demo/policies/refunds prod snap_01M0HRB5KJ…        <span class="c"># promote what run-a saw</span>
 <span class="p">$</span> printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md   <span class="c"># the source changes underneath</span>
-<span class="p">$</span> ctx run --id run-b ctx://demo/policies/refunds
-<span class="p">$</span> ctx diff run-a run-b
-<span class="m">~ ctx://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
+<span class="p">$</span> readproof run --id run-b readproof://demo/policies/refunds
+<span class="p">$</span> readproof diff run-a run-b
+<span class="m">~ readproof://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
 <span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 08:52:32Z → 08:52:33Z</span>
 <span class="m">  -Products can be refunded within 30 days.</span>
 <span class="m">  +Products can be refunded within 14 days.</span>
-<span class="p">$</span> ctx replay run-a                                  <span class="c"># reads the store, never the file</span>
+<span class="p">$</span> readproof replay run-a                                  <span class="c"># reads the store, never the file</span>
 <span class="hl">Products can be refunded within 30 days.</span>
 <span class="ok">Replay verified: SHA256 match for 1/1 entries.</span>
-<span class="p">$</span> ctx evidence export run-a --with-content --out bundle.json &amp;&amp; ctx evidence verify bundle.json
+<span class="p">$</span> readproof evidence export run-a --with-content --out bundle.json &amp;&amp; readproof evidence verify bundle.json
 <span class="ok">evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-hashed, replay match 1/1</span></pre>
 
   <div class="grid">
-    <div class="card"><h4>What it is</h4><p>A small Go binary (<code>ctx</code>) plus an optional server (<code>ctxd</code>) that sits underneath your retrieval, prompting, and memory stack and answers one question forever: <strong>which exact bytes went into this run?</strong></p></div>
-    <div class="card"><h4>What it isn't</h4><p>Not a vector DB, not an observability tool, not a prompt registry, not memory. It complements install time lockfiles (APM, <code>skills-lock.json</code>) that pin <strong>static</strong> config — Ctx pins the <strong>runtime</strong> documents, per run.</p></div>
+    <div class="card"><h4>What it is</h4><p>A small Go binary (<code>readproof</code>) plus an optional server (<code>readproofd</code>) that sits underneath your retrieval, prompting, and memory stack and answers one question forever: <strong>which exact bytes went into this run?</strong></p></div>
+    <div class="card"><h4>What it isn't</h4><p>Not a vector DB, not an observability tool, not a prompt registry, not memory. It complements install time lockfiles (APM, <code>skills-lock.json</code>) that pin <strong>static</strong> config — Readproof pins the <strong>runtime</strong> documents, per run.</p></div>
     <div class="card"><h4>Where it plugs in</h4><p>MCP server for Claude Code / Desktop / Cursor, OpenTelemetry spans with GenAI attributes, a TypeScript SDK, a LangGraph example, and a plain HTTP API. The CLI behaves identically embedded or against a server.</p></div>
   </div>
 </section>
@@ -238,7 +238,7 @@
         <text x="315" y="118" font-weight="600">resolve</text>
         <text x="315" y="137" font-size="11">policy: require_fresh</text>
         <text x="315" y="152" font-size="11">allow_stale · @tag</text>
-        <text x="315" y="40" font-size="11" opacity=".65">RESOURCE ctx://demo/policies/refunds</text>
+        <text x="315" y="40" font-size="11" opacity=".65">RESOURCE readproof://demo/policies/refunds</text>
       </g>
       <g stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)">
         <line x1="170" y1="76" x2="228" y2="110"/>
@@ -301,8 +301,8 @@
   </figure>
 
   <div class="grid">
-    <div class="card"><h4>Source</h4><p>Where bytes physically live: <code>filesystem</code>, <code>github</code>, or <code>http</code>. Credentials come from ctxd's environment at fetch time and are never stored.</p></div>
-    <div class="card"><h4>Resource</h4><p>The stable logical identity your code uses: <code>ctx://&lt;namespace&gt;/&lt;path&gt;</code>. Survives the bytes changing.</p></div>
+    <div class="card"><h4>Source</h4><p>Where bytes physically live: <code>filesystem</code>, <code>github</code>, or <code>http</code>. Credentials come from readproofd's environment at fetch time and are never stored.</p></div>
+    <div class="card"><h4>Resource</h4><p>The stable logical identity your code uses: <code>readproof://&lt;namespace&gt;/&lt;path&gt;</code>. Survives the bytes changing.</p></div>
     <div class="card"><h4>Policy</h4><p>Freshness rule per resource: <code>require_fresh</code> (verify again every resolve), <code>allow_stale</code> (reuse within <code>--max-age</code>), or pin with a <code>@tag</code>.</p></div>
     <div class="card"><h4>Snapshot</h4><p>An immutable observation: <code>sha256:…</code> content hash, source revision, observed at, provenance (ETag, path, commit…). Identical bytes dedupe to one blob.</p></div>
     <div class="card"><h4>Manifest</h4><p>The ordered, immutable record of everything a run resolved — position, URI, <code>@ref</code>, snapshot, content hash. Order is an invariant: it changes model input.</p></div>
@@ -313,20 +313,20 @@
 <section id="install">
   <p class="eyebrow">use it</p>
   <h2>Install &amp; first resolve</h2>
-  <p class="lede">Embedded mode needs only Go 1.26+. Everything lives in a local <code>.ctx</code> directory (SQLite + blobs); no services.</p>
-  <pre class="code" data-lang="bash"><code>git clone &lt;this repo&gt; ctx &amp;&amp; cd ctx
-go build -o ctx ./cmd/ctx
-./ctx version            <span class="c"># ctx 0.2.0</span>
+  <p class="lede">Embedded mode needs only Go 1.26+. Everything lives in a local <code>.readproof</code> directory (SQLite + blobs); no services.</p>
+  <pre class="code" data-lang="bash"><code>git clone &lt;this repo&gt; readproof &amp;&amp; cd readproof
+go build -o readproof ./cmd/readproof
+./readproof version            <span class="c"># readproof 0.2.0</span>
 
 <span class="c"># register a document: identity + source + freshness policy</span>
-./ctx resource add ctx://demo/policies/refunds \
+./readproof resource add readproof://demo/policies/refunds \
   --source-type filesystem \
   --path examples/refund-agent/policies/refunds.md \
   --policy require_fresh
 
 <span class="c"># resolve it (creates the first snapshot)</span>
-./ctx get ctx://demo/policies/refunds</code></pre>
-  <pre class="term"><span class="m">uri:          ctx://demo/policies/refunds
+./readproof get readproof://demo/policies/refunds</code></pre>
+  <pre class="term"><span class="m">uri:          readproof://demo/policies/refunds
 snapshot:     snap_01M0HRB5GNVBJ1MYZXCPHA51VZ
 content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
 freshness:    fresh (observed 2026-08-21T08:52:32Z, policy require_fresh)
@@ -336,29 +336,29 @@ content_type: text/markdown
 
 --- content ---</span>
 <span class="hl">Products can be refunded within 30 days.</span></pre>
-  <p>Global flags on every command: <code>--data-dir</code> (embedded; default <code>.ctx</code> or <code>$CTX_HOME</code>), or <code>--server http://…</code> / <code>$CTX_SERVER_URL</code> to talk to a <code>ctxd</code> instead (plus <code>--api-key</code> / <code>$CTX_API_KEY</code>). Output and semantics are identical either way.</p>
-  <div class="note"><b>Tip.</b> Put <code>export CTX_HOME=$HOME/.ctx</code> in your shell profile so the CLI, the MCP server, and your scripts share one store.</div>
+  <p>Global flags on every command: <code>--data-dir</code> (embedded; default <code>.readproof</code> or <code>$READPROOF_HOME</code>), or <code>--server http://…</code> / <code>$READPROOF_SERVER_URL</code> to talk to a <code>readproofd</code> instead (plus <code>--api-key</code> / <code>$READPROOF_API_KEY</code>). Output and semantics are identical either way.</p>
+  <div class="note"><b>Tip.</b> Put <code>export READPROOF_HOME=$HOME/.readproof</code> in your shell profile so the CLI, the MCP server, and your scripts share one store.</div>
 </section>
 
 <section id="sources">
   <h2>Sources &amp; freshness policies</h2>
   <p class="lede">A resource is <strong>where the bytes come from</strong> plus <strong>how fresh they must be</strong>. Three adapters ship in v0.2.</p>
   <h3>Filesystem</h3>
-  <pre class="code" data-lang="bash"><code>ctx resource add ctx://acme/policies/refunds \
+  <pre class="code" data-lang="bash"><code>readproof resource add readproof://acme/policies/refunds \
   --source-type filesystem --path /srv/policies/refunds.md --policy require_fresh</code></pre>
   <h3>GitHub (file in a repo, at a branch or ref)</h3>
-  <pre class="code" data-lang="bash"><code><span class="c"># GITHUB_TOKEN is read from the ctx/ctxd process environment at fetch time; it is never stored.</span>
+  <pre class="code" data-lang="bash"><code><span class="c"># GITHUB_TOKEN is read from the readproof/readproofd process environment at fetch time; it is never stored.</span>
 export GITHUB_TOKEN=ghp_…
-ctx resource add ctx://acme/runbooks/oncall \
+readproof resource add readproof://acme/runbooks/oncall \
   --source-type github --owner acme --repo ops --path runbooks/oncall.md --ref main \
   --policy allow_stale --max-age 1h</code></pre>
-  <p>The snapshot's <code>source_revision</code> is the commit SHA the file was read at, so <code>ctx diff</code> can later say exactly which commit changed a run's input.</p>
+  <p>The snapshot's <code>source_revision</code> is the commit SHA the file was read at, so <code>readproof diff</code> can later say exactly which commit changed a run's input.</p>
   <h3>HTTP (any URL; headers may reference env vars)</h3>
-  <pre class="code" data-lang="bash"><code>ctx resource add ctx://acme/pricing/table \
+  <pre class="code" data-lang="bash"><code>readproof resource add readproof://acme/pricing/table \
   --source-type http --url https://pricing.internal/v3/table.json \
   --header 'Authorization: Bearer ${PRICING_TOKEN}' \
   --policy allow_stale --max-age 15m</code></pre>
-  <p><code>${VAR}</code> references are resolved from the server's environment at fetch time. As defense in depth, sensitive header values (<code>Authorization</code>, <code>Cookie</code>, anything matching <code>*token*</code>/<code>*key*</code>/<code>*secret*</code>…) are masked in every API response, in <code>ctx inspect</code>, and in evidence bundles. <code>ETag</code> and <code>Last-Modified</code> are recorded in snapshot provenance when the server sends them.</p>
+  <p><code>${VAR}</code> references are resolved from the server's environment at fetch time. As defense in depth, sensitive header values (<code>Authorization</code>, <code>Cookie</code>, anything matching <code>*token*</code>/<code>*key*</code>/<code>*secret*</code>…) are masked in every API response, in <code>readproof inspect</code>, and in evidence bundles. <code>ETag</code> and <code>Last-Modified</code> are recorded in snapshot provenance when the server sends them.</p>
 
   <h3>Choosing a policy</h3>
   <div class="scroll"><table>
@@ -366,13 +366,13 @@ ctx resource add ctx://acme/runbooks/oncall \
     <tbody>
       <tr><td><code>require_fresh</code> (default)</td><td>Verifies again against the source on every resolve. Unchanged bytes dedupe to the same content hash (you'll see two snapshot rows, one blob).</td><td>Policies, prices, anything where "stale" is a bug.</td></tr>
       <tr><td><code>allow_stale --max-age 1h</code></td><td>Reuses the current snapshot if it is younger than the TTL; otherwise fetches. <code>--max-age 0</code> means never refresh once a snapshot exists.</td><td>Slow or rate limited sources; reference docs that change rarely.</td></tr>
-      <tr><td><code>@tag</code> <span class="chip pin">pin</span></td><td>Resolving <code>ctx://ns/path@prod</code> delivers exactly the tagged snapshot: <strong>no fetch, policy not consulted</strong>.</td><td>Promotion workflows (<code>@prod</code>, <code>@v3</code>), reproducible evals, incident fixtures. See <a href="#tags">Tags</a>.</td></tr>
+      <tr><td><code>@tag</code> <span class="chip pin">pin</span></td><td>Resolving <code>readproof://ns/path@prod</code> delivers exactly the tagged snapshot: <strong>no fetch, policy not consulted</strong>.</td><td>Promotion workflows (<code>@prod</code>, <code>@v3</code>), reproducible evals, incident fixtures. See <a href="#tags">Tags</a>.</td></tr>
     </tbody>
   </table></div>
   <p>Inspect what you registered, and the history of what was observed:</p>
-  <pre class="code" data-lang="bash"><code>ctx resource list
-ctx inspect ctx://demo/policies/refunds      <span class="c"># source, policy, tags, current snapshot</span>
-ctx history ctx://demo/policies/refunds      <span class="c"># every snapshot, newest first, with TAGS column</span></code></pre>
+  <pre class="code" data-lang="bash"><code>readproof resource list
+readproof inspect readproof://demo/policies/refunds      <span class="c"># source, policy, tags, current snapshot</span>
+readproof history readproof://demo/policies/refunds      <span class="c"># every snapshot, newest first, with TAGS column</span></code></pre>
 </section>
 
 <section id="runs">
@@ -382,37 +382,37 @@ ctx history ctx://demo/policies/refunds      <span class="c"># every snapshot, n
     <li><div>
       <h4>Record a run</h4>
       <p>Single shot form (start + mount + commit) or the three step form if your code mounts across time.</p>
-      <pre class="code" data-lang="bash"><code>ctx run --id run-a ctx://demo/policies/refunds ctx://demo/policies/tone
+      <pre class="code" data-lang="bash"><code>readproof run --id run-a readproof://demo/policies/refunds readproof://demo/policies/tone
 <span class="c"># or, step by step:</span>
-ctx run start run-a
-ctx run mount run-a ctx://demo/policies/refunds
-ctx run mount run-a ctx://demo/policies/tone
-ctx run commit run-a</code></pre>
+readproof run start run-a
+readproof run mount run-a readproof://demo/policies/refunds
+readproof run mount run-a readproof://demo/policies/tone
+readproof run commit run-a</code></pre>
       <pre class="term"><span class="m">Started run run-a
-Mounted ctx://demo/policies/refunds -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
+Mounted readproof://demo/policies/refunds -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
 Committed manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP for run run-a (1 entry)</span></pre>
     </div></li>
     <li><div>
       <h4>Read the manifest</h4>
-      <pre class="code" data-lang="bash"><code>ctx manifest run-a        <span class="c"># by run id or manifest id</span></code></pre>
+      <pre class="code" data-lang="bash"><code>readproof manifest run-a        <span class="c"># by run id or manifest id</span></code></pre>
       <pre class="term"><span class="m">Manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), created 2026-08-21T08:52:32Z, 1 entry
 
 POS  URI                          SNAPSHOT                         CONTENT_HASH
-0    ctx://demo/policies/refunds  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93…</span></pre>
+0    readproof://demo/policies/refunds  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93…</span></pre>
     </div></li>
     <li><div>
       <h4>Change the world, run again, diff the inputs</h4>
       <p>The <code>why:</code> line is the point: not just <strong>that</strong> the input changed, but <strong>which source revision</strong> and <strong>when it was observed</strong>.</p>
       <pre class="code" data-lang="bash"><code>printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
-ctx run --id run-b ctx://demo/policies/refunds
-ctx diff run-a run-b</code></pre>
+readproof run --id run-b readproof://demo/policies/refunds
+readproof diff run-a run-b</code></pre>
       <pre class="term"><span class="m">--- run-a (manifest_01M0HRB5KJMHPS0X0GGXF853CP)
 +++ run-b (manifest_01M0HRB68SZDF1N6TTNXC0VQCT)
 
-~ ctx://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
+~ readproof://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
 <span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 2026-08-21T08:52:32Z → 2026-08-21T08:52:33Z</span>
-<span class="m">  --- a/ctx://demo/policies/refunds
-  +++ b/ctx://demo/policies/refunds
+<span class="m">  --- a/readproof://demo/policies/refunds
+  +++ b/readproof://demo/policies/refunds
   @@ -1,2 +1,2 @@
   -Products can be refunded within 30 days.
   +Products can be refunded within 14 days.
@@ -422,10 +422,10 @@ ctx diff run-a run-b</code></pre>
     <li><div>
       <h4>Replay — the invariant</h4>
       <p><code>replay</code> rebuilds a manifest's bytes from the content addressed store and hashes them again. It never contacts the source, so it works after the file changed, after the API key expired, after the repo was archived. Any mismatch or missing blob exits nonzero.</p>
-      <pre class="code" data-lang="bash"><code>ctx replay run-a</code></pre>
+      <pre class="code" data-lang="bash"><code>readproof replay run-a</code></pre>
       <pre class="term"><span class="m">Replaying manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), 1 entry
 
-[0] ctx://demo/policies/refunds
+[0] readproof://demo/policies/refunds
     materialization: mat_01M0HRB5KJHXZ6DHBAX3XN74NC
     content_hash (recorded):  sha256:c8b0bb212e93…
     content_hash (replayed):  sha256:c8b0bb212e93…
@@ -437,22 +437,22 @@ ctx diff run-a run-b</code></pre>
 <span class="ok">Replay verified: SHA256 match for 1/1 entries.</span></pre>
     </div></li>
   </ol>
-  <div class="note"><b>Design note.</b> Entry order is part of the manifest's identity — two runs that read the same documents in a different order are different runs, because the model saw different input. Ctx commits to the order; it never sorts it away.</div>
+  <div class="note"><b>Design note.</b> Entry order is part of the manifest's identity — two runs that read the same documents in a different order are different runs, because the model saw different input. Readproof commits to the order; it never sorts it away.</div>
 </section>
 
 <section id="tags">
   <h2>Tags: <code>@prod</code> and friends</h2>
   <p class="lede">A tag is a named, movable pointer <code>(resource, tag) → snapshot</code>. It turns "the policy we reviewed on Tuesday" into something code can ask for by name — and something a manifest records.</p>
   <pre class="code" data-lang="bash"><code><span class="c"># point prod at the snapshot run-a delivered</span>
-ctx tag set ctx://demo/policies/refunds prod snap_01M0HRB5KJ2HNJBYH2TV22BBT0
-ctx tag list ctx://demo/policies/refunds
-ctx tag rm   ctx://demo/policies/refunds prod
+readproof tag set readproof://demo/policies/refunds prod snap_01M0HRB5KJ2HNJBYH2TV22BBT0
+readproof tag list readproof://demo/policies/refunds
+readproof tag rm   readproof://demo/policies/refunds prod
 
 <span class="c"># resolve by tag: no fetch, policy not consulted</span>
-ctx get ctx://demo/policies/refunds@prod
-ctx run --id run-c ctx://demo/policies/refunds@prod
-ctx manifest run-c      <span class="c"># shows a REF column: prod</span></code></pre>
-  <pre class="term"><span class="m">uri:          ctx://demo/policies/refunds@prod</span>
+readproof get readproof://demo/policies/refunds@prod
+readproof run --id run-c readproof://demo/policies/refunds@prod
+readproof manifest run-c      <span class="c"># shows a REF column: prod</span></code></pre>
+  <pre class="term"><span class="m">uri:          readproof://demo/policies/refunds@prod</span>
 <span class="am">ref:          prod</span>
 <span class="m">snapshot:     snap_01M0HRB5KJ2HNJBYH2TV22BBT0
 content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
@@ -464,35 +464,35 @@ freshness:    tagged (@prod -> snapshot snap_01M0HRB5KJ…, observed 2026-08-21T
     <li>Tag names match <code>^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$</code>; a tag can only point at a snapshot of its own resource.</li>
     <li>Manifest entries store the bare URI <strong>plus</strong> the <code>ref</code> they were mounted by — moving a tag later can never change what a committed manifest replays.</li>
     <li>Deleting a tag doesn't delete the snapshot; old manifests still replay.</li>
-    <li>Typical flow: every run uses <code>require_fresh</code> in staging; a reviewer runs <code>ctx history</code>, picks a snapshot, <code>tag set … prod</code>; production mounts <code>@prod</code>. Promotion is a pointer move, audited in <code>history</code>'s <code>TAGS</code> column.</li>
+    <li>Typical flow: every run uses <code>require_fresh</code> in staging; a reviewer runs <code>readproof history</code>, picks a snapshot, <code>tag set … prod</code>; production mounts <code>@prod</code>. Promotion is a pointer move, audited in <code>history</code>'s <code>TAGS</code> column.</li>
   </ul>
 </section>
 
 <section id="evidence">
   <h2>Evidence bundles</h2>
-  <p class="lede">When someone asks "what did the agent actually see for this decision?", hand them a file. <code>ctx evidence export</code> produces an <a href="https://github.com/in-toto/attestation">in-toto Statement</a> whose subject digest is a Merkle root over the run's entries; <code>ctx evidence verify</code> checks it — offline if you like.</p>
-  <pre class="code" data-lang="bash"><code>ctx evidence export run-a --with-content --out bundle.json
-ctx evidence verify bundle.json             <span class="c"># also cross-checks against the store via replay</span>
-ctx evidence verify bundle.json --offline   <span class="c"># merkle root + embedded content only</span></code></pre>
+  <p class="lede">When someone asks "what did the agent actually see for this decision?", hand them a file. <code>readproof evidence export</code> produces an <a href="https://github.com/in-toto/attestation">in-toto Statement</a> whose subject digest is a Merkle root over the run's entries; <code>readproof evidence verify</code> checks it — offline if you like.</p>
+  <pre class="code" data-lang="bash"><code>readproof evidence export run-a --with-content --out bundle.json
+readproof evidence verify bundle.json             <span class="c"># also cross-checks against the store via replay</span>
+readproof evidence verify bundle.json --offline   <span class="c"># merkle root + embedded content only</span></code></pre>
   <pre class="term"><span class="ok">evidence bundle written to bundle.json: 1 entry, merkle root 8482a7671b1d7ba1081f4a7b3a3e7400a3ab58dc3a3687430bae6fa316adbd68
 evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-hashed, replay match 1/1</span></pre>
   <p>Shape (trimmed):</p>
   <pre class="code" data-lang="json"><code>{
   <span class="k">"_type"</span>: <span class="s">"https://in-toto.io/Statement/v1"</span>,
   <span class="k">"subject"</span>: [{ <span class="k">"name"</span>: <span class="s">"manifest_01M0…"</span>, <span class="k">"digest"</span>: { <span class="k">"sha256"</span>: <span class="s">"8482a767…"</span> } }],
-  <span class="k">"predicateType"</span>: <span class="s">"urn:ctx:evidence:v0.2"</span>,
+  <span class="k">"predicateType"</span>: <span class="s">"urn:readproof:evidence:v0.3"</span>,
   <span class="k">"predicate"</span>: {
     <span class="k">"run_id"</span>: <span class="s">"run-a"</span>, <span class="k">"manifest_id"</span>: <span class="s">"manifest_01M0…"</span>,
     <span class="k">"merkle"</span>: { <span class="k">"algorithm"</span>: <span class="s">"sha256"</span>,
                 <span class="k">"leaf"</span>: <span class="s">"sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)"</span>,
                 <span class="k">"root"</span>: <span class="s">"8482a767…"</span> },
-    <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"uri"</span>: <span class="s">"ctx://demo/policies/refunds"</span>, <span class="k">"ref"</span>: <span class="s">"prod"</span>,
+    <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"uri"</span>: <span class="s">"readproof://demo/policies/refunds"</span>, <span class="k">"ref"</span>: <span class="s">"prod"</span>,
                   <span class="k">"snapshot_id"</span>: <span class="s">"snap_01M0…"</span>, <span class="k">"content_hash"</span>: <span class="s">"sha256:c8b0bb21…"</span>,
                   <span class="k">"source_revision"</span>: <span class="s">"sha256:c8b0bb212e93"</span>, <span class="k">"observed_at"</span>: <span class="s">"2026-08-21T08:52:32Z"</span>,
                   <span class="k">"content_type"</span>: <span class="s">"text/markdown"</span>, <span class="k">"bytes"</span>: <span class="n">41</span>,
                   <span class="k">"provenance"</span>: { <span class="k">"path"</span>: <span class="s">"policies/refunds.md"</span>, <span class="k">"source_type"</span>: <span class="s">"filesystem"</span> },
                   <span class="k">"content_b64"</span>: <span class="s">"UHJvZHVjdHMgY2FuIGJl…"</span> }],
-    <span class="k">"resources"</span>: [{ <span class="k">"uri"</span>: <span class="s">"ctx://demo/policies/refunds"</span>,
+    <span class="k">"resources"</span>: [{ <span class="k">"uri"</span>: <span class="s">"readproof://demo/policies/refunds"</span>,
                     <span class="k">"source"</span>: { <span class="k">"kind"</span>: <span class="s">"http"</span>, <span class="k">"config"</span>: { <span class="k">"http"</span>: { <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"[REDACTED]"</span> } } } },
                     <span class="k">"policy"</span>: { <span class="k">"strategy"</span>: <span class="s">"require_fresh"</span> } }],
     <span class="k">"replay"</span>: { <span class="k">"all_match"</span>: <span class="n">true</span>, <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"match"</span>: <span class="n">true</span> }] }
@@ -503,29 +503,29 @@ evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-has
     <div class="card"><h4>What it doesn't</h4><p>That the model <strong>used</strong> them, or that the source was authoritative. Bundles aren't signed yet (roadmap: cosign/<code>in-toto</code> attestation). Tamper with an entry and <code>verify</code> fails; reroot a forged bundle and only the store cross check catches it — so keep <code>--offline</code> for transport, not trust.</p></div>
     <div class="card"><h4>Where it fits</h4><p>EU AI Act Art. 12 automatic logging (Annex III systems, from 2 Aug 2026) and SOC 2 "what data did the agent consider" reviews want exactly this record. Not legal advice — what you owe depends on your system and jurisdiction.</p></div>
   </div>
-  <p>The same bundle can be built client side from the TypeScript SDK (<code>buildEvidence</code>) with a byte identical Merkle root, and exported by an agent through the MCP tool <code>ctx_evidence_export</code>.</p>
+  <p>The same bundle can be built client side from the TypeScript SDK (<code>buildEvidence</code>) with a byte identical Merkle root, and exported by an agent through the MCP tool <code>readproof_evidence_export</code>.</p>
 </section>
 
 <section id="server">
   <p class="eyebrow">integrate</p>
   <h2>Client/server mode &amp; HTTP API</h2>
-  <p class="lede"><code>ctxd</code> is the same engine behind an HTTP API, backed by Postgres + an S3-compatible store (MinIO in dev). Teams, services, and the MCP server share one history.</p>
-  <pre class="code" data-lang="bash"><code><span class="c"># full stack from a clean clone: Postgres + MinIO + ctxd (+ an OTel collector)</span>
+  <p class="lede"><code>readproofd</code> is the same engine behind an HTTP API, backed by Postgres + an S3-compatible store (MinIO in dev). Teams, services, and the MCP server share one history.</p>
+  <pre class="code" data-lang="bash"><code><span class="c"># full stack from a clean clone: Postgres + MinIO + readproofd (+ an OTel collector)</span>
 cp .env.example .env        <span class="c"># change the dev-only credentials</span>
 docker compose up -d --build
 curl http://localhost:8080/healthz      <span class="c"># ok</span>
 
 <span class="c"># point the CLI at it — every command works identically</span>
-export CTX_SERVER_URL=http://localhost:8080
-ctx resource add ctx://demo/hello-world --source-type http \
+export READPROOF_SERVER_URL=http://localhost:8080
+readproof resource add readproof://demo/hello-world --source-type http \
   --url https://raw.githubusercontent.com/octocat/Hello-World/master/README --policy require_fresh
-ctx get ctx://demo/hello-world</code></pre>
-  <div class="warn"><b>Containerized ctxd can't see your host filesystem.</b> Use GitHub/HTTP sources there, or mount the files. For local on the host work, run <code>ctxd</code> directly in embedded mode: <code>go build -o ctxd ./cmd/ctxd &amp;&amp; ./ctxd --addr :8080 --data-dir ~/.ctx</code> (omit <code>--postgres-dsn</code>).</div>
-  <h3><code>ctxd</code> flags (all also settable as <code>CTXD_*</code> env vars)</h3>
-  <pre class="code" data-lang="bash"><code>ctxd --addr :8080 \
-     --postgres-dsn 'postgres://ctx:***@localhost:5434/ctx?sslmode=disable' \
-     --s3-endpoint localhost:9000 --s3-access-key … --s3-secret-key … --s3-bucket ctx-blobs [--s3-use-ssl] \
-     --api-key "$CTXD_API_KEY"      <span class="c"># when set, every request except /healthz needs Authorization: Bearer &lt;key&gt;</span></code></pre>
+readproof get readproof://demo/hello-world</code></pre>
+  <div class="warn"><b>Containerized readproofd can't see your host filesystem.</b> Use GitHub/HTTP sources there, or mount the files. For local on the host work, run <code>readproofd</code> directly in embedded mode: <code>go build -o readproofd ./cmd/readproofd &amp;&amp; ./readproofd --addr :8080 --data-dir ~/.readproof</code> (omit <code>--postgres-dsn</code>).</div>
+  <h3><code>readproofd</code> flags (all also settable as <code>READPROOFD_*</code> env vars)</h3>
+  <pre class="code" data-lang="bash"><code>readproofd --addr :8080 \
+     --postgres-dsn 'postgres://readproof:***@localhost:5434/readproof?sslmode=disable' \
+     --s3-endpoint localhost:9000 --s3-access-key … --s3-secret-key … --s3-bucket readproof-blobs [--s3-use-ssl] \
+     --api-key "$READPROOFD_API_KEY"      <span class="c"># when set, every request except /healthz needs Authorization: Bearer &lt;key&gt;</span></code></pre>
   <h3>Endpoints</h3>
   <div class="scroll"><table>
     <thead><tr><th>Method · path</th><th>What</th></tr></thead>
@@ -541,91 +541,91 @@ ctx get ctx://demo/hello-world</code></pre>
   </table></div>
   <pre class="code" data-lang="bash"><code>curl -s -X POST http://localhost:8080/v1/resolve \
   -H 'Authorization: Bearer ***' -H 'Content-Type: application/json' \
-  -d '{"uri":"ctx://demo/policies/refunds@prod"}' | jq '.resource.ref, .snapshot.content_hash, .freshness.status'</code></pre>
+  -d '{"uri":"readproof://demo/policies/refunds@prod"}' | jq '.resource.ref, .snapshot.content_hash, .freshness.status'</code></pre>
   <p>Full request/response schemas: <code>docs/api.md</code>.</p>
 </section>
 
 <section id="sdk">
   <h2>TypeScript SDK</h2>
-  <p class="lede"><code>@ctx/sdk</code> is a typed, zero dependency client for <code>ctxd</code> (Node 18+ <code>fetch</code>). Every method maps to one endpoint; <code>buildEvidence</code> composes a bundle client side.</p>
+  <p class="lede"><code>@readproof/sdk</code> is a typed, zero dependency client for <code>readproofd</code> (Node 18+ <code>fetch</code>). Every method maps to one endpoint; <code>buildEvidence</code> composes a bundle client side.</p>
   <pre class="code" data-lang="bash"><code>cd sdk/typescript &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; npm link   <span class="c"># not on a registry yet</span></code></pre>
-  <pre class="code" data-lang="ts"><code><span class="k">import</span> { Ctx, buildEvidence, encodeEvidence } <span class="k">from</span> <span class="s">"@ctx/sdk"</span>;
+  <pre class="code" data-lang="ts"><code><span class="k">import</span> { Readproof, buildEvidence, encodeEvidence } <span class="k">from</span> <span class="s">"@readproof/sdk"</span>;
 
-<span class="k">const</span> ctx = <span class="k">new</span> Ctx({ endpoint: <span class="s">"http://localhost:8080"</span>, apiKey: process.env.CTX_API_KEY });
+<span class="k">const</span> readproof = <span class="k">new</span> Readproof({ endpoint: <span class="s">"http://localhost:8080"</span>, apiKey: process.env.READPROOF_API_KEY });
 
 <span class="c">// one-off resolve</span>
-<span class="k">const</span> policy = <span class="k">await</span> ctx.resolve(<span class="s">"ctx://acme/policies/refunds"</span>);
+<span class="k">const</span> policy = <span class="k">await</span> readproof.resolve(<span class="s">"readproof://acme/policies/refunds"</span>);
 policy.content;                  <span class="c">// the bytes, decoded to text</span>
 policy.snapshot.content_hash;    <span class="c">// "sha256:…"</span>
 
 <span class="c">// record a run: mount = resolve + append to the manifest (starts lazily)</span>
-<span class="k">const</span> run = ctx.run({ id: <span class="s">`turn-${turnId}`</span> });
-<span class="k">const</span> refunds = <span class="k">await</span> run.mount(<span class="s">"ctx://acme/policies/refunds@prod"</span>);   <span class="c">// pinned by tag</span>
-<span class="k">const</span> customer = <span class="k">await</span> run.mount(<span class="s">`ctx://acme/customers/${customerId}`</span>);
+<span class="k">const</span> run = readproof.run({ id: <span class="s">`turn-${turnId}`</span> });
+<span class="k">const</span> refunds = <span class="k">await</span> run.mount(<span class="s">"readproof://acme/policies/refunds@prod"</span>);   <span class="c">// pinned by tag</span>
+<span class="k">const</span> customer = <span class="k">await</span> run.mount(<span class="s">`readproof://acme/customers/${customerId}`</span>);
 <span class="k">const</span> manifest = <span class="k">await</span> run.commit();
 manifest.manifest_id;            <span class="c">// store this next to the model call / checkpoint</span>
 
 <span class="c">// tags</span>
-<span class="k">await</span> ctx.setTag(<span class="s">"ctx://acme/policies/refunds"</span>, <span class="s">"prod"</span>, policy.snapshot.id);
-<span class="k">await</span> ctx.listTags(<span class="s">"ctx://acme/policies/refunds"</span>);
+<span class="k">await</span> readproof.setTag(<span class="s">"readproof://acme/policies/refunds"</span>, <span class="s">"prod"</span>, policy.snapshot.id);
+<span class="k">await</span> readproof.listTags(<span class="s">"readproof://acme/policies/refunds"</span>);
 refunds.freshness.status;        <span class="c">// "use_tag"</span>
 refunds.resource.ref;            <span class="c">// "prod"</span>
 
 <span class="c">// diff two runs, with the why</span>
-<span class="k">const</span> diff = <span class="k">await</span> ctx.diff(<span class="s">"turn-41"</span>, <span class="s">"turn-42"</span>);
+<span class="k">const</span> diff = <span class="k">await</span> readproof.diff(<span class="s">"turn-41"</span>, <span class="s">"turn-42"</span>);
 <span class="k">for</span> (<span class="k">const</span> e <span class="k">of</span> diff.entries) <span class="k">if</span> (e.status === <span class="s">"changed"</span>)
   console.log(e.uri, e.source_revision_a, <span class="s">"-&gt;"</span>, e.source_revision_b, e.unified_diff);
 
 <span class="c">// replay and evidence</span>
-<span class="k">const</span> replay = <span class="k">await</span> ctx.replay(manifest.manifest_id);
+<span class="k">const</span> replay = <span class="k">await</span> readproof.replay(manifest.manifest_id);
 replay.entries.every((e) =&gt; e.match);                          <span class="c">// true</span>
-<span class="k">const</span> bundle = <span class="k">await</span> buildEvidence(ctx, manifest.manifest_id, { withContent: <span class="k">true</span> });
-<span class="k">await</span> fs.writeFile(<span class="s">"bundle.json"</span>, encodeEvidence(bundle));     <span class="c">// `ctx evidence verify` accepts it</span></code></pre>
-  <p>Errors are <code>CtxError</code>s carrying the HTTP status and server message (an unknown tag names both URI and tag). <code>content</code> fields are UTF-8 text; for binary sources prefer the Go exporter for evidence.</p>
+<span class="k">const</span> bundle = <span class="k">await</span> buildEvidence(readproof, manifest.manifest_id, { withContent: <span class="k">true</span> });
+<span class="k">await</span> fs.writeFile(<span class="s">"bundle.json"</span>, encodeEvidence(bundle));     <span class="c">// `readproof evidence verify` accepts it</span></code></pre>
+  <p>Errors are <code>ReadproofError</code>s carrying the HTTP status and server message (an unknown tag names both URI and tag). <code>content</code> fields are UTF-8 text; for binary sources prefer the Go exporter for evidence.</p>
 </section>
 
 <section id="mcp">
-  <h2>MCP: use Ctx from Claude Code, Claude Desktop, Cursor</h2>
-  <p class="lede"><code>ctx mcp</code> is a stdio MCP server. Registered documents become readable <code>ctx://</code> resources (with provenance in <code>_meta</code>), and resolve / runs / diff / replay / tags / evidence become 13 tools the model can call.</p>
+  <h2>MCP: use Readproof from Claude Code, Claude Desktop, Cursor</h2>
+  <p class="lede"><code>readproof mcp</code> is a stdio MCP server. Registered documents become readable <code>readproof://</code> resources (with provenance in <code>_meta</code>), and resolve / runs / diff / replay / tags / evidence become 13 tools the model can call.</p>
   <h3>Claude Code</h3>
   <pre class="code" data-lang="bash"><code><span class="c"># embedded store</span>
-claude mcp add ctx -- /abs/path/to/ctx mcp --data-dir /abs/path/to/.ctx
+claude mcp add readproof -- /abs/path/to/readproof mcp --data-dir /abs/path/to/.readproof
 
-<span class="c"># against a running ctxd (API key via env, not argv)</span>
-claude mcp add ctx --env CTX_API_KEY=sk-… -- /abs/path/to/ctx mcp --server https://ctxd.internal</code></pre>
+<span class="c"># against a running readproofd (API key via env, not argv)</span>
+claude mcp add readproof --env READPROOF_API_KEY=sk-… -- /abs/path/to/readproof mcp --server https://readproofd.internal</code></pre>
   <h3>Claude Desktop (<code>claude_desktop_config.json</code>) · Cursor (<code>.cursor/mcp.json</code>)</h3>
   <pre class="code" data-lang="json"><code>{
   <span class="k">"mcpServers"</span>: {
-    <span class="k">"ctx"</span>: {
-      <span class="k">"command"</span>: <span class="s">"/abs/path/to/ctx"</span>,
-      <span class="k">"args"</span>: [<span class="s">"mcp"</span>, <span class="s">"--server"</span>, <span class="s">"https://ctxd.internal"</span>],
-      <span class="k">"env"</span>: { <span class="k">"CTX_API_KEY"</span>: <span class="s">"sk-…"</span> }
+    <span class="k">"readproof"</span>: {
+      <span class="k">"command"</span>: <span class="s">"/abs/path/to/readproof"</span>,
+      <span class="k">"args"</span>: [<span class="s">"mcp"</span>, <span class="s">"--server"</span>, <span class="s">"https://readproofd.internal"</span>],
+      <span class="k">"env"</span>: { <span class="k">"READPROOF_API_KEY"</span>: <span class="s">"sk-…"</span> }
     }
   }
 }</code></pre>
   <h3>Try it — prompts that exercise the loop</h3>
   <ul>
-    <li>"Read <code>ctx://demo/policies/refunds</code> and tell me the refund window." → the model calls <code>resources/read</code>; <code>_meta</code> carries snapshot id, content hash, source revision, observed at, decision.</li>
+    <li>"Read <code>readproof://demo/policies/refunds</code> and tell me the refund window." → the model calls <code>resources/read</code>; <code>_meta</code> carries snapshot id, content hash, source revision, observed at, decision.</li>
     <li>"Now read the <code>@prod</code> version." → same resource, <code>decision: use_tag</code>, the pinned bytes.</li>
-    <li>"Start run <code>ticket-1234</code>, mount the refunds and tone policies, commit, and give me the manifest id." → <code>ctx_run_start</code> → <code>ctx_run_mount</code> ×2 → <code>ctx_run_commit</code>.</li>
-    <li>"Diff <code>ticket-1234</code> against <code>ticket-1200</code> and explain why any input changed." → <code>ctx_diff</code> returns per side source revision and observation time.</li>
-    <li>"Export evidence for <code>ticket-1234</code>." → <code>ctx_evidence_export</code> returns the bundle JSON.</li>
+    <li>"Start run <code>ticket-1234</code>, mount the refunds and tone policies, commit, and give me the manifest id." → <code>readproof_run_start</code> → <code>readproof_run_mount</code> ×2 → <code>readproof_run_commit</code>.</li>
+    <li>"Diff <code>ticket-1234</code> against <code>ticket-1200</code> and explain why any input changed." → <code>readproof_diff</code> returns per side source revision and observation time.</li>
+    <li>"Export evidence for <code>ticket-1234</code>." → <code>readproof_evidence_export</code> returns the bundle JSON.</li>
   </ul>
   <div class="scroll"><table>
     <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
     <tbody>
-      <tr><td><code>ctx_resources_list</code></td><td>Discovery: every registered document with source kind and policy.</td></tr>
-      <tr><td><code>ctx_resolve</code></td><td>Read one document; bytes + snapshot id, content hash, source revision. May create a snapshot.</td></tr>
-      <tr><td><code>ctx_history</code></td><td>Snapshots newest first, with the tags on each.</td></tr>
-      <tr><td><code>ctx_run_start</code> · <code>ctx_run_mount</code> · <code>ctx_run_commit</code></td><td>Open a run, read and record, freeze into a manifest (returns the manifest id).</td></tr>
-      <tr><td><code>ctx_manifest</code></td><td>Show a manifest by manifest id or run id.</td></tr>
-      <tr><td><code>ctx_diff</code></td><td>Added/removed/changed, unified diff, each side's revision/observed at/ref.</td></tr>
-      <tr><td><code>ctx_replay</code></td><td>Rebuild from storage and hash again; <code>include_content: true</code> returns the bytes.</td></tr>
-      <tr><td><code>ctx_tag_set</code> · <code>ctx_tag_list</code> · <code>ctx_tag_delete</code></td><td>Manage <code>uri@tag</code> pointers.</td></tr>
-      <tr><td><code>ctx_evidence_export</code></td><td>Build the <code>in-toto</code> bundle for a run (<code>with_content</code> optional).</td></tr>
+      <tr><td><code>readproof_resources_list</code></td><td>Discovery: every registered document with source kind and policy.</td></tr>
+      <tr><td><code>readproof_resolve</code></td><td>Read one document; bytes + snapshot id, content hash, source revision. May create a snapshot.</td></tr>
+      <tr><td><code>readproof_history</code></td><td>Snapshots newest first, with the tags on each.</td></tr>
+      <tr><td><code>readproof_run_start</code> · <code>readproof_run_mount</code> · <code>readproof_run_commit</code></td><td>Open a run, read and record, freeze into a manifest (returns the manifest id).</td></tr>
+      <tr><td><code>readproof_manifest</code></td><td>Show a manifest by manifest id or run id.</td></tr>
+      <tr><td><code>readproof_diff</code></td><td>Added/removed/changed, unified diff, each side's revision/observed at/ref.</td></tr>
+      <tr><td><code>readproof_replay</code></td><td>Rebuild from storage and hash again; <code>include_content: true</code> returns the bytes.</td></tr>
+      <tr><td><code>readproof_tag_set</code> · <code>readproof_tag_list</code> · <code>readproof_tag_delete</code></td><td>Manage <code>uri@tag</code> pointers.</td></tr>
+      <tr><td><code>readproof_evidence_export</code></td><td>Build the <code>in-toto</code> bundle for a run (<code>with_content</code> optional).</td></tr>
     </tbody>
   </table></div>
-  <p>Resources are served via the template <code>ctx://{namespace}/{+path}</code> (so multi segment paths and <code>@tag</code> both work). Inline content is capped at 1 MiB with a truncation marker and the content hash. Stdio means local trust; <code>--server</code> mode inherits <code>ctxd</code>'s API key auth. Details: <code>docs/mcp.md</code>.</p>
+  <p>Resources are served via the template <code>readproof://{namespace}/{+path}</code> (so multi segment paths and <code>@tag</code> both work). Inline content is capped at 1 MiB with a truncation marker and the content hash. Stdio means local trust; <code>--server</code> mode inherits <code>readproofd</code>'s API key auth. Details: <code>docs/mcp.md</code>.</p>
 </section>
 
 <section id="langgraph">
@@ -634,48 +634,48 @@ claude mcp add ctx --env CTX_API_KEY=sk-… -- /abs/path/to/ctx mcp --server htt
   <pre class="code" data-lang="ts"><code><span class="c">// examples/langgraph-ts/src/graph.ts (condensed)</span>
 <span class="k">const</span> GraphState = Annotation.Root({
   question: Annotation&lt;string&gt;,
-  ctx_manifest_id: Annotation&lt;string&gt;,          <span class="c">// lands in the checkpoint with the rest of state</span>
-  ctx_entries: Annotation&lt;MountedEntry[]&gt;({ reducer: (_p, n) =&gt; n, default: () =&gt; [] }),
+  readproof_manifest_id: Annotation&lt;string&gt;,          <span class="c">// lands in the checkpoint with the rest of state</span>
+  readproof_entries: Annotation&lt;MountedEntry[]&gt;({ reducer: (_p, n) =&gt; n, default: () =&gt; [] }),
   answer: Annotation&lt;string&gt;,
 });
 
 <span class="k">async function</span> loadContext(_s: GraphStateType, config: RunnableConfig) {
   <span class="k">const</span> run = ctxClient().run({ id: <span class="s">`langgraph-${threadIdOf(config)}`</span> });
   <span class="k">const</span> entries = [];
-  <span class="k">for</span> (<span class="k">const</span> uri <span class="k">of</span> CONTEXT_RESOURCES) {              <span class="c">// e.g. ctx://demo/policies/refunds, …/tone</span>
+  <span class="k">for</span> (<span class="k">const</span> uri <span class="k">of</span> CONTEXT_RESOURCES) {              <span class="c">// e.g. readproof://demo/policies/refunds, …/tone</span>
     <span class="k">const</span> r = <span class="k">await</span> run.mount(uri);
     entries.push({ uri, snapshot_id: r.snapshot.id, content_hash: r.snapshot.content_hash, content: r.content });
   }
   <span class="k">const</span> manifest = <span class="k">await</span> run.commit();
-  <span class="k">return</span> { ctx_manifest_id: manifest.manifest_id, ctx_entries: entries };
+  <span class="k">return</span> { readproof_manifest_id: manifest.manifest_id, readproof_entries: entries };
 }
-<span class="c">// answer_question prompts the model with exactly `ctx_entries[*].content` — not a second read.</span></code></pre>
+<span class="c">// answer_question prompts the model with exactly `readproof_entries[*].content` — not a second read.</span></code></pre>
   <pre class="code" data-lang="bash"><code>cd sdk/typescript &amp;&amp; npm ci &amp;&amp; npm run build
-go build -o ctxd ./cmd/ctxd &amp;&amp; ./ctxd --addr :8080 --data-dir /tmp/ctx-langgraph &amp;      <span class="c"># host-side, so it can read the fixture files</span>
+go build -o readproofd ./cmd/readproofd &amp;&amp; ./readproofd --addr :8080 --data-dir /tmp/readproof-langgraph &amp;      <span class="c"># host-side, so it can read the fixture files</span>
 cd examples/langgraph-ts &amp;&amp; npm ci &amp;&amp; npm run build
 npm run start      <span class="c"># runs the graph with a fake in-memory model (real one if ANTHROPIC_API_KEY is set), prints the manifest id</span>
 printf 'Products can be refunded within 14 days.\n' &gt; ../refund-agent/policies/refunds.md
 npm run replay     <span class="c"># replays the checkpointed manifest: still "30 days", flags the live source as CHANGED</span></code></pre>
-  <p>Same shape works for Temporal/Restate activities (put <code>ctx.resolve</code> in an activity, the manifest id in the event history) and for plain request handlers (log the manifest id with the request id).</p>
+  <p>Same shape works for Temporal/Restate activities (put <code>readproof.resolve</code> in an activity, the manifest id in the event history) and for plain request handlers (log the manifest id with the request id).</p>
 </section>
 
 <section id="otel">
   <h2>Observability</h2>
   <p class="lede">Every stage is traced; set <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> and spans flow. Unset, instrumentation is a no op. Content is never attached to spans or metrics.</p>
-  <pre class="term"><span class="m">ctx.run.start                         ctx.run.id=r
-ctx.run.mount                         ctx.run.id=r · ctx.resource.uri=ctx://demo/policies/refunds · ctx.resource.ref=prod · ctx.manifest.position=0
-├─ ctx.resolve                        ctx.snapshot.content_hash=sha256:c8b0… · ctx.snapshot.source_revision=sha256:c8b0bb212e93
-│  ├─ ctx.resource.lookup                 ctx.policy.decision=use_tag · gen_ai.data_source.id=ctx://demo
-│  ├─ ctx.tag.lookup
-│  ├─ ctx.cache.lookup                ctx.cache.hit=true
-│  └─ ctx.materialize
-└─ ctx.manifest.append
-ctx.run.commit                        ctx.manifest.id=manifest_… · ctx.manifest.entries=1 · ctx.manifest.merkle_root=8482a767…</span></pre>
+  <pre class="term"><span class="m">readproof.run.start                         readproof.run.id=r
+readproof.run.mount                         readproof.run.id=r · readproof.resource.uri=readproof://demo/policies/refunds · readproof.resource.ref=prod · readproof.manifest.position=0
+├─ readproof.resolve                        readproof.snapshot.content_hash=sha256:c8b0… · readproof.snapshot.source_revision=sha256:c8b0bb212e93
+│  ├─ readproof.resource.lookup                 readproof.policy.decision=use_tag · gen_ai.data_source.id=readproof://demo
+│  ├─ readproof.tag.lookup
+│  ├─ readproof.cache.lookup                readproof.cache.hit=true
+│  └─ readproof.materialize
+└─ readproof.manifest.append
+readproof.run.commit                        readproof.manifest.id=manifest_… · readproof.manifest.entries=1 · readproof.manifest.merkle_root=8482a767…</span></pre>
   <ul>
-    <li><code>ctx.manifest.merkle_root</code> on the commit span equals the evidence bundle's subject digest — a trace and a bundle join on one field.</li>
-    <li><code>gen_ai.data_source.id</code> follows the OpenTelemetry GenAI semantic conventions (<code>ctx://&lt;namespace&gt;</code>), so Phoenix, Langfuse, LangSmith, Datadog, Honeycomb can correlate retrieval by source. The proposal to carry <code>content_hash</code>/<code>source_revision</code>/<code>uri</code> on <code>gen_ai.retrieval.documents</code> is in <code>docs/observability.md</code>.</li>
-    <li>Metrics: <code>ctx_resolve_total</code>/<code>_duration_seconds</code>/<code>_errors_total</code>, <code>ctx_cache_hit_total</code>/<code>_miss_total</code>, <code>ctx_source_fetch_*</code>, <code>ctx_snapshot_created_total</code>, <code>ctx_manifest_created_total</code>, <code>ctx_run_committed_total</code>, <code>ctx_tag_resolve_total</code>.</li>
-    <li><code>docker compose up</code> already wires <code>ctxd</code> to a collector; <code>docker compose logs -f otel-collector</code> shows spans arriving.</li>
+    <li><code>readproof.manifest.merkle_root</code> on the commit span equals the evidence bundle's subject digest — a trace and a bundle join on one field.</li>
+    <li><code>gen_ai.data_source.id</code> follows the OpenTelemetry GenAI semantic conventions (<code>readproof://&lt;namespace&gt;</code>), so Phoenix, Langfuse, LangSmith, Datadog, Honeycomb can correlate retrieval by source. The proposal to carry <code>content_hash</code>/<code>source_revision</code>/<code>uri</code> on <code>gen_ai.retrieval.documents</code> is in <code>docs/observability.md</code>.</li>
+    <li>Metrics: <code>readproof_resolve_total</code>/<code>_duration_seconds</code>/<code>_errors_total</code>, <code>readproof_cache_hit_total</code>/<code>_miss_total</code>, <code>readproof_source_fetch_*</code>, <code>readproof_snapshot_created_total</code>, <code>readproof_manifest_created_total</code>, <code>readproof_run_committed_total</code>, <code>readproof_tag_resolve_total</code>.</li>
+    <li><code>docker compose up</code> already wires <code>readproofd</code> to a collector; <code>docker compose logs -f otel-collector</code> shows spans arriving.</li>
   </ul>
 </section>
 
@@ -685,32 +685,32 @@ ctx.run.commit                        ctx.manifest.id=manifest_… · ctx.manife
   <div class="scroll"><table>
     <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
     <tbody>
-      <tr><td><code>ctx resource add &lt;uri&gt; --source-type filesystem|github|http … --policy require_fresh|allow_stale [--max-age d]</code></td><td>Register a resource</td></tr>
-      <tr><td><code>ctx resource list</code> · <code>ctx inspect &lt;uri&gt;[@tag]</code> · <code>ctx history &lt;uri&gt;</code></td><td>Browse</td></tr>
-      <tr><td><code>ctx get &lt;uri&gt;[@tag]</code></td><td>Resolve and print</td></tr>
-      <tr><td><code>ctx run --id &lt;run&gt; &lt;uri&gt;…</code> · <code>ctx run start|mount|commit</code></td><td>Record a run → manifest</td></tr>
-      <tr><td><code>ctx manifest &lt;manifest|run&gt;</code> · <code>ctx diff &lt;a&gt; &lt;b&gt;</code> · <code>ctx replay &lt;manifest|run&gt;</code></td><td>Inspect, compare (with <code>why:</code>), reproduce (strict)</td></tr>
-      <tr><td><code>ctx tag set &lt;uri&gt; &lt;tag&gt; &lt;snapshot&gt;</code> · <code>tag list</code> · <code>tag rm</code></td><td>Movable pointers</td></tr>
-      <tr><td><code>ctx evidence export &lt;target&gt; [--with-content] [--out f]</code> · <code>ctx evidence verify &lt;bundle&gt; [--offline]</code></td><td>Evidence bundles</td></tr>
-      <tr><td><code>ctx mcp</code></td><td>Stdio MCP server</td></tr>
-      <tr><td><code>ctx version</code> · global <code>--data-dir</code> · <code>--server</code> · <code>--api-key</code></td><td>—</td></tr>
+      <tr><td><code>readproof resource add &lt;uri&gt; --source-type filesystem|github|http … --policy require_fresh|allow_stale [--max-age d]</code></td><td>Register a resource</td></tr>
+      <tr><td><code>readproof resource list</code> · <code>readproof inspect &lt;uri&gt;[@tag]</code> · <code>readproof history &lt;uri&gt;</code></td><td>Browse</td></tr>
+      <tr><td><code>readproof get &lt;uri&gt;[@tag]</code></td><td>Resolve and print</td></tr>
+      <tr><td><code>readproof run --id &lt;run&gt; &lt;uri&gt;…</code> · <code>readproof run start|mount|commit</code></td><td>Record a run → manifest</td></tr>
+      <tr><td><code>readproof manifest &lt;manifest|run&gt;</code> · <code>readproof diff &lt;a&gt; &lt;b&gt;</code> · <code>readproof replay &lt;manifest|run&gt;</code></td><td>Inspect, compare (with <code>why:</code>), reproduce (strict)</td></tr>
+      <tr><td><code>readproof tag set &lt;uri&gt; &lt;tag&gt; &lt;snapshot&gt;</code> · <code>tag list</code> · <code>tag rm</code></td><td>Movable pointers</td></tr>
+      <tr><td><code>readproof evidence export &lt;target&gt; [--with-content] [--out f]</code> · <code>readproof evidence verify &lt;bundle&gt; [--offline]</code></td><td>Evidence bundles</td></tr>
+      <tr><td><code>readproof mcp</code></td><td>Stdio MCP server</td></tr>
+      <tr><td><code>readproof version</code> · global <code>--data-dir</code> · <code>--server</code> · <code>--api-key</code></td><td>—</td></tr>
     </tbody>
   </table></div>
 </section>
 
 <section id="faq">
   <h2>FAQ &amp; status</h2>
-  <h3>Does Ctx replace my RAG pipeline / vector DB?</h3>
-  <p>No. Ctx is about the <strong>source documents</strong> and what a run actually received. Keep retrieving however you do; mount what you retrieved (or the documents you retrieved from) so the run is reproducible. Derived chunk materializations are on the roadmap; v0.2 delivers raw bytes only.</p>
+  <h3>Does Readproof replace my RAG pipeline / vector DB?</h3>
+  <p>No. Readproof is about the <strong>source documents</strong> and what a run actually received. Keep retrieving however you do; mount what you retrieved (or the documents you retrieved from) so the run is reproducible. Derived chunk materializations are on the roadmap; v0.2 delivers raw bytes only.</p>
   <h3>What happens when the source is unreachable?</h3>
   <p><code>require_fresh</code> fails the resolve (no silent staleness). <code>allow_stale</code> serves the cached snapshot if within <code>--max-age</code>. <code>@tag</code> never touches the source. <code>replay</code> never touches the source either.</p>
   <h3>How is this different from logging tool outputs in my tracing tool?</h3>
-  <p>Traces key on spans; Ctx keys on <strong>source identity</strong>. You get a freshness policy, a run to run diff of inputs with the source revision that changed, and byte exact replay without fetching again — and the manifest's Merkle root shows up in your trace, so the two complement each other.</p>
+  <p>Traces key on spans; Readproof keys on <strong>source identity</strong>. You get a freshness policy, a run to run diff of inputs with the source revision that changed, and byte exact replay without fetching again — and the manifest's Merkle root shows up in your trace, so the two complement each other.</p>
   <h3>Is the store encrypted / multi tenant / signed?</h3>
-  <p>v0.2 is a security <strong>baseline</strong>: no plaintext credentials at rest (env refs resolved at fetch time, redaction everywhere), optional single API key on <code>ctxd</code>, dev only Compose credentials clearly labeled, dependency scanning clean. Not enterprise IAM; bundles aren't signed yet. See the roadmap.</p>
+  <p>v0.2 is a security <strong>baseline</strong>: no plaintext credentials at rest (env refs resolved at fetch time, redaction everywhere), optional single API key on <code>readproofd</code>, dev only Compose credentials clearly labeled, dependency scanning clean. Not enterprise IAM; bundles aren't signed yet. See the roadmap.</p>
   <h3>Status</h3>
   <p><strong>v0.2.0</strong> — tags/<code>@ref</code>, provenance aware diff, strict replay, evidence bundles, MCP server, OTel GenAI attributes, LangGraph example, TypeScript SDK, Postgres/S3 or embedded SQLite storage, CI incl. a Compose integration run. Private checkpoint: no LICENSE yet, and the name will change before public launch. Roadmap (in order): rename + LICENSE + public repo; Python SDK; trace context propagation over the HTTP API; MCP HTTP transport; a policy file (allowed sources / SSRF allow list / content scanning); signed + OCI distributed evidence bundles; <code>tag promote</code>; more adapters (S3, Confluence/Notion, generic git); Temporal/Restate helpers; auth beyond one API key; operator UI.</p>
-  <p class="foot">Docs in the repo: <code>README.md</code> · <code>docs/api.md</code> · <code>docs/mcp.md</code> · <code>docs/evidence.md</code> · <code>docs/observability.md</code> · <code>docs/roadmap.md</code> · <code>examples/refund-agent</code> · <code>examples/langgraph-ts</code>. Every command output on this page was captured from <code>ctx</code> 0.2.0 on 2026-08-21; ULIDs and hashes are trimmed for width.</p>
+  <p class="foot">Docs in the repo: <code>README.md</code> · <code>docs/api.md</code> · <code>docs/mcp.md</code> · <code>docs/evidence.md</code> · <code>docs/observability.md</code> · <code>docs/roadmap.md</code> · <code>examples/refund-agent</code> · <code>examples/langgraph-ts</code>. Every command output on this page was captured from <code>readproof</code> 0.2.0 on 2026-08-21; ULIDs and hashes are trimmed for width.</p>
 </section>
 </main>
 </div>
