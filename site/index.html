@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Readproof — know exactly what your agent read</title>
+<meta name="description" content="Readproof is the lockfile and replay primitive for what AI agents read: stable identities, freshness policies, content addressed snapshots, per run manifests you can diff, replay byte for byte, and export as evidence.">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Readproof — know exactly what your agent read">
+<meta property="og:description" content="Stable identity, freshness policy, and a content addressed snapshot for every document an agent reads. Diff, replay, and export any run as evidence.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fbzz.github.io/readproof/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Erp%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #000000; --surface: #181818; --raised: #1F1F1F; --hover: #272727; --rule: #313131;
+    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #737373;
+    --accent: #4ADE80; --accent-contrast: #000000;
+    --amber: #FBBF24;
+    --glass: rgba(24,24,24,.72);
+    --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(0.32,0.72,0,1);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #FFFFFF; --surface: #FAFAFA; --raised: #F5F5F5; --hover: #EFEFEF; --rule: #E5E5E5;
+      --ink: #000000; --ink-2: #666666; --muted: #8A8A8A;
+      --accent: #15803D; --accent-contrast: #FFFFFF;
+      --amber: #8A5800;
+      --glass: rgba(255,255,255,.72);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 24px; -webkit-font-smoothing: antialiased; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    .rv { opacity: 1 !important; transform: none !important; filter: none !important; }
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  code { font-family: var(--mono); font-size: 14px; line-height: 20px; background: var(--raised); padding: 2px 6px; border-radius: 6px; }
+  p { margin: 0 0 16px; max-width: 680px; text-wrap: pretty; }
+  h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; letter-spacing: -.02em; }
+  h1 { font-size: 60px; line-height: 1; }           /* text-6xl */
+  h2 { font-size: 30px; line-height: 36px; }        /* text-3xl */
+  h3 { font-size: 18px; line-height: 28px; font-weight: 600; } /* text-lg */
+  .eyebrow { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
+  .lede { font-size: 18px; line-height: 28px; color: var(--ink-2); margin: 0 0 24px; } /* text-lg */
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 96px 0; }
+  @media (max-width: 720px) { section { padding: 64px 0; } h1 { font-size: 48px; } }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--sans); font-size: 16px; line-height: 24px; font-weight: 600; padding: 8px 12px; border-radius: 9999px; border: 1px solid var(--rule); color: var(--ink); background: var(--surface); cursor: pointer; transition: all .7s var(--ease); }
+  .btn:hover { background: var(--hover); transform: translateY(-1px); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+  .btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
+  .btn.sm { font-size: 14px; line-height: 20px; }
+  .btn svg { width: 16px; height: 16px; }
+
+  /* Island nav */
+  .island { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 24px; padding: 8px 8px 8px 20px; border-radius: 9999px; background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--rule); box-shadow: 0 8px 32px rgba(0,0,0,.25); }
+  .island .brand { font-weight: 700; font-size: 16px; line-height: 24px; color: var(--ink); display: inline-flex; align-items: baseline; gap: 8px; }
+  .island .brand small { font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 400; color: var(--muted); }
+  .island .links { display: flex; gap: 4px; }
+  .island .links a { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink-2); padding: 8px 12px; border-radius: 9999px; transition: all .7s var(--ease); }
+  .island .links a:hover { color: var(--ink); background: var(--hover); }
+  .burger { display: none; width: 40px; height: 40px; border: none; background: transparent; cursor: pointer; position: relative; }
+  .burger span { position: absolute; left: 10px; width: 20px; height: 2px; background: var(--ink); border-radius: 2px; transition: all .7s var(--ease); }
+  .burger span:nth-child(1) { top: 14px; }
+  .burger span:nth-child(2) { top: 24px; }
+  .burger[aria-expanded="true"] span:nth-child(1) { top: 19px; transform: rotate(45deg); }
+  .burger[aria-expanded="true"] span:nth-child(2) { top: 19px; transform: rotate(-45deg); }
+  @media (max-width: 860px) { .island .links, .island .docs-btn { display: none; } .burger { display: block; } }
+
+  /* Full screen menu */
+  .menu { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.8); backdrop-filter: blur(64px); -webkit-backdrop-filter: blur(64px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .7s var(--ease); }
+  .menu.open { opacity: 1; pointer-events: auto; }
+  .menu ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 24px; text-align: center; }
+  .menu a { font-size: 30px; line-height: 36px; font-weight: 700; color: var(--ink); opacity: 0; transform: translateY(48px); transition: all .7s var(--ease); display: inline-block; }
+  .menu.open a { opacity: 1; transform: translateY(0); }
+  .menu.open li:nth-child(1) a { transition-delay: .1s; }
+  .menu.open li:nth-child(2) a { transition-delay: .15s; }
+  .menu.open li:nth-child(3) a { transition-delay: .2s; }
+  .menu.open li:nth-child(4) a { transition-delay: .25s; }
+  .menu.open li:nth-child(5) a { transition-delay: .3s; }
+  .menu a:hover { color: var(--accent); }
+
+  /* Hero */
+  .hero { padding: 176px 0 96px; }
+  .hero .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+  @media (max-width: 900px) { .hero { padding-top: 128px; } .hero .grid { grid-template-columns: 1fr; gap: 48px; } }
+  .hero h1 { background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 24px; max-width: 680px; }
+  @media (prefers-color-scheme: light) { .hero h1 { background-image: linear-gradient(90deg, #000000 0%, #666666 100%); } }
+  .hero h1 .acc { background: none; -webkit-text-fill-color: var(--accent); }
+  .hero .sub { font-size: 18px; line-height: 28px; color: var(--ink-2); max-width: 680px; margin-bottom: 32px; }
+  .hero .cta { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .hero .risk { font-size: 14px; line-height: 20px; color: var(--muted); margin: 0 0 32px; }
+  .proofline { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; padding: 0; list-style: none; }
+  .proofline li { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px; color: var(--ink-2); }
+  .proofline b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+  .proofline svg { width: 16px; height: 16px; color: var(--accent); flex: none; }
+
+  /* Terminal */
+  .term { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; font-family: var(--mono); font-size: 14px; line-height: 20px; margin: 0; }
+  .term .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--rule); color: var(--muted); font-size: 12px; line-height: 16px; }
+  .term .bar i { width: 10px; height: 10px; border-radius: 9999px; background: var(--rule); }
+  .term .bar i:first-child { background: var(--accent); }
+  .term .body { padding: 16px; overflow-x: auto; white-space: pre; }
+  .term .p { color: var(--accent); font-weight: 600; }
+  .term .am { color: var(--amber); }
+  .term .m { color: var(--ink-2); }
+  .term .ok { color: var(--accent); }
+  .term .c { color: var(--muted); }
+  .term .hl { color: var(--ink); font-weight: 600; }
+
+  /* Tagline reveal */
+  .tagline { padding: 96px 0; }
+  .tagline p { font-size: 36px; line-height: 40px; font-weight: 700; letter-spacing: -.02em; max-width: 680px; margin: 0; }
+  @media (max-width: 720px) { .tagline p { font-size: 30px; line-height: 36px; } }
+  .tagline .tw { opacity: .3; transition: opacity .7s var(--ease); }
+  .tagline .tw.on { opacity: 1; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; transition: all .7s var(--ease); }
+  .card:hover { background: var(--raised); transform: translateY(-2px); }
+  .card > svg { width: 24px; height: 24px; color: var(--accent); margin-bottom: 16px; display: block; }
+  .card h3 { margin-bottom: 8px; }
+  .card p { font-size: 16px; line-height: 24px; color: var(--ink-2); margin: 0; }
+  .card .tag { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--amber); border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; margin-bottom: 16px; }
+  .card .tag.ok { color: var(--accent); } .card .tag.acc { color: var(--ink-2); }
+  .inner { background: var(--bg); border: 1px solid var(--rule); padding: 12px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 0; color: var(--ink-2); white-space: pre; }
+  .inner .m { color: var(--muted); } .inner .ok { color: var(--accent); }
+
+  /* Steps */
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+  @media (max-width: 900px) { .steps { grid-template-columns: 1fr; } }
+  .steps .n { font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--accent); margin: 0 0 16px; }
+
+  /* Proof */
+  .proofgrid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+  @media (max-width: 900px) { .proofgrid { grid-template-columns: 1fr; } }
+  .facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  .facts li { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; font-size: 16px; line-height: 24px; color: var(--ink-2); }
+  .facts svg { width: 24px; height: 24px; color: var(--accent); margin-top: 0; }
+  .facts b { color: var(--ink); font-weight: 600; }
+
+  /* Integrations */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; padding: 0; list-style: none; }
+  .chips li { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px; padding: 8px 12px; border: 1px solid var(--rule); border-radius: 9999px; background: var(--surface); color: var(--ink-2); transition: all .7s var(--ease); }
+  .chips li:hover { background: var(--raised); }
+  .chips svg { width: 16px; height: 16px; color: var(--accent); }
+  .chips b { color: var(--ink); font-weight: 600; }
+  .codes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .code { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; font-family: var(--mono); font-size: 14px; line-height: 20px; margin: 0; }
+  .code .t { display: block; font-family: var(--sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+  .code .body { padding: 16px; overflow-x: auto; white-space: pre; }
+  .code .k { color: var(--ink); font-weight: 600; } .code .s { color: var(--accent); } .code .c { color: var(--muted); }
+
+  /* FAQ */
+  .faq { display: grid; gap: 12px; max-width: 800px; }
+  details { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 0 24px; transition: background .7s var(--ease); }
+  details[open] { background: var(--raised); }
+  summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+  summary::-webkit-details-marker { display: none; }
+  summary svg { width: 16px; height: 16px; color: var(--muted); flex: none; transition: transform .7s var(--ease); }
+  details[open] summary svg { transform: rotate(45deg); }
+  details p { padding: 0 0 16px; color: var(--ink-2); margin: 0; max-width: 72ch; }
+
+  /* Final + legal + footer */
+  .legal { font-size: 14px; line-height: 20px; color: var(--muted); }
+  .legal h3 { font-size: 14px; line-height: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .legal .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px; }
+  footer { border-top: 1px solid var(--rule); padding: 32px 0 64px; font-size: 14px; line-height: 20px; color: var(--muted); }
+  footer .row { display: flex; flex-wrap: wrap; gap: 16px 32px; justify-content: space-between; align-items: flex-start; }
+  footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  footer a { color: var(--ink-2); transition: color .7s var(--ease); }
+  footer a:hover { color: var(--accent); }
+
+  /* Scroll reveal */
+  .rv { opacity: 0; transform: translateY(64px); filter: blur(12px); transition: opacity .8s var(--ease), transform .8s var(--ease), filter .8s var(--ease); transition-delay: var(--d, 0s); }
+  .rv.in { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+  .skip { position: fixed; left: 16px; top: -64px; z-index: 60; background: var(--accent); color: var(--accent-contrast); padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: top .7s var(--ease); }
+  .skip:focus { top: 16px; }
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-arrow" viewBox="0 0 256 256" fill="currentColor"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,77.66a8,8,0,0,1,0,11.32l-64,64a8,8,0,0,1-11.32,0l-32-32a8,8,0,0,1,11.32-11.32L128,137.37l58.34-58.35A8,8,0,0,1,197.66,77.66Z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 256 256" fill="currentColor"><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M136,80v43.47l36.12,21.67a8,8,0,0,1-8.24,13.72l-40-24A8,8,0,0,1,120,128V80a8,8,0,0,1,16,0Zm-8-48A95.44,95.44,0,0,0,60.08,60.15C52.81,67.51,46.35,74.59,40,82V64a8,8,0,0,0-16,0v40a8,8,0,0,0,8,8H72a8,8,0,0,0,0-16H49c7.15-8.42,14.27-16.35,22.39-24.57a80,80,0,1,1,1.66,114.75,8,8,0,1,0-11,11.64A96,96,0,1,0,128,32Z"/></symbol>
+  <symbol id="i-diff" viewBox="0 0 256 256" fill="currentColor"><path d="M112,152a8,8,0,0,0-8,8v28.69L66.34,151A8,8,0,0,1,64,145.37V95a32,32,0,1,0-16,0v50.38a23.85,23.85,0,0,0,7,17L92.69,200H64a8,8,0,0,0,0,16h48a8,8,0,0,0,8-8V160A8,8,0,0,0,112,152ZM40,64A16,16,0,1,1,56,80,16,16,0,0,1,40,64Zm168,97V110.63a23.85,23.85,0,0,0-7-17L163.31,56H192a8,8,0,0,0,0-16H144a8,8,0,0,0-8,8V96a8,8,0,0,0,16,0V67.31L189.66,105a8,8,0,0,1,2.34,5.66V161a32,32,0,1,0,16,0Zm-8,47a16,16,0,1,1,16-16A16,16,0,0,1,200,208Z"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 256 256" fill="currentColor"><path d="M243.31,136,144,36.69A15.86,15.86,0,0,0,132.69,32H40a8,8,0,0,0-8,8v92.69A15.86,15.86,0,0,0,36.69,144L136,243.31a16,16,0,0,0,22.63,0l84.68-84.68a16,16,0,0,0,0-22.63Zm-96,96L48,132.69V48h84.69L232,147.31ZM96,84A12,12,0,1,1,84,72,12,12,0,0,1,96,84Z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 256 256" fill="currentColor"><path d="M237.66,18.34a8,8,0,0,0-11.32,0l-52.4,52.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L100,88.69l-6.34-6.35A8,8,0,0,0,82.34,93.66L88.69,100,65.37,123.31a32,32,0,0,0,0,45.26l5.38,5.37-52.41,52.4a8,8,0,0,0,11.32,11.32l52.4-52.41,5.37,5.38a32,32,0,0,0,45.26,0L156,167.31l6.34,6.35a8,8,0,0,0,11.32-11.32L167.31,156l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,52.41-52.4A8,8,0,0,0,237.66,18.34Zm-116.29,161a16,16,0,0,1-22.62,0L76.69,157.25a16,16,0,0,1,0-22.62L100,111.31,144.69,156Zm57.94-57.94L156,144.69,111.31,100l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,179.31,121.37ZM88.57,35A8,8,0,0,1,103.43,29l8,20A8,8,0,0,1,96.57,55ZM24.57,93A8,8,0,0,1,35,88.57l20,8A8,8,0,0,1,49,111.43l-20-8A8,8,0,0,1,24.57,93ZM231.43,163a8,8,0,0,1-10.4,4.46l-20-8A8,8,0,1,1,207,144.57l20,8A8,8,0,0,1,231.43,163Zm-64,58.06A8,8,0,0,1,152.57,227l-8-20A8,8,0,0,1,159.43,201Z"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 256 256" fill="currentColor"><path d="M128,128a8,8,0,0,1-3,6.25l-40,32a8,8,0,1,1-10-12.5L107.19,128,75,102.25a8,8,0,1,1,10-12.5l40,32A8,8,0,0,1,128,128Zm48,24H136a8,8,0,0,0,0,16h40a8,8,0,0,0,0-16Zm56-96V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56ZM216,200V56H40V200H216Z"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 256 256" fill="currentColor"><path d="M72,128a134.63,134.63,0,0,1-14.16,60.47,8,8,0,1,1-14.32-7.12A118.8,118.8,0,0,0,56,128,71.73,71.73,0,0,1,83,71.8,8,8,0,1,1,93,84.29,55.76,55.76,0,0,0,72,128Zm56-8a8,8,0,0,0-8,8,184.12,184.12,0,0,1-23,89.1,8,8,0,0,0,14,7.76A200.19,200.19,0,0,0,136,128,8,8,0,0,0,128,120Zm0-32a40,40,0,0,0-40,40,8,8,0,0,0,16,0,24,24,0,0,1,48,0,214.09,214.09,0,0,1-20.51,92A8,8,0,1,0,146,226.83,230,230,0,0,0,168,128,40,40,0,0,0,128,88Zm0-64A104.11,104.11,0,0,0,24,128a87.76,87.76,0,0,1-5,29.33,8,8,0,0,0,15.09,5.33A103.9,103.9,0,0,0,40,128a88,88,0,0,1,176,0,282.24,282.24,0,0,1-5.29,54.45,8,8,0,0,0,6.3,9.4,8.22,8.22,0,0,0,1.55.15,8,8,0,0,0,7.84-6.45A298.37,298.37,0,0,0,232,128,104.12,104.12,0,0,0,128,24ZM94.4,152.17A8,8,0,0,0,85,158.42a151,151,0,0,1-17.21,45.44,8,8,0,0,0,13.86,8,166.67,166.67,0,0,0,19-50.25A8,8,0,0,0,94.4,152.17ZM128,56a72.85,72.85,0,0,0-9,.56,8,8,0,0,0,2,15.87A56.08,56.08,0,0,1,184,128a252.12,252.12,0,0,1-1.92,31A8,8,0,0,0,189,168a8.39,8.39,0,0,0,1,.06,8,8,0,0,0,7.92-7,266.48,266.48,0,0,0,2-33A72.08,72.08,0,0,0,128,56Zm57.93,128.25a8,8,0,0,0-9.75,5.75c-1.46,5.69-3.15,11.4-5,17a8,8,0,0,0,5,10.13,7.88,7.88,0,0,0,2.55.42,8,8,0,0,0,7.58-5.46c2-5.92,3.79-12,5.35-18.05A8,8,0,0,0,185.94,184.26Z"/></symbol>
+  <symbol id="i-db" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24C74.17,24,32,48.6,32,80v96c0,31.4,42.17,56,96,56s96-24.6,96-56V80C224,48.6,181.83,24,128,24Zm80,104c0,9.62-7.88,19.43-21.61,26.92C170.93,163.35,150.19,168,128,168s-42.93-4.65-58.39-13.08C55.88,147.43,48,137.62,48,128V111.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64ZM69.61,53.08C85.07,44.65,105.81,40,128,40s42.93,4.65,58.39,13.08C200.12,60.57,208,70.38,208,80s-7.88,19.43-21.61,26.92C170.93,115.35,150.19,120,128,120s-42.93-4.65-58.39-13.08C55.88,99.43,48,89.62,48,80S55.88,60.57,69.61,53.08ZM186.39,202.92C170.93,211.35,150.19,216,128,216s-42.93-4.65-58.39-13.08C55.88,195.43,48,185.62,48,176V159.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64V176C208,185.62,200.12,195.43,186.39,202.92Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="island" aria-label="Primary">
+  <a class="brand" href="./">readproof <small>v0.3.0</small></a>
+  <div class="links">
+    <a href="#how">How it works</a>
+    <a href="#benefits">Benefits</a>
+    <a href="#integrations">Integrations</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <a class="btn sm primary docs-btn" href="docs/">Docs <svg aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+  <button class="burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
+</nav>
+
+<div class="menu" id="menu">
+  <ul>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#benefits">Benefits</a></li>
+    <li><a href="#integrations">Integrations</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="docs/">Docs</a></li>
+  </ul>
+</div>
+
+<main id="main">
+
+<section class="hero">
+  <div class="wrap grid">
+    <div>
+      <p class="eyebrow">Open source · for teams running AI agents</p>
+      <h1>Know exactly what<br>your agent read.<br><span class="acc">Prove it years later.</span></h1>
+      <p class="sub">Readproof gives every document an agent reads a stable identity, a freshness policy, and a content addressed snapshot. Each run becomes a manifest you can diff against another, replay byte for byte, and export as evidence.</p>
+      <div class="cta">
+        <a class="btn primary" href="docs/#install">Run the 60 second quickstart <svg aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+      </div>
+      <p class="risk">No signup. No services. One Go binary, and nothing leaves your machine.</p>
+      <ul class="proofline">
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span><b>3</b> source adapters</span></li>
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span><b>13</b> MCP tools</span></li>
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>SHA256 replay test in CI</span></li>
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>in-toto evidence bundles</span></li>
+      </ul>
+    </div>
+    <pre class="term rv" style="--d:.15s" aria-label="Terminal session: a run is recorded, the source changes, the diff explains why, and replay returns the original bytes"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>readproof — session</span><span class="body"><span class="p">$</span> readproof run --id run-a readproof://demo/policies/refunds
+<span class="m">Committed manifest manifest_01M0HRB5KJ… for run run-a (1 entry)</span>
+<span class="p">$</span> readproof tag set readproof://demo/policies/refunds prod snap_01M0HRB5KJ…
+<span class="c"># weeks later, someone edits the policy</span>
+<span class="p">$</span> readproof run --id run-b readproof://demo/policies/refunds
+<span class="p">$</span> readproof diff run-a run-b
+<span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456</span>
+<span class="m">  -Products can be refunded within 30 days.</span>
+<span class="m">  +Products can be refunded within 14 days.</span>
+<span class="p">$</span> readproof replay run-a         <span class="c"># reads the store, never the file</span>
+<span class="hl">Products can be refunded within 30 days.</span>
+<span class="ok">Replay verified: SHA256 match for 1/1 entries.</span></span></pre>
+  </div>
+</section>
+
+<section class="tagline" id="tagline" aria-label="Core promise">
+  <div class="wrap"><p>What the agent read, pinned by hash. What changed between runs, explained. What was delivered, provable years later.</p></div>
+</section>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="rv">
+      <p class="eyebrow">The problem</p>
+      <h2>Models are probabilistic. Most context failures are not.</h2>
+      <p class="lede">The retrieval worked, the prompt was fine, the model was fine. The document had changed underneath, and nobody could show what the agent actually saw. Agent reliability is bounded by context reliability.</p>
+    </div>
+    <div class="cards">
+      <div class="card rv"><span class="tag">stale and unpinned</span><h3>It worked on Tuesday</h3><p>A policy, price table, or runbook changed and the agent quietly started answering from a different version. Readproof records which revision each run read, and <code>readproof diff</code> shows what changed and when.</p></div>
+      <div class="card rv" style="--d:.1s"><span class="tag acc">not reproducible</span><h3>Can you rerun exactly that?</h3><p>Tracing tools keep strings. They cannot hand you the bytes again once the source moved. <code>readproof replay</code> rebuilds a run's inputs from the store and verifies every hash again, with no network and no source.</p></div>
+      <div class="card rv" style="--d:.2s"><span class="tag ok">audit</span><h3>What data did the agent consider?</h3><p>EU AI Act Article 12 logging for Annex III systems applies from 2 August 2026, and SOC 2 reviews ask the same question. <code>readproof evidence export</code> answers it with a file anyone can verify. Not legal advice, but it is the record.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="benefits">
+  <div class="wrap">
+    <div class="rv">
+      <p class="eyebrow">Benefits</p>
+      <h2>Small surface. Sharp guarantees.</h2>
+    </div>
+    <div class="cards">
+      <div class="card rv"><svg aria-hidden="true" focusable="false"><use href="#i-clock"/></svg><h3>Every run is reproducible</h3><p><strong>Replay from the store, not the source.</strong> <code>readproof replay run-a</code> rebuilds the exact bytes and checks every SHA256 again, after the file changed, the key expired, or the repo was archived.</p></div>
+      <div class="card rv" style="--d:.1s"><svg aria-hidden="true" focusable="false"><use href="#i-diff"/></svg><h3>Diffs explain themselves</h3><p><strong>Inputs, not just outputs.</strong> <code>readproof diff run-a run-b</code> names the source revision and observation time that changed, then prints the unified diff.</p></div>
+      <div class="card rv" style="--d:.2s"><svg aria-hidden="true" focusable="false"><use href="#i-tag"/></svg><h3>Freshness is a policy</h3><p><strong>Not a cache bug.</strong> <code>require_fresh</code> verifies each resolve again, <code>allow_stale</code> reuses within a max age, and <code>@prod</code> pins a reviewed snapshot. Promotion is one pointer move.</p></div>
+      <div class="card rv" style="--d:.1s"><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><h3>Audit is a file, not a dashboard</h3><p><strong>Portable evidence.</strong> <code>readproof evidence export</code> writes an in-toto Statement whose subject digest is a Merkle root over the run. Anyone can verify it, offline.</p></div>
+      <div class="card rv" style="--d:.2s"><svg aria-hidden="true" focusable="false"><use href="#i-plug"/></svg><h3>Plugs into what you run</h3><p><strong>No rewrite.</strong> MCP for Claude Code and Cursor, OpenTelemetry spans, a LangGraph example, a TypeScript SDK, and a plain HTTP API. Embedded SQLite or Postgres with S3.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="rv">
+      <p class="eyebrow">How it works</p>
+      <h2>Register. Record. Prove.</h2>
+      <p class="lede">Three commands, and every one of them is real output from <code>readproof</code> 0.3.0.</p>
+    </div>
+    <div class="steps">
+      <div class="card rv"><p class="n">01 · register</p><h3>Give the document an identity</h3><p>A source (file, GitHub path, or HTTP URL) plus a freshness policy. The URI survives the bytes changing.</p>
+        <pre class="inner">$ readproof resource add readproof://demo/policies/refunds \
+    --source-type filesystem --path policies/refunds.md \
+    --policy require_fresh
+<span class="m">Registered resource readproof://demo/policies/refunds</span></pre></div>
+      <div class="card rv" style="--d:.1s"><p class="n">02 · record</p><h3>Mount it into a run</h3><p>Mount resolves and records at the next position; commit freezes the run into a manifest.</p>
+        <pre class="inner">$ readproof run --id run-a readproof://demo/policies/refunds
+<span class="m">Mounted … -> snapshot snap_01M0HRB5KJ… (position 0)
+Committed manifest manifest_01M0HRB5KJ… (1 entry)</span></pre></div>
+      <div class="card rv" style="--d:.2s"><p class="n">03 · prove</p><h3>Diff, replay, export</h3><p>Compare runs with the why, rebuild bytes from the store, or export the evidence bundle.</p>
+        <pre class="inner">$ readproof replay run-a
+<span class="ok">Replay verified: SHA256 match for 1/1 entries.</span>
+$ readproof evidence export run-a --out bundle.json
+<span class="ok">merkle root 8482a767…  replay match 1/1</span></pre></div>
+    </div>
+  </div>
+</section>
+
+<section id="proof-section">
+  <div class="wrap proofgrid">
+    <div class="rv">
+      <p class="eyebrow">Proof, not promises</p>
+      <h2>Standards underneath, tests on top.</h2>
+      <p class="lede">There are no testimonials on this page because the project has not launched. What exists is verifiable.</p>
+      <ul class="facts">
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><b>The invariant is a test.</b> The refund agent demo asserts SHA256(original) equals SHA256(replay) over SQLite, over Postgres with MinIO, and over a real HTTP round trip.</span></li>
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><b>Evidence follows the <code>in-toto</code> Statement v1 format</b>, with Merkle vectors checked against an independent implementation and tamper tests that must fail.</span></li>
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><b>Telemetry follows the OpenTelemetry GenAI conventions</b> (<code>gen_ai.data_source.id</code>), and the commit span carries the same Merkle root as the bundle.</span></li>
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><b>The MCP server uses the official Go SDK</b> and is tested through a real client over both the embedded and remote paths.</span></li>
+        <li><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><b>CI runs on every push:</b> Go build, vet, and tests, the SDK tests, and a Docker Compose integration run that replays the demo against the built image.</span></li>
+      </ul>
+    </div>
+    <pre class="term rv" style="--d:.15s" aria-label="Output of readproof evidence verify"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>verify</span><span class="body"><span class="p">$</span> readproof evidence verify bundle.json
+<span class="ok">evidence verified: 1 entry,</span>
+<span class="ok">  merkle root 8482a7671b1d7ba1…,</span>
+<span class="ok">  embedded content 1/1 re-hashed,</span>
+<span class="ok">  replay match 1/1</span>
+<span class="c"># flip one byte in the bundle and this exits 1</span></span></pre>
+  </div>
+</section>
+
+<section id="integrations">
+  <div class="wrap">
+    <div class="rv">
+      <p class="eyebrow">Integrations</p>
+      <h2>It sits underneath the tools you already run.</h2>
+      <p class="lede">Readproof is not a vector database, an observability tool, a prompt registry, or a memory system. It makes their inputs reproducible.</p>
+    </div>
+    <ul class="chips rv">
+      <li><svg aria-hidden="true" focusable="false"><use href="#i-plug"/></svg><b>MCP</b> Claude Code, Claude Desktop, Cursor</li>
+      <li><svg aria-hidden="true" focusable="false"><use href="#i-wave"/></svg><b>OpenTelemetry</b> GenAI attributes, run spans</li>
+      <li><svg aria-hidden="true" focusable="false"><use href="#i-diff"/></svg><b>LangGraph</b> manifest id in the checkpoint</li>
+      <li><svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg><b>TypeScript SDK</b> zero dependencies</li>
+      <li><svg aria-hidden="true" focusable="false"><use href="#i-db"/></svg><b>Storage</b> SQLite embedded, or Postgres with S3</li>
+      <li><svg aria-hidden="true" focusable="false"><use href="#i-plug"/></svg><b>DeepSeek Harness</b> native plugin bundle + MCP overlay</li>
+      <li><svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg><b>Open models via Ollama</b> support agent example, no API key</li>
+    </ul>
+    <div class="codes">
+      <pre class="code rv"><span class="t">Claude Code, one line</span><span class="body"><span class="k">claude</span> mcp add readproof -- /abs/path/readproof mcp --data-dir ~/.readproof
+<span class="c"># then: "Read readproof://demo/policies/refunds@prod and tell me the refund window."</span></span></pre>
+      <pre class="code rv" style="--d:.1s"><span class="t">TypeScript, record a turn</span><span class="body"><span class="k">const</span> run = readproof.run({ id: <span class="s">`turn-${id}`</span> });
+<span class="k">await</span> run.mount(<span class="s">"readproof://acme/policies/refunds@prod"</span>);
+<span class="k">const</span> { manifest_id } = <span class="k">await</span> run.commit();</span></pre>
+      <pre class="code rv" style="--d:.2s"><span class="t">DeepSeek Harness, one line</span><span class="body"><span class="k">dsh</span> plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof &amp;&amp; dsh web
+<span class="c"># the 13 tools as readproof_*, one Readproof run per DSH session, or a zero-code MCP overlay</span></span></pre>
+    </div>
+    <p class="rv" style="margin-top:24px"><a href="docs/#mcp">MCP setup</a> · <a href="docs/#sdk">SDK</a> · <a href="docs/#langgraph">LangGraph</a> · <a href="docs/#dsh">DeepSeek Harness</a> · <a href="docs/#support-agent">Support agent example</a> · <a href="docs/#otel">Observability</a> · <a href="docs/#server">HTTP API</a></p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="rv">
+      <p class="eyebrow">FAQ</p>
+      <h2>Questions engineers ask first.</h2>
+    </div>
+    <div class="faq">
+      <details class="rv"><summary>Is Readproof a vector database or a RAG tool? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>No. Readproof is about the source documents and what a run actually received. Keep retrieving however you do; mount what you retrieved so the run is reproducible. Derived chunk materializations are on the roadmap, and v0.2 delivers raw bytes only.</p></details>
+      <details class="rv"><summary>Does it replace my tracing or observability tool? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>No, it complements it. Traces key on spans; Readproof keys on source identity, adds freshness policy, run to run input diffs, and byte exact replay. The run's Merkle root appears in your trace and in the evidence bundle, so the two join on one field.</p></details>
+      <details class="rv"><summary>Do I need to run a server? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>No. Embedded mode keeps everything in a local <code>.readproof</code> directory with SQLite and blobs. <code>readproofd</code> with Postgres and S3 is there when a team, a service, or the MCP server should share one history.</p></details>
+      <details class="rv"><summary>Which sources are supported? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Filesystem, GitHub (a path at a branch or ref, the commit SHA becomes the source revision), and HTTP (any URL, headers may reference environment variables). S3, Confluence or Notion, and generic git are on the roadmap.</p></details>
+      <details class="rv"><summary>How are credentials handled? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Tokens are read from the <code>readproof</code> or <code>readproofd</code> process environment at fetch time and never stored. Sensitive header values are masked in every API response, in <code>readproof inspect</code>, and in evidence bundles. <code>readproofd</code> can require a single API key.</p></details>
+      <details class="rv"><summary>What does the evidence bundle prove, and what does it not? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>It proves these bytes, by hash and optionally embedded, were delivered for this run in this order under these resource definitions, and that the store can still reproduce them. It does not prove the model used them or that the source was authoritative. Bundles are not signed yet; signing is on the roadmap.</p></details>
+      <details class="rv"><summary>Does it work with Claude Code, Cursor, and DeepSeek Harness? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Yes. <code>readproof mcp</code> is a stdio MCP server: registered documents become readable <code>readproof://</code> resources with provenance in <code>_meta</code>, and resolve, runs, diff, replay, tags, and evidence export are 13 tools. One <code>claude mcp add</code> line sets it up. For DeepSeek Harness there is a native plugin bundle that registers the same 13 tools and records one Readproof run per DSH session (<code>dsh plugin --profile web add …</code>), plus a zero-code MCP overlay.</p></details>
+      <details class="rv"><summary>What is the license? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Apache-2.0 — see <code>LICENSE</code> and <code>NOTICE</code> in the repository. The project was renamed from Ctx to Readproof in v0.3.0; the name is final. Everything on this page reflects the code as it is today.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap rv">
+    <p class="eyebrow">Start</p>
+    <h2>Sixty seconds, no services.</h2>
+    <p class="lede">Clone, build one binary, register a document, record a run, replay it. Delete the <code>.readproof</code> directory to uninstall.</p>
+    <div class="cta" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:0">
+      <a class="btn primary" href="docs/#install">Run the 60 second quickstart <svg aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></a>
+      <span style="font-size:14px;line-height:20px;color:var(--muted)">No signup. No services. Nothing leaves your machine.</span>
+    </div>
+  </div>
+</section>
+
+<section class="legal">
+  <div class="wrap cols">
+    <div id="privacy"><h3>Privacy</h3><p>This page is static. It sets no cookies, runs no analytics, and collects no personal data. The only external request is for fonts from Google Fonts.</p></div>
+    <div id="terms"><h3>Terms</h3><p>Readproof is provided as is, without warranty, under the Apache-2.0 license, as a pre launch release. Command output shown here was captured from version 0.3.0 and is reproducible from the repository's reference demo.</p></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <div>readproof v0.3.0 · the lockfile and replay primitive for what agents read</div>
+    <ul>
+      <li><a href="docs/">Docs</a></li><li><a href="docs/#cli">CLI</a></li><li><a href="docs/#server">HTTP API</a></li><li><a href="docs/#sdk">SDK</a></li><li><a href="docs/#mcp">MCP</a></li><li><a href="docs/#evidence">Evidence</a></li><li><a href="docs/#dsh">DeepSeek Harness</a></li><li><a href="examples/support-agent/">Support agent example</a></li><li><a href="docs/#faq">Roadmap</a></li><li><a href="https://github.com/fbzz/readproof">GitHub</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#terms">Terms</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+ {"@type":"Question","name":"Is Readproof a vector database or a RAG tool?","acceptedAnswer":{"@type":"Answer","text":"No. Readproof is about the source documents and what a run actually received. Keep retrieving however you do; mount what you retrieved so the run is reproducible."}},
+ {"@type":"Question","name":"Does it replace my tracing or observability tool?","acceptedAnswer":{"@type":"Answer","text":"No, it complements it. Traces key on spans; Readproof keys on source identity and adds freshness policy, input diffs between runs, and byte exact replay. The run's Merkle root appears in both the trace and the evidence bundle."}},
+ {"@type":"Question","name":"Do I need to run a server?","acceptedAnswer":{"@type":"Answer","text":"No. Embedded mode keeps everything in a local .readproof directory. readproofd with Postgres and S3 is optional for teams."}},
+ {"@type":"Question","name":"Which sources are supported?","acceptedAnswer":{"@type":"Answer","text":"Filesystem, GitHub, and HTTP in v0.3; more adapters are on the roadmap."}},
+ {"@type":"Question","name":"What does the evidence bundle prove?","acceptedAnswer":{"@type":"Answer","text":"That specific bytes, by hash, were delivered for a run in a given order under recorded resource definitions, and that the store can reproduce them. It does not prove the model used them."}},
+ {"@type":"Question","name":"Does it work with Claude Code, Cursor, and DeepSeek Harness?","acceptedAnswer":{"@type":"Answer","text":"Yes: the readproof mcp stdio server exposes resources and 13 tools to Claude Code and Cursor, and a native DeepSeek Harness plugin bundle registers the same tools and records one run per session."}}
+]}
+</script>
+<script>
+(function () {
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Menu
+  var burger = document.querySelector('.burger'), menu = document.getElementById('menu');
+  function setMenu(open) {
+    burger.setAttribute('aria-expanded', String(open));
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    menu.classList.toggle('open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+  burger.addEventListener('click', function () { setMenu(burger.getAttribute('aria-expanded') !== 'true'); });
+  menu.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { setMenu(false); }); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
+
+  // Scroll reveals
+  var revealed = document.querySelectorAll('.rv');
+  if (!reduce && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.15 });
+    revealed.forEach(function (el) { io.observe(el); });
+  } else {
+    revealed.forEach(function (el) { el.classList.add('in'); });
+  }
+
+  // Tagline word reveal
+  var tag = document.querySelector('#tagline p');
+  if (tag) {
+    var words = tag.textContent.trim().split(/\s+/);
+    tag.textContent = '';
+    words.forEach(function (w, i) {
+      var s = document.createElement('span');
+      s.className = 'tw'; s.textContent = w;
+      tag.appendChild(s);
+      if (i < words.length - 1) tag.appendChild(document.createTextNode(' '));
+    });
+    if (!reduce && 'IntersectionObserver' in window) {
+      var wio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { en.target.classList.add('on'); wio.unobserve(en.target); }
+        });
+      }, { rootMargin: '0px 0px -30% 0px' });
+      tag.querySelectorAll('.tw').forEach(function (s) { wio.observe(s); });
+    } else {
+      tag.querySelectorAll('.tw').forEach(function (s) { s.classList.add('on'); });
+    }
+  }
+})();
+</script>
+</body>
+</html>
