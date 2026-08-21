@@ -3,9 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Readproof Docs</title>
-<meta name="description" content="Readproof documentation: install, sources, runs, tags, evidence bundles, server mode, SDK, MCP, LangGraph, observability, CLI reference.">
+<title>Readproof docs — pin, diff and replay agent context</title>
+<meta name="description" content="Install Readproof, register a document, record a run, then diff, replay and export it. Sources, policies, tags, evidence, server mode, SDK, MCP, CLI.">
+<!-- remove at public launch -->
 <meta name="robots" content="noindex">
+<link rel="canonical" href="https://fbzz.github.io/readproof/docs/">
+<link rel="alternate" type="text/plain" href="/readproof/llms.txt" title="llms.txt — Readproof for language models">
+<meta property="og:site_name" content="Readproof">
+<meta property="og:title" content="Readproof docs — pin, diff and replay agent context">
+<meta property="og:description" content="The whole surface on one page: install, sources and freshness policies, runs and manifests, tags, evidence bundles, server mode, SDK, MCP, observability, CLI reference.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://fbzz.github.io/readproof/docs/">
+<meta property="og:image" content="https://fbzz.github.io/readproof/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Readproof wordmark over a terminal showing a verified byte-for-byte replay.">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Readproof docs — pin, diff and replay agent context">
+<meta name="twitter:description" content="The whole surface on one page: install, sources and freshness policies, runs and manifests, tags, evidence bundles, server mode, SDK, MCP, observability, CLI reference.">
+<meta name="twitter:image" content="https://fbzz.github.io/readproof/og.png">
+<meta name="twitter:image:alt" content="Readproof wordmark over a terminal showing a verified byte-for-byte replay.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Erp%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,11 +102,11 @@
 
   /* Terminal / code */
   pre { margin: 0; }
-  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
+  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
   /* the label gets its own row on the left, clear of the copy button */
-  .code[data-lang] { padding-top: 40px; }
-  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 12px; left: 16px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .code .copy { position: absolute; top: 8px; right: 8px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
+  .code[data-lang] { padding-top: 48px; }
+  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 20px; left: 24px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .code .copy { position: absolute; top: 12px; right: 12px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
   .code .copy:hover { color: var(--accent); border-color: var(--accent); background: transparent; }
   .term .p { color: var(--accent); font-weight: 600; }
   .term .cy { color: var(--ink); }
@@ -107,8 +125,8 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
   .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; transition: all .7s var(--ease); }
   .card:hover { background: var(--raised); transform: translateY(-2px); }
-  .card h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
-  .card h4 code { font-size: 14px; }
+  .card h3 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  .card h3 code { font-size: 14px; }
   .card p { font-size: 14px; line-height: 20px; color: var(--ink-2); margin: 0 0 8px; }
   .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); margin: 16px 0 24px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 20px; }
@@ -130,7 +148,7 @@
   ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 16px; padding: 24px 0; margin: 0; }
   ol.steps > li + li { border-top: 1px solid var(--rule); }
   ol.steps > li::before { content: counter(s, decimal-leading-zero); font-family: var(--mono); font-weight: 600; font-size: 18px; line-height: 28px; color: var(--accent); }
-  ol.steps h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  ol.steps h3 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
   ol.steps p { max-width: 70ch; }
   ol.steps .code, ol.steps .term { margin: 8px 0 8px; }
 
@@ -142,6 +160,8 @@
   .foot { border-top: 1px solid var(--rule); padding-top: 24px; font-size: 14px; line-height: 20px; color: var(--muted); }
   kbd { font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 6px; padding: 0 .35em; background: var(--surface); }
 
+  /* available to screen readers, invisible on screen: keeps the heading outline nested */
+  .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
   .skip { position: fixed; left: 16px; top: -64px; z-index: 60; background: var(--accent); color: var(--accent-contrast); padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: top .7s var(--ease); }
   .skip:focus { top: 16px; }
   /* long commands and transcripts wrap instead of hiding behind a horizontal scrollbar */
@@ -227,10 +247,11 @@
 <span class="ok">  evidence verified: 1 entry, merkle root a9b73469f1a6…,
   embedded content 1/1 re-hashed, replay match 1/1</span></pre>
 
+  <h2 class="vh">Readproof in three cards</h2>
   <div class="grid">
-    <div class="card"><h4>What it is</h4><p>A small Go binary (<code>readproof</code>) plus an optional server (<code>readproofd</code>) that sits underneath your retrieval, prompting, and memory stack and answers one question forever: <strong>which exact bytes went into this run?</strong></p></div>
-    <div class="card"><h4>What it isn't</h4><p>Not a vector DB, not an observability tool, not a prompt registry, not memory. It complements install time lockfiles (APM, <code>skills-lock.json</code>) that pin <strong>static</strong> config — Readproof pins the <strong>runtime</strong> documents, per run.</p></div>
-    <div class="card"><h4>Where it plugs in</h4><p>MCP server for Claude Code / Desktop / Cursor, OpenTelemetry spans with GenAI attributes, a TypeScript SDK, a LangGraph example, and a plain HTTP API. The CLI behaves identically embedded or against a server.</p></div>
+    <div class="card"><h3>What it is</h3><p>A small Go binary (<code>readproof</code>) plus an optional server (<code>readproofd</code>) that sits underneath your retrieval, prompting, and memory stack and answers one question forever: <strong>which exact bytes went into this run?</strong></p></div>
+    <div class="card"><h3>What it isn't</h3><p>Not a vector DB, not an observability tool, not a prompt registry, not memory. It complements install time lockfiles (APM, <code>skills-lock.json</code>) that pin <strong>static</strong> config — Readproof pins the <strong>runtime</strong> documents, per run.</p></div>
+    <div class="card"><h3>Where it plugs in</h3><p>MCP server for Claude Code / Desktop / Cursor, OpenTelemetry spans with GenAI attributes, a TypeScript SDK, a LangGraph example, and a plain HTTP API. The CLI behaves identically embedded or against a server.</p></div>
   </div>
 </section>
 
@@ -324,12 +345,12 @@
   </figure>
 
   <div class="grid">
-    <div class="card"><h4>Source</h4><p>Where bytes physically live: <code>filesystem</code>, <code>github</code>, or <code>http</code>. Credentials come from readproofd's environment at fetch time and are never stored.</p></div>
-    <div class="card"><h4>Resource</h4><p>The stable logical identity your code uses: <code>readproof://&lt;namespace&gt;/&lt;path&gt;</code>. Survives the bytes changing.</p></div>
-    <div class="card"><h4>Policy</h4><p>Freshness rule per resource: <code>require_fresh</code> (verify again every resolve), <code>allow_stale</code> (reuse within <code>--max-age</code>), or pin with a <code>@tag</code>.</p></div>
-    <div class="card"><h4>Snapshot</h4><p>An immutable observation: <code>sha256:…</code> content hash, source revision, observed at, provenance (ETag, path, commit…). Identical bytes dedupe to one blob.</p></div>
-    <div class="card"><h4>Manifest</h4><p>The ordered, immutable record of everything a run resolved — position, URI, <code>@ref</code>, snapshot, content hash. Order is an invariant: it changes model input.</p></div>
-    <div class="card"><h4>Evidence bundle</h4><p>An <code>in-toto</code> Statement whose subject digest is a Merkle root over the manifest; carries entries, redacted resource definitions, and a replay check. Verifiable by anyone you hand it to.</p></div>
+    <div class="card"><h3>Source</h3><p>Where bytes physically live: <code>filesystem</code>, <code>github</code>, or <code>http</code>. Credentials come from readproofd's environment at fetch time and are never stored.</p></div>
+    <div class="card"><h3>Resource</h3><p>The stable logical identity your code uses: <code>readproof://&lt;namespace&gt;/&lt;path&gt;</code>. Survives the bytes changing.</p></div>
+    <div class="card"><h3>Policy</h3><p>Freshness rule per resource: <code>require_fresh</code> (verify again every resolve), <code>allow_stale</code> (reuse within <code>--max-age</code>), or pin with a <code>@tag</code>.</p></div>
+    <div class="card"><h3>Snapshot</h3><p>An immutable observation: <code>sha256:…</code> content hash, source revision, observed at, provenance (ETag, path, commit…). Identical bytes dedupe to one blob.</p></div>
+    <div class="card"><h3>Manifest</h3><p>The ordered, immutable record of everything a run resolved — position, URI, <code>@ref</code>, snapshot, content hash. Order is an invariant: it changes model input.</p></div>
+    <div class="card"><h3>Evidence bundle</h3><p>An <code>in-toto</code> Statement whose subject digest is a Merkle root over the manifest; carries entries, redacted resource definitions, and a replay check. Verifiable by anyone you hand it to.</p></div>
   </div>
 </section>
 
@@ -420,7 +441,7 @@ readproof history readproof://demo/policies/refunds</code></pre>
   <p class="lede">A <strong>run</strong> is the unit of work you want to be able to reproduce — one agent turn, one job, one eval case. Mounting a URI into a run resolves it <strong>and</strong> records it at the next position; committing freezes the run into a manifest.</p>
   <ol class="steps">
     <li><div>
-      <h4>Record a run</h4>
+      <h3>Record a run</h3>
       <p>Single shot form (start + mount + commit) or the three step form if your code mounts across time.</p>
       <pre class="code" data-lang="bash"><code><span class="c"># one shot: start + mount (in the order given) + commit</span>
 readproof run --id run-a \
@@ -437,7 +458,7 @@ Mounted …/policies/refunds -&gt; snapshot snap_01M0JED935… (position 0)
 Committed manifest manifest_01M0JED936… for run run-a (1 entry)</span></pre>
     </div></li>
     <li><div>
-      <h4>Read the manifest</h4>
+      <h3>Read the manifest</h3>
       <pre class="code" data-lang="bash"><code><span class="c"># takes a run id or a manifest id</span>
 readproof manifest run-a</code></pre>
       <pre class="term" aria-label="Output of readproof manifest: one ordered entry with its snapshot id and content hash"><span class="m">Manifest manifest_01M0JED936… (run run-a),
@@ -447,7 +468,7 @@ POS  URI                                SNAPSHOT          CONTENT_HASH
 0    readproof://demo/policies/refunds  snap_01M0JED935…  sha256:c8b0bb21…</span></pre>
     </div></li>
     <li><div>
-      <h4>Change the world, run again, diff the inputs</h4>
+      <h3>Change the world, run again, diff the inputs</h3>
       <p>The <code>why:</code> line is the point: not just <strong>that</strong> the input changed, but <strong>which source revision</strong> and <strong>when it was observed</strong>.</p>
       <pre class="code" data-lang="bash"><code><span class="c"># 1. the source changes; nobody tells the agent</span>
 printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
@@ -472,7 +493,7 @@ readproof diff run-a run-b</code></pre>
 1 resource changed, 0 added, 0 removed, 0 unchanged</span></pre>
     </div></li>
     <li><div>
-      <h4>Replay — the invariant</h4>
+      <h3>Replay — the invariant</h3>
       <p><code>replay</code> rebuilds a manifest's bytes from the content addressed store and hashes them again. It never contacts the source, so it works after the file changed, after the API key expired, after the repo was archived. Any mismatch or missing blob exits nonzero.</p>
       <pre class="code" data-lang="bash"><code><span class="c"># rebuild run-a's bytes from the store — no source fetch</span>
 readproof replay run-a</code></pre>
@@ -598,9 +619,9 @@ readproof evidence verify bundle.json --offline</code></pre>
   }
 }</code></pre>
   <div class="grid">
-    <div class="card"><h4>What it proves</h4><p>That these bytes (by hash, optionally embedded) were delivered for this run, in this order, under these resource definitions, and that the store can still reproduce them. The root ties the whole run to one digest.</p></div>
-    <div class="card"><h4>What it doesn't</h4><p>That the model <strong>used</strong> them, or that the source was authoritative. Bundles aren't signed yet (roadmap: cosign/<code>in-toto</code> attestation). Tamper with an entry and <code>verify</code> fails; reroot a forged bundle and only the store cross check catches it — so keep <code>--offline</code> for transport, not trust.</p></div>
-    <div class="card"><h4>Where it fits</h4><p>EU AI Act Art. 12 automatic logging (Annex III systems, from 2 Aug 2026) and SOC 2 "what data did the agent consider" reviews want exactly this record. Not legal advice — what you owe depends on your system and jurisdiction.</p></div>
+    <div class="card"><h3>What it proves</h3><p>That these bytes (by hash, optionally embedded) were delivered for this run, in this order, under these resource definitions, and that the store can still reproduce them. The root ties the whole run to one digest.</p></div>
+    <div class="card"><h3>What it doesn't</h3><p>That the model <strong>used</strong> them, or that the source was authoritative. Bundles aren't signed yet (roadmap: cosign/<code>in-toto</code> attestation). Tamper with an entry and <code>verify</code> fails; reroot a forged bundle and only the store cross check catches it — so keep <code>--offline</code> for transport, not trust.</p></div>
+    <div class="card"><h3>Where it fits</h3><p>EU AI Act Art. 12 automatic logging (Annex III systems, from 2 Aug 2026) and SOC 2 "what data did the agent consider" reviews want exactly this record. Not legal advice — what you owe depends on your system and jurisdiction.</p></div>
   </div>
   <p>The same bundle can be built client side from the TypeScript SDK (<code>buildEvidence</code>) with a byte identical Merkle root, and exported by an agent through the MCP tool <code>readproof_evidence_export</code>.</p>
 </section>
@@ -931,6 +952,57 @@ readproof.run.commit
 </main>
 </div>
 
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fbzz.github.io/readproof/docs/#article",
+      "headline": "Readproof documentation",
+      "name": "Readproof documentation",
+      "description": "Install Readproof, register a document, record a run, then diff, replay and export it. Covers sources and freshness policies, tags, evidence bundles, server mode, the TypeScript SDK, MCP, LangGraph, OpenTelemetry, and the CLI.",
+      "url": "https://fbzz.github.io/readproof/docs/",
+      "inLanguage": "en",
+      "dateModified": "2026-08-21",
+      "image": "https://fbzz.github.io/readproof/og.png",
+      "proficiencyLevel": "Beginner",
+      "dependencies": "Go 1.26 or later for the CLI; Node 18 or later for the TypeScript SDK",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Readproof",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "softwareVersion": "0.3.1",
+        "url": "https://fbzz.github.io/readproof/",
+        "codeRepository": "https://github.com/fbzz/readproof",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Readproof",
+        "url": "https://fbzz.github.io/readproof/",
+        "sameAs": ["https://github.com/fbzz/readproof"]
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Readproof",
+        "url": "https://fbzz.github.io/readproof/",
+        "sameAs": ["https://github.com/fbzz/readproof"]
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://fbzz.github.io/readproof/docs/#breadcrumbs",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Readproof", "item": "https://fbzz.github.io/readproof/" },
+        { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://fbzz.github.io/readproof/docs/" }
+      ]
+    }
+  ]
+}
+</script>
 <script>
   (function () {
     if (!navigator.clipboard) return;

@@ -3,14 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Readproof — know exactly what your agent read</title>
-<meta name="description" content="Readproof is the lockfile and replay primitive for what AI agents read: stable identities, freshness policies, content addressed snapshots, per run manifests you can diff, replay byte for byte, and export as evidence.">
+<title>Readproof — a lockfile for what your AI agent reads</title>
+<meta name="description" content="Give every document your AI agent reads a stable identity, a freshness policy, and a SHA256 snapshot. Diff two runs, replay one byte for byte, prove it.">
+<!-- remove at public launch -->
 <meta name="robots" content="noindex">
-<meta property="og:title" content="Readproof — know exactly what your agent read">
+<link rel="canonical" href="https://fbzz.github.io/readproof/">
+<link rel="alternate" type="text/plain" href="/readproof/llms.txt" title="llms.txt — Readproof for language models">
+<meta property="og:site_name" content="Readproof">
+<meta property="og:title" content="Readproof — a lockfile for what your AI agent reads">
 <meta property="og:description" content="Stable identity, freshness policy, and a content addressed snapshot for every document an agent reads. Diff, replay, and export any run as evidence.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://fbzz.github.io/readproof/">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://fbzz.github.io/readproof/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Readproof wordmark over a terminal showing readproof replay run-a returning the original bytes and Replay verified: SHA256 match for 1/1 entries.">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Readproof — a lockfile for what your AI agent reads">
+<meta name="twitter:description" content="Stable identity, freshness policy, and a content addressed snapshot for every document an agent reads. Diff, replay, and export any run as evidence.">
+<meta name="twitter:image" content="https://fbzz.github.io/readproof/og.png">
+<meta name="twitter:image:alt" content="Readproof wordmark over a terminal showing a verified byte-for-byte replay.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Erp%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -111,10 +124,10 @@
 
   /* Terminal */
   .term { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; font-family: var(--mono); font-size: 14px; line-height: 20px; margin: 0; }
-  .term .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--rule); color: var(--muted); font-size: 12px; line-height: 16px; }
+  .term .bar { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-bottom: 1px solid var(--rule); color: var(--muted); font-size: 12px; line-height: 16px; }
   .term .bar i { width: 10px; height: 10px; border-radius: 9999px; background: var(--rule); }
   .term .bar i:first-child { background: var(--accent); }
-  .term .body { padding: 16px; overflow-x: auto; white-space: pre; }
+  .term .body { display: block; padding: 24px; overflow-x: auto; white-space: pre; }
   .term .p { color: var(--accent); font-weight: 600; }
   .term .pin { color: var(--amber); }
   .term .m { color: var(--ink-2); }
@@ -138,7 +151,7 @@
   .card p { font-size: 16px; line-height: 24px; color: var(--ink-2); margin: 0; }
   .card .tag { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--amber); border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; margin-bottom: 16px; }
   .card .tag.ok { color: var(--accent); } .card .tag.acc { color: var(--ink-2); }
-  .inner { background: var(--bg); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 12px; line-height: 18px; overflow-x: auto; margin: 16px 0 0; color: var(--ink); white-space: pre; }
+  .inner { background: var(--bg); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; font-family: var(--mono); font-size: 12px; line-height: 18px; overflow-x: auto; margin: 16px 0 0; color: var(--ink); white-space: pre; }
   .inner .m { color: var(--ink-2); } .inner .ok { color: var(--accent); } .inner .c { color: var(--comment); }
   .inner .p { color: var(--accent); font-weight: 600; }
 
@@ -163,8 +176,8 @@
   .chips b { color: var(--ink); font-weight: 600; }
   .codes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
   .code { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; font-family: var(--mono); font-size: 14px; line-height: 20px; margin: 0; }
-  .code .t { display: block; font-family: var(--sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--rule); }
-  .code .body { padding: 16px; overflow-x: auto; white-space: pre; }
+  .code .t { display: block; font-family: var(--sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 24px; border-bottom: 1px solid var(--rule); }
+  .code .body { display: block; padding: 24px; overflow-x: auto; white-space: pre; }
   .code .k { color: var(--ink); font-weight: 600; } .code .s { color: var(--accent); } .code .c { color: var(--comment); }
   .code .p { color: var(--accent); font-weight: 600; } .code .m { color: var(--ink-2); }
 
@@ -187,6 +200,15 @@
   footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
   footer a { color: var(--ink-2); transition: color .7s var(--ease); }
   footer a:hover { color: var(--accent); }
+  /* machine-readable entry points, stated plainly */
+  .machine { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--rule); }
+  .machine h2 { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .machine p { font-size: 14px; line-height: 20px; color: var(--muted); margin: 0 0 16px; max-width: 680px; }
+  .machine ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; align-items: start; }
+  .machine li { display: block; }
+  .machine li a { color: var(--accent); font-weight: 600; }
+  .machine li code { background: none; padding: 0; font-size: 13px; color: inherit; }
+  .machine li span { display: block; margin-top: 2px; color: var(--muted); }
 
   /* Scroll reveal */
   .rv { opacity: 0; transform: translateY(64px); filter: blur(12px); transition: opacity .8s var(--ease), transform .8s var(--ease), filter .8s var(--ease); transition-delay: var(--d, 0s); }
@@ -257,34 +279,46 @@
         <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>in-toto evidence bundles</span></li>
       </ul>
     </div>
-    <pre class="term rv" style="--d:.15s" aria-label="Terminal session: a policy is registered and pinned, the file changes underneath, the diff names the revision that moved, replay returns the original bytes, and the evidence bundle verifies"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>readproof — the whole idea</span><span class="body"><span class="c"># 1. give the document an identity and a freshness rule</span>
-<span class="p">$</span> readproof resource add readproof://demo/policies/refunds \
-            --source-type filesystem --path policies/refunds.md \
-            --policy require_fresh
+    <pre class="term rv" style="--d:.15s" aria-label="Terminal session: a policy is registered and pinned, the file changes underneath, the diff names the revision that moved, replay returns the original bytes, and the evidence bundle verifies"><span class="bar" aria-hidden="true"><i></i><i></i><i></i>readproof — the whole idea</span><span class="body"><span class="c"># 1. identity + source + freshness rule, once</span>
+<span class="p">$</span> readproof resource add \
+      readproof://demo/policies/refunds \
+      --source-type filesystem \
+      --path policies/refunds.md \
+      --policy require_fresh
 
-<span class="c"># 2. record one agent run, then pin what it read as @prod</span>
-<span class="p">$</span> readproof run --id run-a readproof://demo/policies/refunds
-<span class="m">  Committed manifest manifest_01M0JED936… for run run-a (1 entry)</span>
-<span class="p">$</span> readproof tag set readproof://demo/policies/refunds prod snap_01M0JED935…
+<span class="c"># 2. record exactly what run-a was given</span>
+<span class="p">$</span> readproof run --id run-a \
+      readproof://demo/policies/refunds
+<span class="m">  Committed manifest manifest_01M0JED936…
+    for run run-a (1 entry)</span>
 
-<span class="c"># 3. weeks later the policy is edited; a later run records it</span>
-<span class="p">$</span> printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
-<span class="p">$</span> readproof run --id run-b readproof://demo/policies/refunds
+<span class="c"># 3. pin those bytes as the reviewed version</span>
+<span class="p">$</span> readproof tag set \
+      readproof://demo/policies/refunds \
+      prod snap_01M0JED935…
 
-<span class="c"># 4. the diff names the revision that moved, not just the text</span>
+<span class="c"># 4. someone edits the policy: 30 → 14 days,
+#    and a later run reads the new bytes</span>
+<span class="p">$</span> readproof run --id run-b \
+      readproof://demo/policies/refunds
+
+<span class="c"># 5. the diff names the revision that moved</span>
 <span class="p">$</span> readproof diff run-a run-b
-<span class="pin">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456</span>
+<span class="pin">  why: source revision sha256:c8b0bb212e93
+                     → sha256:8f4b00474456</span>
 <span class="m">  -Products can be refunded within 30 days.
   +Products can be refunded within 14 days.</span>
 
-<span class="c"># 5. replay rebuilds run-a from the store, never from the file</span>
+<span class="c"># 6. replay reads the store, never the file</span>
 <span class="p">$</span> readproof replay run-a
 <span class="hl">  Products can be refunded within 30 days.</span>
-<span class="ok">  Replay verified: SHA256 match for 1/1 entries.</span>
+<span class="ok">  Replay verified: SHA256 match for 1/1
+  entries.</span>
 
-<span class="c"># 6. the evidence bundle verifies anywhere, years later</span>
+<span class="c"># 7. and the bundle verifies anywhere</span>
 <span class="p">$</span> readproof evidence verify bundle.json
-<span class="ok">  evidence verified: 1 entry, merkle root a9b73469f1a6…</span></span></pre>
+<span class="ok">  evidence verified: 1 entry, merkle root
+  a9b73469f1a6…</span></span></pre>
   </div>
 </section>
 
@@ -332,29 +366,30 @@
     </div>
     <div class="steps">
       <div class="card rv"><p class="n">01 · register</p><h3>Give the document an identity</h3><p>A source (file, GitHub path, or HTTP URL) plus a freshness policy. The URI survives the bytes changing.</p>
-        <pre class="inner"><span class="c"># 1. identity + source + freshness rule</span>
-<span class="p">$</span> readproof resource add \
-    readproof://demo/policies/refunds \
+        <pre class="inner"><span class="c"># 1. identity + source + policy</span>
+<span class="p">$</span> readproof resource add &lt;uri&gt; \
     --source-type filesystem \
     --path policies/refunds.md \
     --policy require_fresh
-<span class="m">  Registered resource …/policies/refunds
+<span class="m">  Registered resource …/refunds
     source: filesystem
     policy: require_fresh</span></pre></div>
       <div class="card rv" style="--d:.1s"><p class="n">02 · record</p><h3>Mount it into a run</h3><p>Mount resolves and records at the next position; commit freezes the run into a manifest.</p>
-        <pre class="inner"><span class="c"># 2. mount and commit in one shot</span>
-<span class="p">$</span> readproof run --id run-a \
-    readproof://demo/policies/refunds
-<span class="m">  Mounted …/refunds -&gt; snap_01M0JED935…
-  Committed manifest manifest_01M0JED936…</span></pre></div>
+        <pre class="inner"><span class="c"># 2. mount + commit, one shot</span>
+<span class="p">$</span> readproof run --id run-a &lt;uri&gt;
+<span class="m">  Mounted …/refunds -&gt;
+    snap_01M0JED935… (position 0)
+  Committed manifest
+    manifest_01M0JED936…</span></pre></div>
       <div class="card rv" style="--d:.2s"><p class="n">03 · prove</p><h3>Diff, replay, export</h3><p>Compare runs with the why, rebuild bytes from the store, or export the evidence bundle.</p>
-        <pre class="inner"><span class="c"># 3. prove — replay, then export evidence</span>
+        <pre class="inner"><span class="c"># 3. prove: replay, then verify</span>
 <span class="p">$</span> readproof replay run-a
-<span class="ok">  Replay verified: SHA256 match for 1/1
-  entries.</span>
-<span class="p">$</span> readproof evidence verify bundle.json
-<span class="ok">  evidence verified: 1 entry, merkle root
-  a9b73469f1a6…</span></pre></div>
+<span class="ok">  Replay verified: SHA256 match
+    for 1/1 entries.</span>
+<span class="p">$</span> readproof evidence verify \
+    bundle.json
+<span class="ok">  evidence verified: 1 entry,
+    merkle root a9b73469f1a6…</span></pre></div>
     </div>
   </div>
 </section>
@@ -405,28 +440,34 @@
       <li><svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg><b>Open models via Ollama</b> support agent example, no API key</li>
     </ul>
     <div class="codes">
-      <pre class="code rv"><span class="t">Claude Code, one line</span><span class="body"><span class="c"># register the MCP server against a local store</span>
+      <pre class="code rv"><span class="t">Claude Code, one line</span><span class="body"><span class="c"># point Claude Code at a local store</span>
 <span class="p">$</span> claude mcp add readproof -- \
-      /abs/path/readproof mcp \
-      --data-dir ~/.readproof
+    /abs/path/readproof mcp \
+    --data-dir ~/.readproof
 
-<span class="c"># then, in the session: "Read
-#   readproof://demo/policies/refunds@prod
-#   and tell me the refund window."</span></span></pre>
-      <pre class="code rv" style="--d:.1s"><span class="t">TypeScript, record a turn</span><span class="body"><span class="c">// mount = resolve + append to the manifest</span>
-<span class="k">const</span> run = readproof.run({ id: <span class="s">`turn-${id}`</span> });
+<span class="c"># then ask, in the session:
+#   "Read readproof://demo/policies/
+#    refunds@prod and tell me the
+#    refund window."</span></span></pre>
+      <pre class="code rv" style="--d:.1s"><span class="t">TypeScript, record a turn</span><span class="body"><span class="c">// one agent turn = one Readproof run</span>
+<span class="k">const</span> run = readproof.run({ id });
+
+<span class="c">// mount = resolve + record, in order</span>
 <span class="k">await</span> run.mount(
-  <span class="s">"readproof://acme/policies/refunds@prod"</span>);
+  <span class="s">"readproof://acme/policies/"</span> +
+  <span class="s">"refunds@prod"</span>);
 
-<span class="c">// commit freezes the run; keep the id</span>
-<span class="k">const</span> { manifest_id } = <span class="k">await</span> run.commit();</span></pre>
-      <pre class="code rv" style="--d:.2s"><span class="t">DeepSeek Harness, one line</span><span class="body"><span class="c"># install the native bundle into the web profile</span>
+<span class="c">// commit freezes it; keep the id</span>
+<span class="k">const</span> { manifest_id } =
+  <span class="k">await</span> run.commit();</span></pre>
+      <pre class="code rv" style="--d:.2s"><span class="t">DeepSeek Harness, one line</span><span class="body"><span class="c"># install the native DSH bundle</span>
+<span class="p">$</span> cd integrations/deepseek-harness
 <span class="p">$</span> dsh plugin --profile web add \
-      ./integrations/deepseek-harness/dsh-plugin-readproof
+    ./dsh-plugin-readproof
 <span class="p">$</span> dsh web
 
-<span class="c"># the same 13 readproof_* tools, plus one
-# Readproof run per DSH session</span></span></pre>
+<span class="c"># the same 13 readproof_* tools,
+# one Readproof run per session</span></span></pre>
     </div>
     <p class="rv" style="margin-top:24px"><a href="docs/#mcp">MCP setup</a> · <a href="docs/#sdk">SDK</a> · <a href="docs/#langgraph">LangGraph</a> · <a href="docs/#dsh">DeepSeek Harness</a> · <a href="docs/#support-agent">Support agent example</a> · <a href="docs/#otel">Observability</a> · <a href="docs/#server">HTTP API</a></p>
   </div>
@@ -478,17 +519,127 @@
       <li><a href="docs/">Docs</a></li><li><a href="docs/#cli">CLI</a></li><li><a href="docs/#server">HTTP API</a></li><li><a href="docs/#sdk">SDK</a></li><li><a href="docs/#mcp">MCP</a></li><li><a href="docs/#evidence">Evidence</a></li><li><a href="docs/#dsh">DeepSeek Harness</a></li><li><a href="examples/support-agent/">Support agent example</a></li><li><a href="docs/#faq">Roadmap</a></li><li><a href="https://github.com/fbzz/readproof">GitHub</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#terms">Terms</a></li>
     </ul>
   </div>
+  <div class="wrap machine">
+    <h2>For machines</h2>
+    <p>Reading this with an agent? These are written for you.</p>
+    <ul>
+      <li><a href="llms.txt"><code>llms.txt</code></a> <span>the index: what Readproof is, and where everything lives</span></li>
+      <li><a href="llms-full.txt"><code>llms-full.txt</code></a> <span>the whole product in one plain-text fetch</span></li>
+      <li><a href="sitemap.xml"><code>sitemap.xml</code></a> <span>every page on this site</span></li>
+      <li><a href="robots.txt"><code>robots.txt</code></a> <span>crawling is welcome, AI crawlers included</span></li>
+      <li><a href="docs/">docs</a> <span>the same material as HTML, for people</span></li>
+      <li><a href="https://github.com/fbzz/readproof">GitHub</a> <span>source, issues, releases · Apache-2.0</span></li>
+    </ul>
+  </div>
 </footer>
 
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
- {"@type":"Question","name":"Is Readproof a vector database or a RAG tool?","acceptedAnswer":{"@type":"Answer","text":"No. Readproof is about the source documents and what a run actually received. Keep retrieving however you do; mount what you retrieved so the run is reproducible."}},
- {"@type":"Question","name":"Does it replace my tracing or observability tool?","acceptedAnswer":{"@type":"Answer","text":"No, it complements it. Traces key on spans; Readproof keys on source identity and adds freshness policy, input diffs between runs, and byte exact replay. The run's Merkle root appears in both the trace and the evidence bundle."}},
- {"@type":"Question","name":"Do I need to run a server?","acceptedAnswer":{"@type":"Answer","text":"No. Embedded mode keeps everything in a local .readproof directory. readproofd with Postgres and S3 is optional for teams."}},
- {"@type":"Question","name":"Which sources are supported?","acceptedAnswer":{"@type":"Answer","text":"Filesystem, GitHub, and HTTP in v0.3; more adapters are on the roadmap."}},
- {"@type":"Question","name":"What does the evidence bundle prove?","acceptedAnswer":{"@type":"Answer","text":"That specific bytes, by hash, were delivered for a run in a given order under recorded resource definitions, and that the store can reproduce them. It does not prove the model used them."}},
- {"@type":"Question","name":"Does it work with Claude Code, Cursor, and DeepSeek Harness?","acceptedAnswer":{"@type":"Answer","text":"Yes: the readproof mcp stdio server exposes resources and 13 tools to Claude Code and Cursor, and a native DeepSeek Harness plugin bundle registers the same tools and records one run per session."}}
-]}
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://fbzz.github.io/readproof/#software",
+      "name": "Readproof",
+      "alternateName": "readproof",
+      "url": "https://fbzz.github.io/readproof/",
+      "description": "Readproof gives every document an AI agent reads a stable identity, a freshness policy, and a content addressed snapshot, and records each run as a manifest that can be diffed, replayed byte for byte without touching the live source, and exported as a verifiable evidence bundle.",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Command Line Tool",
+      "operatingSystem": "macOS, Linux, Windows",
+      "softwareVersion": "0.3.1",
+      "programmingLanguage": "Go",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "codeRepository": "https://github.com/fbzz/readproof",
+      "downloadUrl": "https://github.com/fbzz/readproof/releases",
+      "softwareHelp": "https://fbzz.github.io/readproof/docs/",
+      "image": "https://fbzz.github.io/readproof/og.png",
+      "featureList": [
+        "Stable readproof:// identity for every document an agent reads",
+        "Freshness policies: require_fresh, allow_stale with a max age, or pin a snapshot by tag",
+        "Content addressed SHA256 snapshots with source revision and observation time",
+        "Per run manifests recording exactly what was delivered, in order",
+        "Provenance aware diff between two runs",
+        "Byte for byte replay from the store, with no network and no source",
+        "in-toto evidence bundles with a Merkle root over the run",
+        "MCP server with 13 tools for Claude Code, Claude Desktop and Cursor",
+        "OpenTelemetry spans with GenAI semantic convention attributes"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "author": { "@id": "https://fbzz.github.io/readproof/#org" },
+      "publisher": { "@id": "https://fbzz.github.io/readproof/#org" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://fbzz.github.io/readproof/#org",
+      "name": "Readproof",
+      "url": "https://fbzz.github.io/readproof/",
+      "logo": "https://fbzz.github.io/readproof/og.png",
+      "sameAs": ["https://github.com/fbzz/readproof"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://fbzz.github.io/readproof/#website",
+      "name": "Readproof",
+      "url": "https://fbzz.github.io/readproof/",
+      "description": "Documentation and examples for Readproof, the lockfile and replay primitive for what AI agents read.",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://fbzz.github.io/readproof/#org" }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://fbzz.github.io/readproof/#faq",
+      "isPartOf": { "@id": "https://fbzz.github.io/readproof/#website" },
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Readproof a vector database or a RAG tool?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Readproof is about the source documents and what a run actually received. Keep retrieving however you do; mount what you retrieved so the run is reproducible. Derived chunk materializations are on the roadmap, and v0.3 delivers raw bytes only." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it replace my tracing or observability tool?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No, it complements it. Traces key on spans; Readproof keys on source identity and adds a freshness policy, input diffs between runs, and byte exact replay. The run's Merkle root appears in both the trace and the evidence bundle, so the two join on one field." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to run a server?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Embedded mode keeps everything in a local .readproof directory with SQLite and blobs. readproofd with Postgres and an S3 compatible store is there when a team, a service, or the MCP server should share one history." }
+        },
+        {
+          "@type": "Question",
+          "name": "Which sources are supported?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Filesystem, GitHub (a path at a branch or ref, where the commit SHA becomes the source revision), and HTTP (any URL, with headers that may reference environment variables). S3, Confluence or Notion, and generic git are on the roadmap." }
+        },
+        {
+          "@type": "Question",
+          "name": "How are credentials handled?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Tokens are read from the readproof or readproofd process environment at fetch time and never stored. Sensitive header values are masked in every API response, in readproof inspect, and in evidence bundles. readproofd can require a single API key." }
+        },
+        {
+          "@type": "Question",
+          "name": "What does the evidence bundle prove, and what does it not?",
+          "acceptedAnswer": { "@type": "Answer", "text": "It proves these bytes, by hash and optionally embedded, were delivered for this run in this order under these resource definitions, and that the store can still reproduce them. It does not prove the model used them or that the source was authoritative. Bundles are not signed yet." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work with Claude Code, Cursor, and DeepSeek Harness?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. readproof mcp is a stdio MCP server: registered documents become readable readproof:// resources with provenance in _meta, and resolve, runs, diff, replay, tags and evidence export are 13 tools. For DeepSeek Harness there is a native plugin bundle registering the same 13 tools, plus a zero-code MCP overlay." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the license?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Apache-2.0 — see LICENSE and NOTICE in the repository. The project was renamed from Ctx to Readproof in v0.3.1; the name is final." }
+        }
+      ]
+    }
+  ]
+}
 </script>
 <script>
 (function () {

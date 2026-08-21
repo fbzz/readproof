@@ -3,9 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Readproof Support Agent</title>
-<meta name="description" content="The complete guide to examples/support-agent: a customer support agent answering tickets from Readproof governed policies with an open model on Ollama — architecture, every file, every command, the real transcript, tests, environment, and how to extend it.">
+<title>Support agent you can replay — Readproof example</title>
+<meta name="description" content="A support agent on an open Ollama model, one Readproof run per ticket. The refund policy changes mid-story: diff names the revision, replay proves the bytes.">
+<!-- remove at public launch -->
 <meta name="robots" content="noindex">
+<link rel="canonical" href="https://fbzz.github.io/readproof/examples/support-agent/">
+<link rel="alternate" type="text/plain" href="/readproof/llms.txt" title="llms.txt — Readproof for language models">
+<meta property="og:site_name" content="Readproof">
+<meta property="og:title" content="Support agent you can replay — Readproof example">
+<meta property="og:description" content="Every ticket is one Readproof run. The refund policy changes from 30 to 14 days, diff names the revision, replay returns the bytes the first answer was based on, and the Go CLI verifies the evidence.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://fbzz.github.io/readproof/examples/support-agent/">
+<meta property="og:image" content="https://fbzz.github.io/readproof/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Readproof wordmark over a terminal showing a verified byte-for-byte replay.">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Support agent you can replay — Readproof example">
+<meta name="twitter:description" content="Every ticket is one Readproof run. The refund policy changes, diff names the revision, replay returns the original bytes, and the Go CLI verifies the evidence bundle.">
+<meta name="twitter:image" content="https://fbzz.github.io/readproof/og.png">
+<meta name="twitter:image:alt" content="Readproof wordmark over a terminal showing a verified byte-for-byte replay.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Erp%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,11 +102,11 @@
 
   /* Terminal / code */
   pre { margin: 0; }
-  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
+  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
   /* the label gets its own row on the left, clear of the copy button */
-  .code[data-lang] { padding-top: 40px; }
-  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 12px; left: 16px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .code .copy { position: absolute; top: 8px; right: 8px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
+  .code[data-lang] { padding-top: 48px; }
+  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 20px; left: 24px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .code .copy { position: absolute; top: 12px; right: 12px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
   .code .copy:hover { color: var(--accent); border-color: var(--accent); background: transparent; }
   .term .p { color: var(--accent); font-weight: 600; }
   .term .cy { color: var(--ink); }
@@ -107,8 +125,8 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
   .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; transition: all .7s var(--ease); }
   .card:hover { background: var(--raised); transform: translateY(-2px); }
-  .card h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
-  .card h4 code { font-size: 14px; }
+  .card h3 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  .card h3 code { font-size: 14px; }
   .card p { font-size: 14px; line-height: 20px; color: var(--ink-2); margin: 0 0 8px; }
   .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); margin: 16px 0 24px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 20px; }
@@ -130,7 +148,7 @@
   ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 16px; padding: 24px 0; margin: 0; }
   ol.steps > li + li { border-top: 1px solid var(--rule); }
   ol.steps > li::before { content: counter(s, decimal-leading-zero); font-family: var(--mono); font-weight: 600; font-size: 18px; line-height: 28px; color: var(--accent); }
-  ol.steps h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  ol.steps h3 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
   ol.steps p { max-width: 70ch; }
   ol.steps .code, ol.steps .term { margin: 8px 0 8px; }
 
@@ -142,6 +160,8 @@
   .foot { border-top: 1px solid var(--rule); padding-top: 24px; font-size: 14px; line-height: 20px; color: var(--muted); }
   kbd { font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 6px; padding: 0 .35em; background: var(--surface); }
 
+  /* available to screen readers, invisible on screen: keeps the heading outline nested */
+  .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
   .skip { position: fixed; left: 16px; top: -64px; z-index: 60; background: var(--accent); color: var(--accent-contrast); padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: top .7s var(--ease); }
   .skip:focus { top: 16px; }
 </style>
@@ -149,12 +169,11 @@
   /* guide-only additions, same tokens as the docs page */
   .card .tag { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
   .card .tag.amber { color: var(--amber); } .card .tag.cyan { color: var(--ink-2); }
-  .card h4 code { font-size: 14px; }
+  .card h3 code { font-size: 14px; }
   .tree { white-space: pre; }
   .term .bad { color: #F87171; }
   .muted { color: var(--muted); }
   nav.side .tag a { color: var(--accent); }
-  h4 { font-weight: 600; font-size: 16px; line-height: 24px; margin: 24px 0 8px; }
   /* transcripts wrap instead of hiding behind a horizontal scrollbar */
   .term { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 20px; }
   .code { font-size: 13px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -198,10 +217,11 @@
     <a class="btn primary" href="#run">Run it in one command</a>
     <a class="btn" href="#scenario">Read the real transcript</a>
   </div>
+  <h2 class="vh">What makes this example worth reading</h2>
   <div class="grid">
-    <div class="card"><span class="tag">no Claude, no API key</span><h4>Open model via Ollama</h4><p>Any chat model Ollama serves: local (<code>llama3.2</code>), remote, or Ollama Cloud (<code>deepseek-v4-flash:cloud</code> was used for the transcript). A deterministic fake model runs the whole story with no network at all.</p></div>
-    <div class="card"><span class="tag cyan">three freshness contracts</span><h4>Same agent, different rules per document</h4><p><code>refunds</code> is <code>require_fresh</code> (money), <code>shipping</code> is <code>allow_stale</code> for an hour, <code>tone</code> is mounted as <code>@prod</code> — edits are inert until promoted.</p></div>
-    <div class="card"><span class="tag amber">provable</span><h4>Replay, diff, evidence</h4><p>Every guarantee is a property of Readproof, not the model: swap the model or use the fake one and the replay still matches, the diff still names the revision, the Go verifier still passes.</p></div>
+    <div class="card"><span class="tag">no Claude, no API key</span><h3>Open model via Ollama</h3><p>Any chat model Ollama serves: local (<code>llama3.2</code>), remote, or Ollama Cloud (<code>deepseek-v4-flash:cloud</code> was used for the transcript). A deterministic fake model runs the whole story with no network at all.</p></div>
+    <div class="card"><span class="tag cyan">three freshness contracts</span><h3>Same agent, different rules per document</h3><p><code>refunds</code> is <code>require_fresh</code> (money), <code>shipping</code> is <code>allow_stale</code> for an hour, <code>tone</code> is mounted as <code>@prod</code> — edits are inert until promoted.</p></div>
+    <div class="card"><span class="tag amber">provable</span><h3>Replay, diff, evidence</h3><p>Every guarantee is a property of Readproof, not the model: swap the model or use the fake one and the replay still matches, the diff still names the revision, the Go verifier still passes.</p></div>
   </div>
 </section>
 
@@ -303,9 +323,9 @@ policy". Close with one concrete next step the customer can take.</code></pre>
   <p class="eyebrow">The core loop</p>
   <h2>How a ticket is answered</h2>
   <ol class="steps">
-    <li><div><h4>Open a run named after the ticket</h4><p><code>rp.run({ id: "ticket-1001" })</code>. Run ids are deterministic (<code>runIdFor</code>), so <code>show</code>/<code>replay</code> need no lookup table. The run starts lazily on the first mount.</p></div></li>
-    <li><div><h4>Mount the three policies, in a fixed order</h4><p><code>mountSpecs()</code> returns <code>["readproof://acme/policies/refunds", "readproof://acme/policies/shipping", "readproof://acme/policies/tone@prod"]</code>. Each <code>run.mount(spec)</code> resolves the resource under its policy (or by tag) <em>and</em> records it as the next ordered manifest entry. The agent keeps <code>{uri, ref?, snapshot_id, content_hash, content}</code> per mount. Order is a hard Readproof invariant — it is committed to the manifest and folded into the evidence Merkle root.</p></div></li>
-    <li><div><h4>Build the prompt from the mounted bytes and nothing else</h4><p>No second read of the files, no retrieval of its own. The system message is the tone document's text plus a fixed instruction; the user message is every document under a header naming its URI and the first 12 hex of its content hash, then the question.</p>
+    <li><div><h3>Open a run named after the ticket</h3><p><code>rp.run({ id: "ticket-1001" })</code>. Run ids are deterministic (<code>runIdFor</code>), so <code>show</code>/<code>replay</code> need no lookup table. The run starts lazily on the first mount.</p></div></li>
+    <li><div><h3>Mount the three policies, in a fixed order</h3><p><code>mountSpecs()</code> returns <code>["readproof://acme/policies/refunds", "readproof://acme/policies/shipping", "readproof://acme/policies/tone@prod"]</code>. Each <code>run.mount(spec)</code> resolves the resource under its policy (or by tag) <em>and</em> records it as the next ordered manifest entry. The agent keeps <code>{uri, ref?, snapshot_id, content_hash, content}</code> per mount. Order is a hard Readproof invariant — it is committed to the manifest and folded into the evidence Merkle root.</p></div></li>
+    <li><div><h3>Build the prompt from the mounted bytes and nothing else</h3><p>No second read of the files, no retrieval of its own. The system message is the tone document's text plus a fixed instruction; the user message is every document under a header naming its URI and the first 12 hex of its content hash, then the question.</p>
       <pre class="code" data-lang="prompt shape"><code><span class="c">system:</span>
 &lt;contents of tone.md&gt;
 
@@ -324,9 +344,9 @@ on. If the policies do not cover it, say so.
 
 I bought headphones 20 days ago. Can I still get a refund?</code></pre>
       <p>Those headers are what tie a sentence in the answer back to a line in the manifest, for about a dozen tokens.</p></div></li>
-    <li><div><h4>Stream the answer</h4><p><code>ollama.chat({ model, messages, stream: true })</code>; tokens go to stdout as they arrive so a slow local model still looks alive. <code>model: &lt;name&gt;</code> is printed once so the record can store which model actually answered.</p></div></li>
-    <li><div><h4>Commit the manifest</h4><p><code>run.commit()</code> freezes the three entries into an immutable manifest and returns its id.</p></div></li>
-    <li><div><h4>Append the ticket record</h4><p>One JSON line in <code>data/tickets.jsonl</code>: ticket, question, answer, model, <code>manifest_id</code>, <code>run_id</code>, the entries (without content), and a timestamp. The manifest id next to the answer is the whole trick: months later <code>replay 1001</code> reconstructs the exact policy text that produced that reply.</p></div></li>
+    <li><div><h3>Stream the answer</h3><p><code>ollama.chat({ model, messages, stream: true })</code>; tokens go to stdout as they arrive so a slow local model still looks alive. <code>model: &lt;name&gt;</code> is printed once so the record can store which model actually answered.</p></div></li>
+    <li><div><h3>Commit the manifest</h3><p><code>run.commit()</code> freezes the three entries into an immutable manifest and returns its id.</p></div></li>
+    <li><div><h3>Append the ticket record</h3><p>One JSON line in <code>data/tickets.jsonl</code>: ticket, question, answer, model, <code>manifest_id</code>, <code>run_id</code>, the entries (without content), and a timestamp. The manifest id next to the answer is the whole trick: months later <code>replay 1001</code> reconstructs the exact policy text that produced that reply.</p></div></li>
   </ol>
 </section>
 
@@ -334,10 +354,10 @@ I bought headphones 20 days ago. Can I still get a refund?</code></pre>
   <p class="eyebrow">src/model.ts</p>
   <h2>The model layer</h2>
   <div class="grid">
-    <div class="card"><h4>Model resolution</h4><p>1. <code>OLLAMA_MODEL</code> wins. 2. Otherwise <code>ollama.list()</code> and the first model whose name does not contain <code>embed</code> (Ollama happily lists <code>nomic-embed-text</code>, which cannot chat). 3. Otherwise: <code>set OLLAMA_MODEL or: ollama pull llama3.2</code>.</p></div>
-    <div class="card"><h4>Where Ollama is</h4><p>The <code>ollama</code> JS client (0.6.3) does <strong>not</strong> read <code>OLLAMA_HOST</code> — it hardcodes <code>127.0.0.1:11434</code>. The example reads the variable itself and passes <code>new Ollama({ host })</code>, so a remote or cloud-backed Ollama works with one env var.</p></div>
-    <div class="card"><h4>Errors</h4><p>Connection failures (<code>ECONNREFUSED</code>, <code>fetch failed</code>, DNS) become one line naming <code>OLLAMA_HOST</code> and asking whether <code>ollama serve</code> is running. Everything else is passed through.</p></div>
-    <div class="card"><h4>Fake mode</h4><p><code>SUPPORT_FAKE_MODEL=1</code> replaces the chat call with a deterministic function that answers from the refund policy's first sentence, byte-identical output for byte-identical input. The run, mounts, manifest, tag, diff, replay and evidence are the same code path — which is the point: the guarantees are Readproof's, not the model's. Tests and CI always run this way.</p></div>
+    <div class="card"><h3>Model resolution</h3><p>1. <code>OLLAMA_MODEL</code> wins. 2. Otherwise <code>ollama.list()</code> and the first model whose name does not contain <code>embed</code> (Ollama happily lists <code>nomic-embed-text</code>, which cannot chat). 3. Otherwise: <code>set OLLAMA_MODEL or: ollama pull llama3.2</code>.</p></div>
+    <div class="card"><h3>Where Ollama is</h3><p>The <code>ollama</code> JS client (0.6.3) does <strong>not</strong> read <code>OLLAMA_HOST</code> — it hardcodes <code>127.0.0.1:11434</code>. The example reads the variable itself and passes <code>new Ollama({ host })</code>, so a remote or cloud-backed Ollama works with one env var.</p></div>
+    <div class="card"><h3>Errors</h3><p>Connection failures (<code>ECONNREFUSED</code>, <code>fetch failed</code>, DNS) become one line naming <code>OLLAMA_HOST</code> and asking whether <code>ollama serve</code> is running. Everything else is passed through.</p></div>
+    <div class="card"><h3>Fake mode</h3><p><code>SUPPORT_FAKE_MODEL=1</code> replaces the chat call with a deterministic function that answers from the refund policy's first sentence, byte-identical output for byte-identical input. The run, mounts, manifest, tag, diff, replay and evidence are the same code path — which is the point: the guarantees are Readproof's, not the model's. Tests and CI always run this way.</p></div>
   </div>
   <pre class="code" data-lang="fake answer"><code>Products can be refunded within 30 days of delivery.
 (per readproof://acme/policies/refunds, sha256:72be2c034713)
@@ -390,7 +410,7 @@ npm run agent -- replay 1001</code></pre>
   <h2>The scenario, step by step</h2>
   <p>Everything below is real output from <code>OLLAMA_MODEL=deepseek-v4-flash:cloud bash scripts/scenario.sh</code> on 2026‑08‑21, ids and hashes trimmed. The two answers are the model's own words.</p>
   <ol class="steps">
-    <li><div><h4>setup — put the policies under Readproof</h4>
+    <li><div><h3>setup — put the policies under Readproof</h3>
       <pre class="term" aria-label="Output of the setup command: three policies registered and the tone policy tagged prod"><span class="c"># register the three policies and pin the house style as @prod</span>
 <span class="p">$</span> npm run agent -- setup
 <span class="m">  readproofd http://localhost:18090 ok
@@ -404,7 +424,7 @@ npm run agent -- replay 1001</code></pre>
 
 <span class="m">  3 policies governed by Readproof, 3 registered just now.</span></pre>
       <p>Idempotent: run it twice and it registers nothing and moves no tag. If a URI is already registered against a different path, it warns with both paths.</p></div></li>
-    <li><div><h4>ask 1001 — while the policy says 30 days</h4>
+    <li><div><h3>ask 1001 — while the policy says 30 days</h3>
       <pre class="term" aria-label="Output of ask 1001: the answer, the committed manifest id, and the three ordered entries"><span class="c"># one ticket = one run: mount three policies, answer, commit</span>
 <span class="p">$</span> npm run agent -- ask 1001 \
     "I bought headphones 20 days ago. Can I still get a refund?"
@@ -424,13 +444,13 @@ npm run agent -- replay 1001</code></pre>
   0    …/acme/policies/refunds      snap_01M0HW194M…  sha256:72be2c034713
   1    …/acme/policies/shipping     snap_01M0HW194S…  sha256:e8178eaf5ca5
   2    …/acme/policies/tone@prod    snap_01M0HW18V0…  sha256:c04b1f6dbc3c</span></pre></div></li>
-    <li><div><h4>Somebody edits the refund policy</h4>
+    <li><div><h3>Somebody edits the refund policy</h3>
       <pre class="term" aria-label="Editing the refund policy file from 30 days to 14 days"><span class="c"># 30 days → 14 days, straight on the file</span>
 <span class="p">$</span> sed 's/within 30 days/within 14 days/' \
       context/policies/refunds.md &gt; refunds.new
 <span class="p">$</span> mv refunds.new context/policies/refunds.md</pre>
       <p>Nobody told the agent. Nothing was redeployed.</p></div></li>
-    <li><div><h4>ask 1002 — same question, different answer</h4>
+    <li><div><h3>ask 1002 — same question, different answer</h3>
       <pre class="term" aria-label="Output of ask 1002: the same question now answered from the 14 day policy, with a new refunds snapshot"><span class="c"># same question, nothing redeployed — require_fresh re-verified</span>
 <span class="p">$</span> npm run agent -- ask 1002 \
     "I bought headphones 20 days ago. Can I still get a refund?"
@@ -448,7 +468,7 @@ npm run agent -- replay 1001</code></pre>
   1    …/acme/policies/shipping     snap_01M0HW194S…  sha256:e8178eaf5ca5
   2    …/acme/policies/tone@prod    snap_01M0HW18V0…  sha256:c04b1f6dbc3c</span></pre>
       <p>The decision flipped. <code>require_fresh</code> is why: Readproof re-verified the source and delivered a new snapshot. Shipping and tone are byte-identical to ticket 1001.</p></div></li>
-    <li><div><h4>diff 1001 1002 — which document moved, and why</h4>
+    <li><div><h3>diff 1001 1002 — which document moved, and why</h3>
       <pre class="term" aria-label="Output of diff 1001 1002: one changed policy with the source revision and observation time on each side"><span class="c"># which document moved between the two tickets, and why</span>
 <span class="p">$</span> npm run agent -- diff 1001 1002
 <span class="m">  --- ticket 1001 (manifest_01M0HW1AQ9…)
@@ -473,7 +493,7 @@ npm run agent -- replay 1001</code></pre>
 
   1 resource changed, 0 added, 0 removed, 2 unchanged</span></pre>
       <p>"Why did the agent answer differently?" — answered with a document name, a revision, and a timestamp.</p></div></li>
-    <li><div><h4>replay 1001 — the bytes the old answer was actually based on</h4>
+    <li><div><h3>replay 1001 — the bytes the old answer was actually based on</h3>
       <pre class="term" aria-label="Output of replay 1001: all three entries match their recorded hashes and the original 30 day text is reconstructed"><span class="c"># rebuild the bytes ticket 1001 was actually answered from</span>
 <span class="p">$</span> npm run agent -- replay 1001
 <span class="m">  ticket:   1001
@@ -498,7 +518,7 @@ npm run agent -- replay 1001</code></pre>
 <span class="m">  1 of them no longer matches the live source — the manifest, not
   the source, is what a replay reads.</span></pre>
       <p>The file on disk says 14 days. The replay says 30, because that is what the agent read at 09:57:04, reconstructed from Readproof's store with no fetch. Replay is strict: any hash mismatch exits non-zero.</p></div></li>
-    <li><div><h4>evidence 1001 — for someone who doesn't trust you</h4>
+    <li><div><h3>evidence 1001 — for someone who doesn't trust you</h3>
       <pre class="term" aria-label="Output of evidence 1001 and the Go CLI verifying the bundle it produced"><span class="c"># 1. the TypeScript SDK builds the bundle</span>
 <span class="p">$</span> npm run agent -- evidence 1001 \
     --out ticket-1001.bundle.json --with-content
@@ -517,7 +537,7 @@ npm run agent -- replay 1001</code></pre>
 <span class="ok">  evidence verified: 3 entries, merkle root e8d8572c0d97…,
   embedded content 3/3 re-hashed, replay match 3/3</span></pre>
       <p>The bundle is an in-toto Statement built by the TypeScript SDK's <code>buildEvidence()</code>; the Go verifier recomputes the Merkle root, re-hashes the embedded bytes, and cross-checks the store by replay. Flip one base64 character and it exits non-zero — the tests assert exactly that.</p></div></li>
-    <li><div><h4>Edit the house style — and watch nothing happen</h4>
+    <li><div><h3>Edit the house style — and watch nothing happen</h3>
       <pre class="term" aria-label="Output of ask 1003 after editing the house style: the tone entry is still the tagged snapshot"><span class="c"># 1. edit the house style document</span>
 <span class="p">$</span> printf '\nAlways open with a one-line summary of the decision.\n' \
     &gt;&gt; context/policies/tone.md
@@ -538,7 +558,7 @@ npm run agent -- replay 1001</code></pre>
   1    …/acme/policies/shipping     snap_01M0HW194S…  sha256:e8178eaf5ca5</span>
 <span class="pin">  2    …/acme/policies/tone@prod    snap_01M0HW18V0…  sha256:c04b1f6dbc3c</span></pre>
       <p>The tone entry is <code>snap_01M0HW18V0…</code> — the same snapshot ticket 1001 used, three edits ago. A tag delivers exactly the snapshot it points at: no fetch, policy not consulted. Editing the file is not deploying it.</p></div></li>
-    <li><div><h4>Deploying it is: promote</h4>
+    <li><div><h3>Deploying it is: promote</h3>
       <pre class="term" aria-label="Output of promote tone and history tone: the prod tag moves to the newest snapshot"><span class="c"># 1. move the prod tag to the resource's current snapshot</span>
 <span class="p">$</span> npm run agent -- promote tone
 <span class="pin">  readproof://acme/policies/tone@prod -&gt; snap_01M0HW6DMN…</span>
@@ -690,15 +710,141 @@ npm run agent -- replay 1001</code></pre>
   <p class="eyebrow">Next</p>
   <h2>Extend it</h2>
   <div class="grid">
-    <div class="card"><h4>Add a policy</h4><p>Append an entry to <code>POLICY_RESOURCES</code> in <code>src/config.ts</code> (uri, name, file, policy, optional <code>mountRef</code>) and drop the file in <code>context/policies/</code>. <code>setup</code> registers it; <code>mountSpecs()</code> mounts it in order; the manifest, diff, replay, and evidence pick it up unchanged.</p></div>
-    <div class="card"><h4>Govern a GitHub or HTTP document</h4><p>Swap <code>policySource()</code> to <code>{ kind: "github", github: { owner, repo, path, ref } }</code> or <code>{ kind: "http", http: { url, headers } }</code>; the source revision becomes the commit SHA or ETag, and <code>diff</code> names it. Then a containerized <code>readproofd</code> works too.</p></div>
-    <div class="card"><h4>Swap the model</h4><p><code>OLLAMA_MODEL=…</code> for any Ollama model; for another provider replace <code>answer()</code> in <code>src/model.ts</code> — keep the rule that the prompt is built only from <code>entries</code>.</p></div>
-    <div class="card"><h4>Let an agent harness do the mounting</h4><p>The same tools exist over MCP (<code>readproof mcp</code>) for Claude Code, Cursor, or DeepSeek Harness, and as a LangGraph node in <code>examples/langgraph-ts</code> — the manifest id lands in the checkpoint instead of a JSONL line.</p></div>
+    <div class="card"><h3>Add a policy</h3><p>Append an entry to <code>POLICY_RESOURCES</code> in <code>src/config.ts</code> (uri, name, file, policy, optional <code>mountRef</code>) and drop the file in <code>context/policies/</code>. <code>setup</code> registers it; <code>mountSpecs()</code> mounts it in order; the manifest, diff, replay, and evidence pick it up unchanged.</p></div>
+    <div class="card"><h3>Govern a GitHub or HTTP document</h3><p>Swap <code>policySource()</code> to <code>{ kind: "github", github: { owner, repo, path, ref } }</code> or <code>{ kind: "http", http: { url, headers } }</code>; the source revision becomes the commit SHA or ETag, and <code>diff</code> names it. Then a containerized <code>readproofd</code> works too.</p></div>
+    <div class="card"><h3>Swap the model</h3><p><code>OLLAMA_MODEL=…</code> for any Ollama model; for another provider replace <code>answer()</code> in <code>src/model.ts</code> — keep the rule that the prompt is built only from <code>entries</code>.</p></div>
+    <div class="card"><h3>Let an agent harness do the mounting</h3><p>The same tools exist over MCP (<code>readproof mcp</code>) for Claude Code, Cursor, or DeepSeek Harness, and as a LangGraph node in <code>examples/langgraph-ts</code> — the manifest id lands in the checkpoint instead of a JSONL line.</p></div>
   </div>
   <p class="foot">Page: <code>examples/support-agent/guide.html</code> · code: <code>examples/support-agent/</code> · Readproof 0.3.1 · output captured 2026‑08‑21.</p>
 </section>
 </main>
 </div>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fbzz.github.io/readproof/examples/support-agent/#article",
+      "headline": "A support agent you can replay, diff, and prove",
+      "name": "Readproof support agent example",
+      "description": "A complete customer support agent that answers tickets from three Readproof governed policy documents using an open model on Ollama: architecture, every file and command, the real transcript, the tests, and how to extend it.",
+      "url": "https://fbzz.github.io/readproof/examples/support-agent/",
+      "inLanguage": "en",
+      "dateModified": "2026-08-21",
+      "image": "https://fbzz.github.io/readproof/og.png",
+      "proficiencyLevel": "Intermediate",
+      "dependencies": "Go 1.26 or later, Node 18 or later, and Ollama with a chat model (optional: a deterministic fake model runs the whole story offline)",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Readproof",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "softwareVersion": "0.3.1",
+        "url": "https://fbzz.github.io/readproof/",
+        "codeRepository": "https://github.com/fbzz/readproof",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Readproof",
+        "url": "https://fbzz.github.io/readproof/",
+        "sameAs": ["https://github.com/fbzz/readproof"]
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Readproof",
+        "url": "https://fbzz.github.io/readproof/",
+        "sameAs": ["https://github.com/fbzz/readproof"]
+      }
+    },
+    {
+      "@type": "HowTo",
+      "@id": "https://fbzz.github.io/readproof/examples/support-agent/#howto",
+      "name": "Run the Readproof support agent scenario",
+      "description": "Register three policy documents with Readproof, answer a ticket, change the refund policy underneath the agent, and then diff, replay, and verify what the first answer was actually based on.",
+      "totalTime": "PT10M",
+      "supply": [
+        { "@type": "HowToSupply", "name": "The readproof repository, cloned locally" },
+        { "@type": "HowToSupply", "name": "Three policy documents: refunds.md, shipping.md, tone.md" }
+      ],
+      "tool": [
+        { "@type": "HowToTool", "name": "Go 1.26 or later" },
+        { "@type": "HowToTool", "name": "Node 18 or later" },
+        { "@type": "HowToTool", "name": "Ollama with a chat model, or SUPPORT_FAKE_MODEL=1" }
+      ],
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Put the policies under Readproof",
+          "text": "Run npm run agent -- setup. It checks readproofd, registers the three policies with their freshness policies (refunds require_fresh, shipping allow_stale for one hour, tone require_fresh), and tags the tone snapshot as prod. It is idempotent.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#scenario"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Answer a ticket while the policy says 30 days",
+          "text": "Run npm run agent -- ask 1001 with the customer question. The agent opens one run, mounts the three policies in a fixed order, prompts the model with exactly those bytes, commits the manifest, and stores the manifest id next to the answer.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#ticket"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Change the refund policy underneath the agent",
+          "text": "Edit context/policies/refunds.md from 30 days to 14 days. Nothing is redeployed and nobody tells the agent.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#scenario"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "Ask the same question again and watch the decision flip",
+          "text": "Run npm run agent -- ask 1002 with the same question. Because refunds is require_fresh, Readproof re-verifies the source and delivers a new snapshot, so the answer now refuses the refund. Shipping and tone are byte-identical to ticket 1001.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#scenario"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 5,
+          "name": "Diff the two tickets to see which document moved",
+          "text": "Run npm run agent -- diff 1001 1002. One resource changed: the why line names the source revision on each side and when each was observed, followed by the unified diff.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#scenario"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 6,
+          "name": "Replay the first ticket to recover the original bytes",
+          "text": "Run npm run agent -- replay 1001. Every entry is reconstructed from the content addressed store and hashed again; the refunds entry still reads 30 days and is flagged as CHANGED against the live source.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#scenario"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 7,
+          "name": "Export evidence and verify it with the Go CLI",
+          "text": "Run npm run agent -- evidence 1001 --with-content to build an in-toto Statement with the TypeScript SDK, then readproof evidence verify to recompute the Merkle root, re-hash the embedded bytes, and cross-check the store by replay.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#scenario"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 8,
+          "name": "Promote the house style to deploy an edit",
+          "text": "Editing tone.md changes nothing, because the agent mounts it as tone@prod. Run npm run agent -- promote tone to move the tag; the previous snapshot stays available for rollback.",
+          "url": "https://fbzz.github.io/readproof/examples/support-agent/#scenario"
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://fbzz.github.io/readproof/examples/support-agent/#breadcrumbs",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Readproof", "item": "https://fbzz.github.io/readproof/" },
+        { "@type": "ListItem", "position": 2, "name": "Examples", "item": "https://fbzz.github.io/readproof/examples/support-agent/" },
+        { "@type": "ListItem", "position": 3, "name": "Support agent", "item": "https://fbzz.github.io/readproof/examples/support-agent/" }
+      ]
+    }
+  ]
+}
+</script>
 <script>
   (function () {
     if (!navigator.clipboard) return;
