@@ -1,0 +1,58 @@
+# Zero-code path: reach Ctx through its own MCP server instead of the
+# TypeScript plugin.
+#
+#   go build -o /usr/local/bin/ctx ./cmd/ctx       # from the Ctx repository
+#   dsh web --patch "$PWD/integrations/deepseek-harness/ctx-mcp.cordis.yml"
+#
+# `@deepseek-ai/dsh-mcp-client` starts `ctx mcp` on stdio, discovers its
+# tools, and registers them as `mcp__ctx__ctx_resolve`, `mcp__ctx__ctx_run_mount`,
+# and so on — every tool from docs/mcp.md, under that prefix. Ctx's MCP
+# resources (`resources/list` / `resources/read`) are NOT bridged: DSH's MCP
+# client bridges tools only, so `mcp__ctx__ctx_resolve` is how a model reads
+# a document over this path.
+#
+# The stdio bridge scrubs ambient variables whose names look like
+# credentials before launching the child, so anything the server needs must
+# be named explicitly under `env` (see the --server variant below).
+- insert:
+    - id: ctx-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ctx
+        transport: stdio
+        # Absolute paths only: the client chooses the working directory, so a
+        # relative --data-dir will not resolve to what you expect.
+        command: !!js >-
+          process.env.CTX_BIN?.trim() || 'ctx'
+        args:
+          - mcp
+          - --data-dir
+          - !!js >-
+            process.env.CTX_HOME?.trim() || process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:os').homedir(), '.ctx')
+        cwd: !!js process.cwd()
+
+# Against a shared ctxd instead of a local data directory. Replace the row
+# above with this one — `serverName` must stay unique across live instances,
+# so the two cannot both be mounted as `ctx`.
+#
+# - insert:
+#     - id: ctx-mcp
+#       name: '@deepseek-ai/dsh-mcp-client'
+#       config:
+#         serverName: ctx
+#         transport: stdio
+#         command: !!js >-
+#           process.env.CTX_BIN?.trim() || 'ctx'
+#         args:
+#           - mcp
+#           - --server
+#           - !!js >-
+#             process.env.CTX_SERVER_URL?.trim() || 'https://ctxd.internal'
+#         cwd: !!js process.cwd()
+#         env:
+#           # Named explicitly because the bridge scrubs credential-looking
+#           # ambient variables — CTX_API_KEY would not otherwise survive.
+#           # A flag would work too, but a flag is visible in the process
+#           # list to every user on the machine.
+#           CTX_API_KEY: !!js >-
+#             process.env.CTX_API_KEY ?? ''

@@ -1,0 +1,25 @@
+# Local-development overlay: mount the plugin straight from this checkout,
+# with no install step and no profile.
+#
+#   cd integrations/deepseek-harness/dsh-plugin-ctx && npm install && npm run build
+#   cd - && npx @deepseek-ai/dsh web --patch ./integrations/deepseek-harness/ctx-plugin.cordis.yml
+#
+# The `name` is resolved relative to THIS file, and it names the built entry
+# point rather than the package directory so Node's ESM resolver can load it
+# without a package-level install. Run `npm run build` after every edit (or
+# `npx tsc -w`) — the loader hot-replaces the plugin when the file changes.
+- insert:
+    - id: ctx
+      name: './dsh-plugin-ctx/dist/src/index.js'
+      config:
+        # Start a private ctxd from this repository's `go build ./cmd/ctxd`
+        # output instead of expecting one to already be running. Set
+        # `spawn: false` and an `endpoint` to use a shared deployment.
+        spawn: true
+        ctxdPath: !!js >-
+          process.env.CTXD_BIN?.trim() || 'ctxd'
+        dataDir: !!js >-
+          process.env.CTX_HOME?.trim() || process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:os').homedir(), '.ctx')
+        addr: 127.0.0.1:18080
+        sessionRuns: true
+        toolPrefix: ctx_
