@@ -19,6 +19,63 @@ export interface ReadproofOptions {
   apiKey?: string;
   /** Override fetch (e.g. for testing). Defaults to the global fetch. */
   fetch?: typeof fetch;
+  /**
+   * Milliseconds before a request is aborted. Defaults to 30_000. A hung
+   * readproofd otherwise stalls the agent turn that is waiting on it for as
+   * long as the connection stays open — there is no default timeout in
+   * `fetch`. Pass 0 to wait indefinitely.
+   */
+  timeoutMs?: number;
+  /**
+   * Maximum response bytes accepted before parsing. Defaults to 16 MiB.
+   * Responses carry document content, so they are not tiny — but they are
+   * also buffered whole, and an endless one is a memory problem the caller
+   * never asked for.
+   */
+  maxResponseBytes?: number;
+}
+
+/** Default request timeout: long enough for a replay, short enough to fail. */
+export const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** Default cap on a single response body. */
+export const DEFAULT_MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+
+/**
+ * How much of a response body an error message may quote. The message reaches
+ * a model in the agent-tool paths built on this SDK, so an unbounded body
+ * would become unbounded prompt.
+ */
+const MAX_ERROR_BODY_CHARS = 512;
+
+function truncateForError(text: string): string {
+  if (text.length <= MAX_ERROR_BODY_CHARS) return text;
+  return `${text.slice(0, MAX_ERROR_BODY_CHARS)}… (${text.length} chars total, truncated)`;
+}
+
+/**
+ * Validate the endpoint at construction, where the mistake is.
+ *
+ * A relative path, a typo'd scheme, or a `file:`/`data:` URL otherwise fails
+ * later, once per call, as whatever the runtime's fetch happens to say. Only
+ * http and https are accepted: this client talks to readproofd over HTTP and
+ * nothing else.
+ */
+function normalizeEndpoint(endpoint: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new ReadproofError(
+      `readproof: invalid endpoint ${JSON.stringify(endpoint)}: expected an absolute URL such as "http://localhost:8080"`,
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new ReadproofError(
+      `readproof: invalid endpoint ${JSON.stringify(endpoint)}: scheme ${parsed.protocol} is not supported (want http or https)`,
+    );
+  }
+  return endpoint.replace(/\/+$/, "");
 }
 
 export interface RunOptions {
@@ -74,11 +131,15 @@ export class Readproof {
   private readonly endpoint: string;
   private readonly apiKey?: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
+  private readonly maxResponseBytes: number;
 
   constructor(options: ReadproofOptions) {
-    this.endpoint = options.endpoint.replace(/\/+$/, "");
+    this.endpoint = normalizeEndpoint(options.endpoint);
     this.apiKey = options.apiKey;
     this.fetchImpl = options.fetch ?? fetch;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
   }
 
   /**
@@ -185,29 +246,95 @@ export class Readproof {
       headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
-    const res = await this.fetchImpl(`${this.endpoint}${path}`, {
-      method,
-      headers: Object.keys(headers).length > 0 ? headers : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    // A timeout has to be a signal rather than a race, so the socket is
+    // actually released; without one, a readproofd that accepts a connection
+    // and then stalls holds this call for as long as it likes.
+    const controller = new AbortController();
+    const timer =
+      this.timeoutMs > 0 ? setTimeout(() => controller.abort(), this.timeoutMs) : undefined;
+
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.endpoint}${path}`, {
+        method,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (controller.signal.aborted) {
+        throw new ReadproofError(`readproof: request to ${path} timed out after ${this.timeoutMs}ms`);
+      }
+      throw err;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
 
     if (res.status === 204) {
       return undefined as T;
     }
 
-    const text = await res.text();
+    const text = await this.readCapped(res, path);
     let parsed: unknown;
     try {
       parsed = text.length > 0 ? JSON.parse(text) : undefined;
     } catch {
-      throw new ReadproofError(`readproof: invalid JSON response from ${path}: ${text}`, res.status);
+      throw new ReadproofError(
+        `readproof: invalid JSON response from ${path}: ${truncateForError(text)}`,
+        res.status,
+      );
     }
 
     if (!res.ok) {
       const message = isErrorResponse(parsed) ? parsed.error : `unexpected status ${res.status}`;
-      throw new ReadproofError(`readproofd: ${message}`, res.status);
+      throw new ReadproofError(`readproofd: ${truncateForError(message)}`, res.status);
     }
 
     return parsed as T;
+  }
+
+  /**
+   * Read a response body, refusing anything over the cap.
+   *
+   * Refusing rather than truncating: a truncated body is not valid JSON, and
+   * a caller that got a short read of a replay would be looking at fewer
+   * entries than the manifest holds. Content-Length is only a shortcut —
+   * chunked responses do not carry one, so the stream is counted as it
+   * arrives and aborted the moment it goes over.
+   */
+  private async readCapped(res: Response, path: string): Promise<string> {
+    const tooBig = (bytes: number): ReadproofError =>
+      new ReadproofError(
+        `readproof: response from ${path} exceeds the ${this.maxResponseBytes}-byte limit (${bytes} bytes)`,
+        res.status,
+      );
+
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > this.maxResponseBytes) {
+      throw tooBig(declared);
+    }
+    if (res.body === null) {
+      return res.text();
+    }
+
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value === undefined) continue;
+        total += value.byteLength;
+        if (total > this.maxResponseBytes) {
+          await reader.cancel();
+          throw tooBig(total);
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return Buffer.concat(chunks).toString("utf-8");
   }
 }
