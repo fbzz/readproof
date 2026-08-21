@@ -269,3 +269,64 @@ A broken Quickstart on launch day costs more than a late post does.
 Show HN first, morning US Eastern; then the thread, once the HN post exists
 so it can link to it. Then stay at the keyboard — the first two hours of
 comments are the entire reason for posting.
+
+---
+
+## LinkedIn — press release (full post / article)
+
+**Readproof: open-source infrastructure that records exactly what your AI agent read — and lets you prove it later**
+
+Today I'm releasing Readproof, an open-source tool for teams who run AI agents and have to answer one question they can't answer today: *what, exactly, did the agent read when it made that decision?*
+
+Agents are only as reliable as the documents they read. Policies change, price tables get edited, runbooks drift — and most production failures I've seen weren't the model being wrong, they were the model being right about a document nobody knew had changed. Tracing tools record strings; they can't hand you the bytes back once the source moved. Readproof fixes that at the infrastructure level.
+
+**What it does**
+- Gives every document an agent reads a stable identity (`readproof://acme/policies/refunds`), a freshness policy (`require_fresh`, `allow_stale`, or a pinned `@prod` tag), and a content-addressed snapshot.
+- Records every run as an immutable manifest: the ordered list of what was delivered, by hash.
+- Lets you **diff** two runs and see which document moved, from which revision, observed when; **replay** a run byte for byte without touching the live source — after the file changed, the key expired, or the repo was archived; and **export evidence**: an in-toto statement with a Merkle root that anyone can verify, offline.
+
+One line sums up the contract: `SHA256(original) == SHA256(replay)` — and it's a test in the repository, not a slogan.
+
+**What ships in v0.3.1**
+- A single Go binary (`readproof`) and an optional server (`readproofd`) — embedded SQLite, or Postgres + S3 for teams. Apache-2.0.
+- An MCP server (13 tools) for Claude Code, Claude Desktop and Cursor; a native DeepSeek Harness plugin; a TypeScript SDK (`@readproof/sdk`); OpenTelemetry tracing with GenAI attributes — the same Merkle root shows up in your trace and in the evidence bundle.
+- A complete example: a support agent on an open model via Ollama that answers tickets, then proves what it read when the policy changes underneath it.
+
+**Who it's for**
+Agent platform teams, and anyone in finance, insurance, health or the public sector who is being asked "what data did the agent consider?" — EU AI Act Article 12 logging applies to high-risk systems since August 2026, and SOC 2 reviewers are asking the same thing. Readproof is the record. (Not legal advice.)
+
+**What it is not**
+Not a vector database, not an observability tool, not a prompt registry, not a memory system. It sits underneath those and makes their inputs reproducible. Install-time lockfiles pin an agent's static configuration; Readproof pins the runtime documents, per run.
+
+**Honest caveats**
+It's pre-1.0. The HTTP source adapter doesn't yet restrict target hosts (fine while only operators register sources), evidence bundles are verified but not yet signed, and APIs may change. Both are on the roadmap.
+
+**Try it in sixty seconds**
+`go install github.com/fbzz/readproof/cmd/readproof@latest` (or `brew install fbzz/tap/readproof`), register a document, run, replay. Docs, the live example and the code: https://fbzz.github.io/readproof/ · https://github.com/fbzz/readproof
+
+I'd love feedback on the model — manifests, tags, evidence — more than on features. If you run agents against documents that matter, tell me what you'd need to trust this in production.
+
+— Fabio Zuin
+
+#AIAgents #LLM #Reproducibility #Provenance #OpenSource #Golang #TypeScript #MCP #OpenTelemetry #AIGovernance #EUAIAct
+
+---
+
+## LinkedIn — short post (feed version, ~1,100 characters)
+
+I just open-sourced **Readproof** — the lockfile and replay primitive for what AI agents read.
+
+Every document an agent reads gets a stable identity, a freshness policy and a content-addressed snapshot. Every run becomes a manifest you can **diff** (which document moved, from which revision, when), **replay byte for byte without touching the live source**, and **export as evidence** an auditor can verify offline.
+
+Why: most agent failures I've seen weren't the model being wrong — they were the model being right about a document nobody knew had changed. Tracing keeps strings; Readproof keeps the bytes.
+
+v0.3.1 ships a single Go binary, an MCP server for Claude Code/Cursor, a DeepSeek Harness plugin, a TypeScript SDK, OpenTelemetry, and a full example on an open model via Ollama. Apache-2.0.
+
+Honest caveats: pre-1.0, no SSRF allow-list on the HTTP adapter yet, bundles verified but not signed yet.
+
+Try it: `go install github.com/fbzz/readproof/cmd/readproof@latest`
+Docs: https://fbzz.github.io/readproof/ · Code: https://github.com/fbzz/readproof
+
+Feedback on the model — manifests, tags, evidence — is what I'm after.
+
+#AIAgents #OpenSource #Provenance #MCP #LLM
