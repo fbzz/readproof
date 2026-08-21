@@ -153,7 +153,10 @@
   .muted { color: var(--muted); }
   nav.side .tag a { color: var(--accent); }
   h4 { font-weight: 600; font-size: 16px; line-height: 24px; margin: 24px 0 8px; }
-  .code[data-lang]::before { right: 16px; }
+  /* transcripts wrap instead of hiding behind a horizontal scrollbar */
+  .term { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 20px; }
+  .code { font-size: 13px; line-height: 20px; }
+  .code[data-lang]::before { right: 60px; }
 </style>
 </head>
 <body>
