@@ -101,7 +101,7 @@ Deep dive: [`docs/architecture.md`](docs/architecture.md).
 go install github.com/fbzz/readproof/cmd/readproof@latest
 go install github.com/fbzz/readproof/cmd/readproofd@latest   # only if you run the server
 
-# macOS / Linux — the formula installs both binaries
+# macOS — the cask installs both binaries
 brew install fbzz/tap/readproof
 ```
 
@@ -167,6 +167,7 @@ export READPROOF_SERVER_URL=http://localhost:8080              # every command n
 | [`docs/architecture.md`](docs/architecture.md) | Data model, internals, CLI and HTTP reference, SDK, observability, tests |
 | [`docs/api.md`](docs/api.md) · [`docs/mcp.md`](docs/mcp.md) · [`docs/evidence.md`](docs/evidence.md) · [`docs/observability.md`](docs/observability.md) | Endpoint schemas · MCP setup · bundle format and what it proves · spans, attributes, metrics |
 | [`docs/roadmap.md`](docs/roadmap.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`docs/rename.md`](docs/rename.md) | What's next · what changed · the Ctx → Readproof mapping |
+| [`docs/releasing.md`](docs/releasing.md) · [`docs/launch.md`](docs/launch.md) | How a release is cut (tag → binaries, cask, npm) · launch copy and checklist |
 
 ## Status
 
