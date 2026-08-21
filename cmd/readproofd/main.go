@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -65,9 +66,15 @@ func main() {
 	opts.HeaderEnvAllowlist = headerEnvAllow
 	opts.DenyPrivateHTTPTargets = !*allowPrivateSources
 
+	if *postgresDSN != "" {
+		log.Printf("readproofd: connecting to postgres %s", describeDSN(*postgresDSN))
+	}
 	a, backend, err := openApp(ctx, *dataDir, *postgresDSN, *s3Endpoint, *s3AccessKey, *s3SecretKey, *s3Bucket, *s3UseSSL, opts)
 	if err != nil {
-		log.Fatalf("readproofd: %v", err)
+		// pgx quotes the connection string in some failures, and the
+		// connection string carries the password — so the startup error is
+		// scrubbed before it reaches the log.
+		log.Fatalf("readproofd: %s", scrubDSN(err.Error(), *postgresDSN))
 	}
 	defer a.Close()
 
@@ -143,6 +150,43 @@ func logSourcePolicy(opts app.Options) {
 	} else {
 		log.Printf("readproofd: http sources MAY reach private addresses (--allow-private-sources)")
 	}
+}
+
+// describeDSN renders a Postgres DSN as the only parts worth logging: the host
+// it points at and the database name. Never the user, and never the password.
+func describeDSN(dsn string) string {
+	parsed, err := url.Parse(dsn)
+	if err != nil || parsed.Host == "" {
+		return "(dsn set; host not parseable)"
+	}
+	database := strings.TrimPrefix(parsed.Path, "/")
+	if database == "" {
+		database = "(default)"
+	}
+	return fmt.Sprintf("host=%s db=%s", parsed.Host, database)
+}
+
+// scrubDSN removes a DSN, and the password inside it, from text. Both are
+// removed because a driver may quote the whole connection string in one error
+// and only the credential in another, and the encoded form in the URL differs
+// from the decoded one a driver may print.
+func scrubDSN(text, dsn string) string {
+	if dsn == "" {
+		return text
+	}
+	text = strings.ReplaceAll(text, dsn, "[REDACTED DSN]")
+	parsed, err := url.Parse(dsn)
+	if err != nil || parsed.User == nil {
+		return text
+	}
+	password, ok := parsed.User.Password()
+	if !ok || password == "" {
+		return text
+	}
+	for _, form := range []string{password, url.QueryEscape(password), url.PathEscape(password)} {
+		text = strings.ReplaceAll(text, form, "[REDACTED]")
+	}
+	return text
 }
 
 // stringList is a repeatable string flag: each --flag occurrence appends.
