@@ -206,18 +206,66 @@ Set the repo description to the short one-liner above, set the website to
 
 ### 2. Drop `noindex` from the site
 
-Three pages carry `<meta name="robots" content="noindex">` and should lose
-it:
+Three pages carry `<meta name="robots" content="noindex">`, each preceded by
+a `<!-- remove at public launch -->` comment. Remove both lines from all
+three:
 
 - `site/index.html`
 - `site/docs/index.html`
 - `site/examples/support-agent/index.html`
 
-**`site/404.html` keeps its `noindex`** — a 404 has no business in an index.
+The exact edit, from the repository root:
+
+```bash
+sed -i '' \
+  -e '/<!-- remove at public launch -->/d' \
+  -e '/<meta name="robots" content="noindex">/d' \
+  site/index.html site/docs/index.html site/examples/support-agent/index.html
+
+# four HTML files carry it before, one after
+grep -rln 'content="noindex"' --include='*.html' site/
+# -> site/404.html
+```
+
+**`site/404.html` keeps its `noindex`** — a 404 has no business in an index,
+and its comment says so, so a blanket `grep`-and-delete will not catch it by
+accident.
+
+Nothing else about the site's SEO needs touching: `site/robots.txt`,
+`site/sitemap.xml`, `site/llms.txt`, `site/llms-full.txt` and `site/og.png`
+are already written for the public version, and every page already carries
+its canonical URL, Open Graph and Twitter cards, and JSON-LD.
 
 Push to `main`; `.github/workflows/pages.yml` redeploys on any change under
 `site/`. Confirm <https://fbzz.github.io/readproof/> renders before moving
 on.
+
+### 2b. What only works once the repository is public
+
+These were written ahead of time and 404 until step 1 lands. Re-check them
+after the repository flips:
+
+- Every `https://raw.githubusercontent.com/fbzz/readproof/main/…` link in
+  `site/llms.txt` and `site/llms-full.txt`.
+- The `codeRepository` and `sameAs` values in the JSON-LD on all three pages.
+- `git clone https://github.com/fbzz/readproof.git` in the docs quickstart.
+
+Two more things that are not in this repository:
+
+- **`robots.txt` only counts at the origin root.** Crawlers read
+  `https://fbzz.github.io/robots.txt`, not `/readproof/robots.txt`. Copy the
+  AI-crawler allowances from `site/robots.txt` into the `fbzz.github.io`
+  user-pages repository, or accept the default (crawl everything).
+- **Submit the sitemap by hand** at
+  <https://fbzz.github.io/readproof/sitemap.xml> in Google Search Console and
+  Bing Webmaster Tools, since the `Sitemap:` line in a path-scoped
+  `robots.txt` is not read.
+
+`site/llms-full.txt` is a concatenation of `README.md`, `docs/architecture.md`,
+`docs/evidence.md`, `docs/mcp.md`, `skills/readproof/SKILL.md` and
+`docs/roadmap.md` with HTML stripped and relative links made absolute. It has
+no build step — regenerate it by hand whenever those files change materially,
+and keep it under 60 KB so it stays one comfortable fetch.
 
 ### 3. Tag the release
 
