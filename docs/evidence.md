@@ -101,7 +101,7 @@ want to recompute a root without pulling in the whole bundle.
     "manifest_id": "manifest_01M0…SRZ",
     "manifest_created_at": "2026-08-20T22:42:21.761651Z",
     "generated_at": "2026-08-20T22:42:27.389302Z",
-    "exporter": { "name": "readproof", "version": "0.3.0" },
+    "exporter": { "name": "readproof", "version": "0.3.1" },
     "merkle": {
       "algorithm": "sha256",
       "leaf": "sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)",

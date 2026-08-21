@@ -6,6 +6,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.3.1] - 2026-08-21
+
 Release plumbing for the first public release. No runtime behaviour, wire
 shape, or storage layout changes.
 
