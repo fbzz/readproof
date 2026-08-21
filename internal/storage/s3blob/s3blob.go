@@ -64,13 +64,15 @@ func New(ctx context.Context, cfg Config) (*Store, error) {
 }
 
 // hexPart validates and strips the "sha256:" prefix from a content hash,
-// mirroring blob.LocalStore's hexPart helper.
+// mirroring blob.LocalStore's hexPart helper. The digest becomes the object
+// key verbatim, so it is checked to be exactly 64 lowercase hex characters
+// rather than merely prefixed.
 func hexPart(contentHash string) (string, error) {
-	const prefix = "sha256:"
-	if len(contentHash) <= len(prefix) || contentHash[:len(prefix)] != prefix {
-		return "", fmt.Errorf("s3blob: invalid content hash %q", contentHash)
+	hexHash, err := ids.ParseContentHash(contentHash)
+	if err != nil {
+		return "", fmt.Errorf("s3blob: %w", err)
 	}
-	return contentHash[len(prefix):], nil
+	return hexHash, nil
 }
 
 // Put uploads content, deduplicating by content hash: if an object with the

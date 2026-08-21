@@ -54,10 +54,18 @@ func main() {
 	defer a.Close()
 
 	handler := api.NewHandler(a, api.Options{APIKey: *apiKey})
+	// Every timeout is set, not just the header one: a peer that opens a
+	// connection and then dribbles (or never reads the response) otherwise
+	// pins a goroutine and a file descriptor indefinitely. WriteTimeout is
+	// the loosest because a replay or diff response is assembled from the
+	// blob store and can legitimately take a few seconds.
 	server := &http.Server{
 		Addr:              *addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      120 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	authNote := "no API key set — unauthenticated"

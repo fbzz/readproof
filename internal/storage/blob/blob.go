@@ -27,12 +27,16 @@ func NewLocalStore(root string) *LocalStore {
 	return &LocalStore{root: root}
 }
 
+// hexPart validates contentHash and returns its hex digest. Validation is
+// strict — exactly 64 lowercase hex characters — because the digest is
+// joined onto the store root to form a filesystem path, and a hash like
+// "sha256:../../../etc/passwd" would otherwise read outside it.
 func hexPart(contentHash string) (string, error) {
-	const prefix = "sha256:"
-	if len(contentHash) <= len(prefix) || contentHash[:len(prefix)] != prefix {
-		return "", fmt.Errorf("blob: invalid content hash %q", contentHash)
+	hexHash, err := ids.ParseContentHash(contentHash)
+	if err != nil {
+		return "", fmt.Errorf("blob: %w", err)
 	}
-	return contentHash[len(prefix):], nil
+	return hexHash, nil
 }
 
 func (s *LocalStore) path(hexHash string) string {
