@@ -4,7 +4,7 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { defineTool, type JsonValue, type ToolRunContext } from '@deepseek-ai/dsh-tools'
 
 import type { Config } from './config.js'
-import { encodeContent } from './content.js'
+import { embeddedContentBytes, encodeContent } from './content.js'
 import { commitRun, mountRun, startRun } from './readproof-client.js'
 import {
   diffOut,
@@ -445,7 +445,7 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
         with_content: {
           type: 'boolean',
           description:
-            'embed each entry’s bytes in the bundle as base64; off by default so the bundle proves what was read without disclosing it',
+            'embed each entry’s bytes in the bundle as base64; off by default so the bundle proves what was read without disclosing it. Refused when the summed content exceeds the inline limit — use the readproof CLI for a full bundle',
         },
       },
       output: {
@@ -455,10 +455,33 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
       async execute(args) {
         return attempt(`export evidence for ${args.target}`, async () => {
           await sessions?.commitIfOwned(args.target)
+          const withContent = args.with_content === true
           // buildEvidence is composed purely from public SDK calls, so this
           // bundle is byte-comparable with the one `readproof evidence export`
           // writes for the same target — same merkle root above all.
-          return toJson(await buildEvidence(client, args.target, { withContent: args.with_content === true }))
+          const bundle = await buildEvidence(client, args.target, { withContent })
+          // Every other content path here caps what reaches the model at
+          // maxInlineBytes; with_content embeds the full base64 of every
+          // entry, so without this check the documented cap simply did not
+          // apply to the largest payload the plugin can produce.
+          //
+          // Refused, not truncated: a bundle is evidence because its merkle
+          // root covers exactly the entries it shows. Cutting the content
+          // would leave a document that still claims that root while no
+          // longer carrying what it attests to — worse than no bundle. The
+          // full export belongs outside a model's context anyway.
+          if (withContent) {
+            const total = embeddedContentBytes(bundle.predicate.entries)
+            if (total > config.maxInlineBytes) {
+              throw new Error(
+                `with_content would embed ${total} bytes, over this deployment's ${config.maxInlineBytes}-byte inline limit. ` +
+                  `A truncated bundle is not evidence — its merkle root would no longer cover what it shows — so it is refused rather than cut. ` +
+                  `Export the full bundle outside this conversation with: readproof evidence export ${args.target} --with-content --out bundle.json. ` +
+                  `Without with_content the same bundle still proves what was read (hashes, provenance, replay), and readproof_replay returns individual entries.`,
+              )
+            }
+          }
+          return toJson(bundle)
         })
       },
     }),

@@ -203,7 +203,7 @@ What you gain: no build step, and one fewer process model to reason about.
 | `sessionRuns` | boolean | `true` | Mirror every model-driven `readproof_resolve` into a run keyed by the DSH session. |
 | `toolPrefix` | string | `readproof_` | Prefix for every registered tool name. |
 | `systemPromptSection` | boolean | `true` | Contribute a short "how to use Readproof" section to the system prompt (order 150, the tool-guidance band). |
-| `maxInlineBytes` | number | `1048576` | Cap on inline content per result. Past it text is cut on a UTF-8 boundary and a marker naming the content hash is appended. |
+| `maxInlineBytes` | number | `1048576` | Cap on inline content per result. Past it text is cut on a UTF-8 boundary and a marker naming the content hash is appended — except for `evidence_export --with-content`, which is **refused** past the cap rather than truncated (a bundle whose content was cut no longer matches its own merkle root; use the CLI for a full one). |
 
 With `spawn: true` the plugin does not finish loading until the child
 answers `/healthz`, and the plugin's disposer kills it — an HMR reload or an

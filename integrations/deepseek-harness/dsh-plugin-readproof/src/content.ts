@@ -56,6 +56,24 @@ export function encodeContent(content: string, contentHash: string, maxBytes: nu
   }
 }
 
+/**
+ * Total document bytes a bundle's entries embed under `content_b64`.
+ *
+ * `bytes` is the snapshot's own recorded size, so the total is expressed in
+ * the same unit as `maxInlineBytes`; the base64 length is the fallback for an
+ * entry that somehow carries content without a size.
+ */
+export function embeddedContentBytes(
+  entries: ReadonlyArray<{ bytes?: number; content_b64?: string }>,
+): number {
+  let total = 0
+  for (const entry of entries) {
+    if (entry.content_b64 === undefined) continue
+    total += typeof entry.bytes === 'number' ? entry.bytes : Buffer.byteLength(entry.content_b64, 'base64')
+  }
+  return total
+}
+
 /** Drop a trailing partial UTF-8 sequence. At most 3 bytes are ever dropped. */
 function trimToRuneBoundary(buf: Buffer): Buffer {
   // Walk back over continuation bytes (10xxxxxx) to the lead byte of the
