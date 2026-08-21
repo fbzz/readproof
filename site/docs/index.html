@@ -53,8 +53,8 @@
   nav.side .tag { font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--muted); margin: 0 0 24px; }
   nav.side ol { list-style: none; margin: 0; padding: 0; }
   nav.side li { margin: 0; }
-  nav.side a { display: block; padding: 4px 12px 4px 0; color: var(--ink-2); text-decoration: none; font-size: 14px; line-height: 20px; border-left: 2px solid transparent; padding-left: 12px; margin-left: -0px; }
-  nav.side a:hover { color: var(--ink); border-left-color: var(--rule); }
+  nav.side ol a { display: block; padding: 4px 12px 4px 0; color: var(--ink-2); text-decoration: none; font-size: 14px; line-height: 20px; border-left: 2px solid transparent; padding-left: 12px; margin-left: -0px; }
+  nav.side ol a:hover { color: var(--ink); border-left-color: var(--rule); }
   nav.side .group { font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px 12px; }
   main { max-width: 860px; min-width: 0; padding-top: 24px; }
   @media (max-width: 900px) {
@@ -63,11 +63,14 @@
     nav.side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); padding: 16px 0 8px; }
     nav.side ol { display: flex; flex-wrap: wrap; gap: 2px 4px; }
     nav.side .group { display: none; }
-    nav.side a { border-left: 0; padding: 4px 8px; border-radius: 9999px; background: var(--surface-2); font-size: 14px; line-height: 20px; margin: 2px 0; }
+    nav.side ol a { border-left: 0; padding: 4px 8px; border-radius: 9999px; background: var(--surface-2); font-size: 14px; line-height: 20px; margin: 2px 0; }
   }
 
   /* Type */
-  h1 { font-family: var(--display); font-weight: 700; font-size: 60px; line-height: 1; letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
+  :root { --h1a: #000000; --h1b: #666666; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --h1a: #FFFFFF; --h1b: #9B9B9B; } }
+  :root[data-theme="dark"] { --h1a: #FFFFFF; --h1b: #9B9B9B; }
+  h1 { background: linear-gradient(90deg, var(--h1a), var(--h1b)); -webkit-background-clip: text; background-clip: text; color: transparent; font-family: var(--display); font-weight: 700; font-size: 60px; line-height: 1; letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
   h2 { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 36px; letter-spacing: -.015em; margin: 0 0 8px; text-wrap: balance; scroll-margin-top: 24px; }
   h3 { font-family: var(--display); font-weight: 600; font-size: 20px; line-height: 28px; margin: 24px 0 8px; letter-spacing: -.01em; scroll-margin-top: 24px; }
   section { margin: 64px 0; padding-top: 8px; }
