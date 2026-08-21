@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/fbzz/readproof/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/fbzz/readproof/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="https://github.com/fbzz/readproof/actions/workflows/dsh-plugin.yml"><img alt="DSH plugin" src="https://github.com/fbzz/readproof/actions/workflows/dsh-plugin.yml/badge.svg?branch=main"></a>
-  <a href="CHANGELOG.md"><img alt="release" src="https://img.shields.io/badge/release-v0.3.1-4ADE80?style=flat-square&labelColor=000000"></a>
+  <a href="CHANGELOG.md"><img alt="release" src="https://img.shields.io/badge/release-v0.3.2-4ADE80?style=flat-square&labelColor=000000"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-4ADE80?style=flat-square&labelColor=000000"></a>
   <img alt="go" src="https://img.shields.io/badge/go-1.26%2B-4ADE80?style=flat-square&labelColor=000000">
   <a href="https://fbzz.github.io/readproof/"><img alt="website" src="https://img.shields.io/badge/site-fbzz.github.io%2Freadproof-4ADE80?style=flat-square&labelColor=000000"></a>
@@ -245,9 +245,9 @@ Full version with setup, policies, and the do-nots: [`skills/readproof/SKILL.md`
 
 ## Status
 
-**v0.3.1** — Apache-2.0. Stable core (identity, policies, tags, snapshots, manifests, provenance-aware diff, strict replay, evidence), MCP server, OpenTelemetry, TypeScript SDK, SQLite or Postgres + S3, DeepSeek Harness plugin, three runnable examples. CI runs Go build/vet/test, the SDK and example suites, the DSH plugin suite, and a Docker Compose integration job that replays the demo against the built `readproofd` image on every push.
+**v0.3.2** — Apache-2.0. Stable core (identity, policies, tags, snapshots, manifests, provenance-aware diff, strict replay, evidence), MCP server, OpenTelemetry, TypeScript SDK, SQLite or Postgres + S3, DeepSeek Harness plugin, three runnable examples. CI runs Go build/vet/test, the SDK and example suites, the DSH plugin suite, and a Docker Compose integration job that replays the demo against the built `readproofd` image on every push.
 
-Next, in order ([`docs/roadmap.md`](docs/roadmap.md)): public release and packages (binaries, npm), Python SDK, trace-context propagation over the HTTP API, MCP HTTP transport, a source policy file (allow-lists), signed and OCI-distributed evidence bundles, `tag promote`, more adapters.
+Next, in order ([`docs/roadmap.md`](docs/roadmap.md)): Python SDK, trace-context propagation over the HTTP API, MCP HTTP transport, a source policy file (allow-lists), signed and OCI-distributed evidence bundles, `tag promote`, more adapters.
 
 ## Security
 

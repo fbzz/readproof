@@ -6,6 +6,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-08-21
+
+Ships as `readproof`/`readproofd` 0.3.2, `@readproof/sdk` 0.3.2 and
+`dsh-plugin-readproof` 0.3.3. The repository is public as of this release;
+binaries are on GitHub Releases, `brew install fbzz/tap/readproof`, and
+`go install github.com/fbzz/readproof/cmd/readproof@latest`.
+
 ### Security
 
 Remediation of the August 2026 pre-launch audit
@@ -76,12 +83,18 @@ Also fixed:
   bundles are unsigned, so they are integrity-checked, and tamper-evident
   against the store rather than offline.
 
+### Added
+
+- `.github/dependabot.yml` — weekly grouped updates for the Go module, the
+  four npm workspaces and the SHA-pinned GitHub Actions.
+
 ### Fixed
 
 - `dsh-plugin-readproof` 0.3.2: the published manifest now depends on
   `@readproof/sdk@^0.3.1` (0.3.1 on npm carried a `file:` path because the
-  prepack rewrite does not reach the manifest `npm publish` sends). In-repo
-  development uses an npm `overrides` entry instead. 0.3.1 is deprecated.
+  prepack rewrite does not reach the manifest `npm publish` sends). The
+  repository keeps the `file:` dependency; the publish workflow rewrites it
+  to the SDK's semver just before `npm publish`. 0.3.1 is deprecated.
 
 ## [0.3.1] - 2026-08-21
 

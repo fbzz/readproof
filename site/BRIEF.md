@@ -110,7 +110,7 @@ Cursor; what is the license (Apache-2.0).
 
 ## 4. Honest proof and real numbers
 
-- Version **0.3.1**, licensed Apache-2.0, pre public launch.
+- Version **0.3.2**, licensed Apache-2.0, public since 2026-08-21 (github.com/fbzz/readproof).
 - **3 source adapters** (filesystem, GitHub, HTTP); **2 storage backends**
   (embedded SQLite + local blobs, or Postgres + S3 compatible store);
   **13 MCP tools**; TypeScript SDK with zero runtime dependencies;

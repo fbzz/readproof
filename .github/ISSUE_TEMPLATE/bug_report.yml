@@ -43,7 +43,7 @@ body:
     attributes:
       label: Version
       description: Output of `readproof version` (and `readproofd --version` if a server is involved).
-      placeholder: readproof 0.3.1+a1b2c3d
+      placeholder: readproof 0.3.2+a1b2c3d
     validations:
       required: true
 

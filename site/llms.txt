@@ -13,7 +13,7 @@ exported as an in-toto Statement whose subject digest is a Merkle root over the 
 
 It is not a vector database, a RAG tool, an observability tool, a prompt registry, or a
 memory system. Install-time lockfiles pin an agent's *static* configuration; Readproof
-pins the *runtime documents, per run*. Current version 0.3.1: 3 source adapters
+pins the *runtime documents, per run*. Current version 0.3.2: 3 source adapters
 (filesystem, GitHub, HTTP), 2 storage backends (embedded SQLite or Postgres + S3), 13 MCP
 tools, a zero-dependency TypeScript SDK (`@readproof/sdk`), a DeepSeek Harness plugin
 (`dsh-plugin-readproof`), and OpenTelemetry spans carrying GenAI attributes.
@@ -50,7 +50,7 @@ If you can only fetch one thing, fetch llms-full.txt: it is the whole product in
 ## Optional
 
 - [Repository](https://github.com/fbzz/readproof): source, issues, and releases. Apache-2.0.
-- [Changelog](https://raw.githubusercontent.com/fbzz/readproof/main/CHANGELOG.md): what changed in each version, including the Ctx to Readproof rename in 0.3.1.
+- [Changelog](https://raw.githubusercontent.com/fbzz/readproof/main/CHANGELOG.md): what changed in each version, including the Ctx to Readproof rename in 0.3.2.
 - [Security policy](https://raw.githubusercontent.com/fbzz/readproof/main/SECURITY.md): the current security baseline and how to report a vulnerability.
 - [Contributing](https://raw.githubusercontent.com/fbzz/readproof/main/CONTRIBUTING.md): how to build, test, and propose changes.
 - [Sitemap](https://fbzz.github.io/readproof/sitemap.xml): the three pages of this site.

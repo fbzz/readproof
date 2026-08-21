@@ -304,7 +304,7 @@ published semver range **before** `npm publish`, because npm sends the
 manifest it read from `package.json`, not the one inside the tarball.
 Consumers therefore see `"@readproof/sdk": "^<version>"`.
 
-#   "@readproof/sdk": "^0.3.1",
+#   "@readproof/sdk": "^0.3.2",
 ```
 
 If a pack is interrupted between the two hooks, `package.json.prepack-backup`

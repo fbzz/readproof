@@ -3,7 +3,7 @@
   "name": "io.github.fbzz/readproof",
   "title": "Readproof",
   "description": "Governed, versioned, replayable document reads for agents: snapshots, manifests, diff, evidence.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "websiteUrl": "https://fbzz.github.io/readproof/",
   "repository": {
     "url": "https://github.com/fbzz/readproof",
@@ -13,11 +13,11 @@
   "_meta": {
     "io.modelcontextprotocol.registry/publisher-provided": {
       "tool": "manual",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "transport": "stdio",
       "command": "readproof mcp",
       "install": {
-        "go": "go install github.com/fbzz/readproof/cmd/readproof@v0.3.1",
+        "go": "go install github.com/fbzz/readproof/cmd/readproof@v0.3.2",
         "homebrew": "brew install fbzz/tap/readproof",
         "releases": "https://github.com/fbzz/readproof/releases"
       },

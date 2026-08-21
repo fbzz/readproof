@@ -171,7 +171,7 @@
 
 <div class="shell">
 <nav class="side" aria-label="Sections">
-  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.3.1</small></p>
+  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.3.2</small></p>
   <p class="tag">docs · <a href="../">home</a></p>
   <ol>
     <li><a href="#overview">Overview</a></li>
@@ -198,7 +198,7 @@
 
 <main>
 <section class="hero" id="overview">
-  <p class="eyebrow">documentation · readproof 0.3.1</p>
+  <p class="eyebrow">documentation · readproof 0.3.2</p>
   <h1>Give your agent's context a lockfile.</h1>
   <p class="lede">Readproof records <strong>exactly</strong> which bytes an agent read — every policy, document, or dataset, by content hash — so any run can be diffed against another, replayed byte for byte without touching the live source, and exported as evidence.</p>
   <p class="thesis">Models are probabilistic, but many context failures are infrastructural. Agent reliability is bounded by context reliability.</p>
@@ -208,7 +208,7 @@
     <a class="btn" href="#sdk">TypeScript SDK</a>
   </div>
 
-  <pre class="term" aria-label="Terminal session: the whole Readproof loop — register, record, pin, change the source, diff, replay, verify"><span class="c"># The whole loop. Real output from readproof 0.3.1; ids trimmed.</span>
+  <pre class="term" aria-label="Terminal session: the whole Readproof loop — register, record, pin, change the source, diff, replay, verify"><span class="c"># The whole loop. Real output from readproof 0.3.2; ids trimmed.</span>
 
 <span class="c"># 1. give the document an identity and a freshness rule</span>
 <span class="p">$</span> readproof resource add readproof://demo/policies/refunds \
@@ -359,7 +359,7 @@
 git clone https://github.com/fbzz/readproof.git &amp;&amp; cd readproof
 go build -o readproof ./cmd/readproof
 ./readproof version
-<span class="c"># -&gt; readproof 0.3.1</span>
+<span class="c"># -&gt; readproof 0.3.2</span>
 
 <span class="c"># 2. register a document: identity + source + freshness rule</span>
 ./readproof resource add readproof://demo/policies/refunds \
@@ -943,8 +943,8 @@ readproof.run.commit
   <h3>Is the store encrypted / multi tenant / signed?</h3>
   <p>v0.3 is a security <strong>baseline</strong>: no plaintext credentials at rest (env refs resolved at fetch time, redaction everywhere), optional single API key on <code>readproofd</code>, dev only Compose credentials clearly labeled, dependency scanning clean. Not enterprise IAM; bundles aren't signed yet. See the roadmap.</p>
   <h3>Status</h3>
-  <p><strong>v0.3.1</strong> — tags/<code>@ref</code>, provenance aware diff, strict replay, evidence bundles, MCP server, OTel GenAI attributes, LangGraph example, support agent example (Ollama), DeepSeek Harness plugin, TypeScript SDK, Postgres/S3 or embedded SQLite storage, CI incl. a Compose integration run. Licensed Apache-2.0; renamed from Ctx to Readproof in 0.3.1; repository public launch pending. Roadmap (in order): public repo; Python SDK; trace context propagation over the HTTP API; MCP HTTP transport; a policy file (allowed sources / SSRF allow list / content scanning); signed + OCI distributed evidence bundles; <code>tag promote</code>; more adapters (S3, Confluence/Notion, generic git); Temporal/Restate helpers; auth beyond one API key; operator UI.</p>
-  <p class="foot">Docs in the repo: <code>README.md</code> · <code>docs/api.md</code> · <code>docs/mcp.md</code> · <code>docs/evidence.md</code> · <code>docs/observability.md</code> · <code>docs/roadmap.md</code> · <code>examples/refund-agent</code> · <code>examples/langgraph-ts</code> · <code>examples/support-agent</code> · <code>integrations/deepseek-harness</code>. Every command output on this page was captured from <code>readproof</code> 0.3.1 on 2026-08-21; ULIDs and hashes are trimmed for width.</p>
+  <p><strong>v0.3.2</strong> — tags/<code>@ref</code>, provenance aware diff, strict replay, evidence bundles, MCP server, OTel GenAI attributes, LangGraph example, support agent example (Ollama), DeepSeek Harness plugin, TypeScript SDK, Postgres/S3 or embedded SQLite storage, CI incl. a Compose integration run. Licensed Apache-2.0; renamed from Ctx to Readproof in 0.3.2; repository public launch pending. Roadmap (in order): public repo; Python SDK; trace context propagation over the HTTP API; MCP HTTP transport; a policy file (allowed sources / SSRF allow list / content scanning); signed + OCI distributed evidence bundles; <code>tag promote</code>; more adapters (S3, Confluence/Notion, generic git); Temporal/Restate helpers; auth beyond one API key; operator UI.</p>
+  <p class="foot">Docs in the repo: <code>README.md</code> · <code>docs/api.md</code> · <code>docs/mcp.md</code> · <code>docs/evidence.md</code> · <code>docs/observability.md</code> · <code>docs/roadmap.md</code> · <code>examples/refund-agent</code> · <code>examples/langgraph-ts</code> · <code>examples/support-agent</code> · <code>integrations/deepseek-harness</code>. Every command output on this page was captured from <code>readproof</code> 0.3.2 on 2026-08-21; ULIDs and hashes are trimmed for width.</p>
 </section>
 </main>
 </div>
@@ -970,7 +970,7 @@ readproof.run.commit
         "name": "Readproof",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
-        "softwareVersion": "0.3.1",
+        "softwareVersion": "0.3.2",
         "url": "https://fbzz.github.io/readproof/",
         "codeRepository": "https://github.com/fbzz/readproof",
         "license": "https://www.apache.org/licenses/LICENSE-2.0",

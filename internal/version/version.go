@@ -9,7 +9,7 @@ package version
 
 // Version is the released version of this build. Bump it here, and only
 // here, at release time.
-const Version = "0.3.1"
+const Version = "0.3.2"
 
 // Commit is the short git SHA this binary was built from. It is empty for
 // an ordinary `go build`/`go test` and set at release time with:

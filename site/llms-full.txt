@@ -7,7 +7,7 @@
 > byte without touching the live source, and exported as a verifiable evidence
 > bundle.
 
-Version 0.3.1 · Apache-2.0 · CLI `readproof` · server `readproofd` · URI scheme `readproof://`
+Version 0.3.2 · Apache-2.0 · CLI `readproof` · server `readproofd` · URI scheme `readproof://`
 Repository: https://github.com/fbzz/readproof
 Website: https://fbzz.github.io/readproof/
 Documentation: https://fbzz.github.io/readproof/docs/
@@ -240,9 +240,9 @@ Full version with setup, policies, and the do-nots: [`skills/readproof/SKILL.md`
 
 ## Status
 
-**v0.3.1** — Apache-2.0. Stable core (identity, policies, tags, snapshots, manifests, provenance-aware diff, strict replay, evidence), MCP server, OpenTelemetry, TypeScript SDK, SQLite or Postgres + S3, DeepSeek Harness plugin, three runnable examples. CI runs Go build/vet/test, the SDK and example suites, the DSH plugin suite, and a Docker Compose integration job that replays the demo against the built `readproofd` image on every push.
+**v0.3.2** — Apache-2.0. Stable core (identity, policies, tags, snapshots, manifests, provenance-aware diff, strict replay, evidence), MCP server, OpenTelemetry, TypeScript SDK, SQLite or Postgres + S3, DeepSeek Harness plugin, three runnable examples. CI runs Go build/vet/test, the SDK and example suites, the DSH plugin suite, and a Docker Compose integration job that replays the demo against the built `readproofd` image on every push.
 
-Next, in order ([`docs/roadmap.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/roadmap.md)): public release and packages (binaries, npm), Python SDK, trace-context propagation over the HTTP API, MCP HTTP transport, a source policy file (allow-lists), signed and OCI-distributed evidence bundles, `tag promote`, more adapters.
+Next, in order ([`docs/roadmap.md`](https://raw.githubusercontent.com/fbzz/readproof/main/docs/roadmap.md)): Python SDK, trace-context propagation over the HTTP API, MCP HTTP transport, a source policy file (allow-lists), signed and OCI-distributed evidence bundles, `tag promote`, more adapters.
 
 ## Security
 
@@ -583,7 +583,7 @@ want to recompute a root without pulling in the whole bundle.
     "manifest_id": "manifest_01M0…SRZ",
     "manifest_created_at": "2026-08-20T22:42:21.761651Z",
     "generated_at": "2026-08-20T22:42:27.389302Z",
-    "exporter": { "name": "readproof", "version": "0.3.1" },
+    "exporter": { "name": "readproof", "version": "0.3.2" },
     "merkle": {
       "algorithm": "sha256",
       "leaf": "sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)",
