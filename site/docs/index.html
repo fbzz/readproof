@@ -1,0 +1,732 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ctx Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F3F5F8; --surface: #FFFFFF; --surface-2: #E9EDF3; --ink: #161B26; --ink-2: #3C4556; --muted: #5F6A7D;
+    --rule: #D6DCE6; --accent: #2447B2; --accent-ink: #1B3790; --accent-soft: #E3E9FA;
+    --pin: #B45309; --pin-soft: #FBEBD5; --ok: #1F7A4D; --ok-soft: #DDF1E6; --warn: #8A4B00; --warn-soft: #FBEFD9;
+    --code-bg: #0F1420; --code-ink: #E7ECF5; --code-muted: #8E9AB3; --code-accent: #9DB4FF; --code-ok: #7ED3A3; --code-pin: #F5B26B;
+    --term-bg: #0F1420;
+    --shadow: 0 1px 0 rgba(22,27,38,.04), 0 10px 30px -18px rgba(22,27,38,.25);
+    --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --sans: "Source Sans 3", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F131A; --surface: #151B25; --surface-2: #1B2230; --ink: #E6EAF1; --ink-2: #C0C8D6; --muted: #96A0B3;
+      --rule: #28303D; --accent: #7D96F2; --accent-ink: #A5B7F7; --accent-soft: #1C2640;
+      --pin: #F0A85A; --pin-soft: #3A2A14; --ok: #6FCF97; --ok-soft: #163526; --warn: #F2B56B; --warn-soft: #3A2A10;
+      --code-bg: #0B0F17; --code-ink: #E7ECF5; --code-muted: #8E9AB3; --code-accent: #9DB4FF; --code-ok: #7ED3A3; --code-pin: #F5B26B;
+      --term-bg: #0B0F17;
+      --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F131A; --surface: #151B25; --surface-2: #1B2230; --ink: #E6EAF1; --ink-2: #C0C8D6; --muted: #96A0B3;
+    --rule: #28303D; --accent: #7D96F2; --accent-ink: #A5B7F7; --accent-soft: #1C2640;
+    --pin: #F0A85A; --pin-soft: #3A2A14; --ok: #6FCF97; --ok-soft: #163526; --warn: #F2B56B; --warn-soft: #3A2A10;
+    --code-bg: #0B0F17; --code-ink: #E7ECF5; --code-muted: #8E9AB3; --code-accent: #9DB4FF; --code-ok: #7ED3A3; --code-pin: #F5B26B;
+    --term-bg: #0B0F17;
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
+  }
+
+  html { background: var(--bg); scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent-ink); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  code { font-family: var(--mono); font-size: .88em; background: var(--surface-2); padding: .1em .35em; border-radius: 4px; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  strong { font-weight: 600; }
+  p, li { text-wrap: pretty; }
+
+  /* Shell */
+  .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 40px; max-width: 1200px; margin: 0 auto; padding: 0 28px 96px; }
+  nav.side { position: sticky; top: 0; align-self: start; height: 100vh; box-sizing: border-box; overflow-y: auto; padding: 28px 0 40px; border-right: 1px solid var(--rule); }
+  nav.side .brand { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; }
+  nav.side .brand small { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--muted); }
+  nav.side .tag { font-family: var(--mono); font-size: 11px; color: var(--muted); margin: 0 0 22px; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side li { margin: 0; }
+  nav.side a { display: block; padding: 6px 12px 6px 0; color: var(--ink-2); text-decoration: none; font-size: 15px; border-left: 2px solid transparent; padding-left: 12px; margin-left: -1px; }
+  nav.side a:hover { color: var(--ink); border-left-color: var(--rule); }
+  nav.side .group { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px 12px; }
+  main { max-width: 860px; min-width: 0; padding-top: 28px; }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; gap: 0; padding: 0 18px 72px; }
+    nav.side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); padding: 18px 0 10px; }
+    nav.side ol { display: flex; flex-wrap: wrap; gap: 2px 6px; }
+    nav.side .group { display: none; }
+    nav.side a { border-left: 0; padding: 4px 8px; border-radius: 999px; background: var(--surface-2); font-size: 14px; margin: 2px 0; }
+  }
+
+  /* Type */
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(38px, 5.2vw, 60px); line-height: 1.02; letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 1.15; letter-spacing: -.015em; margin: 0 0 8px; text-wrap: balance; scroll-margin-top: 24px; }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 28px 0 8px; letter-spacing: -.01em; scroll-margin-top: 24px; }
+  section { margin: 64px 0; padding-top: 8px; }
+  .lede { font-size: 19px; color: var(--ink-2); margin: 0 0 18px; max-width: 66ch; }
+  p { margin: 0 0 14px; max-width: 70ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.25em; max-width: 70ch; }
+  li { margin: 0 0 6px; }
+  li::marker { color: var(--muted); }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+
+  /* Hero */
+  .hero { padding: 20px 0 8px; }
+  .hero .lede { font-size: 21px; }
+  .hero .thesis { font-family: var(--display); font-weight: 500; font-size: 19px; color: var(--ink-2); border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 18px 0 22px; max-width: 56ch; }
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 28px; }
+  .btn { display: inline-block; font-family: var(--display); font-weight: 600; font-size: 15px; padding: 10px 16px; border-radius: 8px; text-decoration: none; border: 1px solid var(--accent); color: var(--accent-ink); background: var(--surface); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn:hover { text-decoration: none; }
+
+  /* Terminal / code */
+  pre { margin: 0; }
+  .code, .term { position: relative; background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 18px 18px 16px; font-family: var(--mono); font-size: 13.5px; line-height: 1.55; overflow-x: auto; box-shadow: var(--shadow); margin: 14px 0 18px; }
+  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 0; right: 46px; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--code-muted); padding: 6px 0; }
+  .code .copy { position: absolute; top: 6px; right: 8px; font: 11px var(--mono); color: var(--code-muted); background: transparent; border: 1px solid rgba(255,255,255,.14); border-radius: 5px; padding: 3px 7px; cursor: pointer; }
+  .code .copy:hover { color: var(--code-ink); border-color: rgba(255,255,255,.35); }
+  .term .p { color: var(--code-accent); }
+  .term .m { color: var(--code-muted); }
+  .term .ok { color: var(--code-ok); }
+  .term .pin { color: var(--code-pin); }
+  .term .c { color: var(--code-muted); font-style: italic; }
+  .term .hl { color: #fff; }
+  .code .k { color: var(--code-accent); }
+  .code .s { color: var(--code-ok); }
+  .code .c { color: var(--code-muted); font-style: italic; }
+  .code .n { color: var(--code-pin); }
+
+  /* Cards, tables, callouts */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 16px 0 18px; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px 12px; box-shadow: var(--shadow); }
+  .card h4 { margin: 0 0 6px; font-family: var(--display); font-weight: 600; font-size: 16px; }
+  .card h4 code { font-size: .9em; }
+  .card p { font-size: 15px; color: var(--ink-2); margin: 0 0 6px; }
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); margin: 14px 0 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--surface-2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td code, th code { white-space: nowrap; }
+  .note, .warn { border-radius: 10px; padding: 14px 16px; margin: 16px 0; font-size: 15.5px; max-width: 72ch; }
+  .note { background: var(--accent-soft); border: 1px solid transparent; }
+  .warn { background: var(--warn-soft); border: 1px solid transparent; color: var(--ink); }
+  .note b, .warn b { font-weight: 600; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .05em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+  .chip.pin { background: var(--pin-soft); color: var(--pin); }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.acc { background: var(--accent-soft); color: var(--accent-ink); }
+
+  /* Steps */
+  ol.steps { list-style: none; padding: 0; counter-reset: s; max-width: none; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 12px; padding: 18px 0; border-top: 1px solid var(--rule); margin: 0; }
+  ol.steps > li::before { content: counter(s); font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1; color: var(--accent); padding-top: 2px; }
+  ol.steps h4 { margin: 0 0 6px; font-family: var(--display); font-weight: 600; font-size: 18px; }
+  ol.steps p { max-width: 70ch; }
+  ol.steps .code, ol.steps .term { margin: 10px 0 6px; }
+
+  /* Figure */
+  figure { margin: 20px 0 24px; }
+  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink); }
+  figcaption { font-size: 14.5px; color: var(--muted); margin-top: 10px; max-width: 72ch; }
+
+  .foot { border-top: 1px solid var(--rule); padding-top: 20px; font-size: 14px; color: var(--muted); }
+  kbd { font-family: var(--mono); font-size: .85em; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 .35em; background: var(--surface); }
+</style>
+
+<div class="shell">
+<nav class="side" aria-label="Sections">
+  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">Ctx</a> <small>v0.2.0</small></p>
+  <p class="tag">docs · <a href="../">home</a></p>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li class="group">Use it</li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#sources">Sources &amp; policies</a></li>
+    <li><a href="#runs">Runs, diff, replay</a></li>
+    <li><a href="#tags">Tags (<code>@prod</code>)</a></li>
+    <li><a href="#evidence">Evidence bundles</a></li>
+    <li class="group">Integrate</li>
+    <li><a href="#server">Server &amp; HTTP API</a></li>
+    <li><a href="#sdk">TypeScript SDK</a></li>
+    <li><a href="#mcp">MCP (Claude Code, Cursor…)</a></li>
+    <li><a href="#langgraph">LangGraph</a></li>
+    <li><a href="#otel">Observability</a></li>
+    <li class="group">Reference</li>
+    <li><a href="#cli">CLI cheat-sheet</a></li>
+    <li><a href="#faq">FAQ &amp; status</a></li>
+  </ol>
+</nav>
+
+<main>
+<section class="hero" id="overview">
+  <p class="eyebrow">Documentation · Ctx 0.2.0</p>
+  <h1>Give your agent's context a lockfile.</h1>
+  <p class="lede">Ctx records <em>exactly</em> which bytes an agent read — every policy, document, or dataset, by content hash — so any run can be diffed against another, replayed byte-for-byte without touching the live source, and exported as evidence.</p>
+  <p class="thesis">Models are probabilistic, but many context failures are infrastructural. Agent reliability is bounded by context reliability.</p>
+  <div class="cta">
+    <a class="btn primary" href="#install">Quickstart (embedded, no services)</a>
+    <a class="btn" href="#mcp">Use it from Claude Code via MCP</a>
+    <a class="btn" href="#sdk">TypeScript SDK</a>
+  </div>
+
+  <pre class="term"><span class="c"># The whole idea in six commands. Real output, hashes trimmed.</span>
+<span class="p">$</span> ctx resource add ctx://demo/policies/refunds --source-type filesystem --path policies/refunds.md --policy require_fresh
+<span class="p">$</span> ctx run --id run-a ctx://demo/policies/refunds
+<span class="m">Mounted ctx://demo/policies/refunds -> snapshot snap_01M0HRB5KJ… (position 0)</span>
+<span class="m">Committed manifest manifest_01M0HRB5KJ… for run run-a (1 entry)</span>
+<span class="p">$</span> ctx tag set ctx://demo/policies/refunds prod snap_01M0HRB5KJ…        <span class="c"># promote what run-a saw</span>
+<span class="p">$</span> printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md   <span class="c"># the source changes underneath</span>
+<span class="p">$</span> ctx run --id run-b ctx://demo/policies/refunds
+<span class="p">$</span> ctx diff run-a run-b
+<span class="m">~ ctx://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
+<span class="pin">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 08:52:32Z → 08:52:33Z</span>
+<span class="m">  -Products can be refunded within 30 days.</span>
+<span class="m">  +Products can be refunded within 14 days.</span>
+<span class="p">$</span> ctx replay run-a                                  <span class="c"># reads the store, never the file</span>
+<span class="hl">Products can be refunded within 30 days.</span>
+<span class="ok">Replay verified: SHA256 match for 1/1 entries.</span>
+<span class="p">$</span> ctx evidence export run-a --with-content --out bundle.json &amp;&amp; ctx evidence verify bundle.json
+<span class="ok">evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-hashed, replay match 1/1</span></pre>
+
+  <div class="grid">
+    <div class="card"><h4>What it is</h4><p>A small Go binary (<code>ctx</code>) plus an optional server (<code>ctxd</code>) that sits underneath your retrieval, prompting, and memory stack and answers one question forever: <em>which exact bytes went into this run?</em></p></div>
+    <div class="card"><h4>What it isn't</h4><p>Not a vector DB, not an observability tool, not a prompt registry, not memory. It complements install-time lockfiles (APM, <code>skills-lock.json</code>) that pin <em>static</em> config — Ctx pins the <em>runtime</em> documents, per run.</p></div>
+    <div class="card"><h4>Where it plugs in</h4><p>MCP server for Claude Code / Desktop / Cursor, OpenTelemetry spans with GenAI attributes, a TypeScript SDK, a LangGraph example, and a plain HTTP API. The CLI behaves identically embedded or against a server.</p></div>
+  </div>
+</section>
+
+<section id="how">
+  <p class="eyebrow">Mechanism</p>
+  <h2>How it works</h2>
+  <p class="lede">Six primitives, one loop: <strong>resolve → manifest → diff → replay</strong>. The picture below is the refunds walkthrough above, drawn as data flow.</p>
+
+  <figure>
+    <svg viewBox="0 0 960 430" role="img" aria-label="Sources are resolved under a freshness policy into content-addressed snapshots; each run's manifest records the hash of what it delivered; replay, diff, and evidence read only from the store, never the live source." xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, ui-monospace, monospace" font-size="12">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+      </defs>
+      <!-- sources -->
+      <g stroke="currentColor" fill="none" stroke-width="1.2">
+        <rect x="20" y="56" width="150" height="40" rx="6"/>
+        <rect x="20" y="112" width="150" height="40" rx="6"/>
+        <rect x="20" y="168" width="150" height="40" rx="6"/>
+      </g>
+      <g fill="currentColor">
+        <text x="95" y="80" text-anchor="middle">filesystem</text>
+        <text x="95" y="136" text-anchor="middle">GitHub</text>
+        <text x="95" y="192" text-anchor="middle">HTTP</text>
+        <text x="95" y="40" text-anchor="middle" font-size="11" opacity=".65">SOURCES (live)</text>
+      </g>
+      <!-- resolve box -->
+      <rect x="230" y="92" width="170" height="84" rx="8" stroke="currentColor" fill="none" stroke-width="1.2"/>
+      <g fill="currentColor" text-anchor="middle">
+        <text x="315" y="118" font-weight="600">resolve</text>
+        <text x="315" y="137" font-size="11">policy: require_fresh</text>
+        <text x="315" y="152" font-size="11">allow_stale · @tag</text>
+        <text x="315" y="40" font-size="11" opacity=".65">RESOURCE ctx://demo/policies/refunds</text>
+      </g>
+      <g stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)">
+        <line x1="170" y1="76" x2="228" y2="110"/>
+        <line x1="170" y1="132" x2="228" y2="134"/>
+        <line x1="170" y1="188" x2="228" y2="158"/>
+      </g>
+      <text x="200" y="62" fill="currentColor" font-size="11" opacity=".75">fetch</text>
+      <!-- snapshots -->
+      <g stroke="currentColor" fill="none" stroke-width="1.2">
+        <rect x="460" y="60" width="200" height="52" rx="6"/>
+        <rect x="460" y="200" width="200" height="52" rx="6"/>
+      </g>
+      <g fill="currentColor">
+        <text x="470" y="80" font-weight="600">snapshot</text><text x="470" y="100" font-size="11">sha256:c8b0bb21…  (30 days)</text>
+        <text x="470" y="220" font-weight="600">snapshot</text><text x="470" y="240" font-size="11">sha256:8f4b0047…  (14 days)</text>
+        <text x="560" y="40" text-anchor="middle" font-size="11" opacity=".65">SNAPSHOTS (content-addressed)</text>
+      </g>
+      <line x1="400" y1="120" x2="458" y2="90" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="400" y1="150" x2="458" y2="222" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="405" y="190" fill="currentColor" font-size="11" opacity=".75">after edit</text>
+      <!-- tag -->
+      <rect x="470" y="128" width="78" height="22" rx="11" fill="#B45309" opacity=".9"/>
+      <text x="509" y="143" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">@prod</text>
+      <line x1="509" y1="128" x2="509" y2="114" stroke="#B45309" stroke-width="1.4" marker-end="url(#arr)"/>
+      <text x="556" y="144" fill="currentColor" font-size="11" opacity=".75">movable pointer</text>
+      <!-- manifests -->
+      <g stroke="currentColor" fill="none" stroke-width="1.2">
+        <rect x="720" y="60" width="220" height="52" rx="6"/>
+        <rect x="720" y="200" width="220" height="52" rx="6"/>
+      </g>
+      <g fill="currentColor">
+        <text x="730" y="80" font-weight="600">manifest run-a</text><text x="730" y="100" font-size="11">[0] refunds → c8b0bb21…</text>
+        <text x="730" y="220" font-weight="600">manifest run-b</text><text x="730" y="240" font-size="11">[0] refunds → 8f4b0047…</text>
+        <text x="830" y="40" text-anchor="middle" font-size="11" opacity=".65">MANIFESTS (per run, ordered)</text>
+      </g>
+      <line x1="660" y1="86" x2="718" y2="86" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <line x1="660" y1="226" x2="718" y2="226" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="689" y="78" text-anchor="middle" fill="currentColor" font-size="11" opacity=".75">mount</text>
+      <text x="689" y="218" text-anchor="middle" fill="currentColor" font-size="11" opacity=".75">mount</text>
+      <!-- outcomes -->
+      <g stroke="currentColor" fill="none" stroke-width="1.2">
+        <rect x="230" y="330" width="210" height="70" rx="8" style="stroke:var(--accent)" stroke-width="1.6"/>
+        <rect x="470" y="330" width="220" height="70" rx="8"/>
+        <rect x="720" y="330" width="220" height="70" rx="8"/>
+      </g>
+      <g fill="currentColor">
+        <text x="335" y="354" text-anchor="middle" font-weight="600" style="fill:var(--accent)">replay run-a</text>
+        <text x="335" y="372" text-anchor="middle" font-size="11">bytes of c8b0bb21… from the store</text>
+        <text x="335" y="388" text-anchor="middle" font-size="11" opacity=".75">no fetch · SHA256 re-verified</text>
+        <text x="580" y="354" text-anchor="middle" font-weight="600">diff run-a run-b</text>
+        <text x="580" y="372" text-anchor="middle" font-size="11">why: revision c8b0 → 8f4b</text>
+        <text x="580" y="388" text-anchor="middle" font-size="11" opacity=".75">observed T1 → T2, ref</text>
+        <text x="830" y="354" text-anchor="middle" font-weight="600">evidence export</text>
+        <text x="830" y="372" text-anchor="middle" font-size="11">in-toto Statement + Merkle root</text>
+        <text x="830" y="388" text-anchor="middle" font-size="11" opacity=".75">verify anywhere, offline</text>
+      </g>
+      <path d="M760,252 C760,300 335,290 335,328" style="stroke:var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#arrA)"/>
+      <path d="M800,252 C800,300 580,290 580,328" stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+      <path d="M740,112 C740,300 580,290 580,328" stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)" opacity=".6"/>
+      <line x1="840" y1="252" x2="840" y2="328" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="300" y="300" style="fill:var(--accent)" font-size="11">store only — source may be gone</text>
+    </svg>
+    <figcaption>A run's manifest records the hash of every document it delivered. Replay, diff, and evidence read from the content-addressed store, never the live source — so the refunds policy can change (or vanish) and <code>run-a</code> still reproduces its exact bytes.</figcaption>
+  </figure>
+
+  <div class="grid">
+    <div class="card"><h4>Source</h4><p>Where bytes physically live: <code>filesystem</code>, <code>github</code>, or <code>http</code>. Credentials come from ctxd's environment at fetch time and are never stored.</p></div>
+    <div class="card"><h4>Resource</h4><p>The stable logical identity your code uses: <code>ctx://&lt;namespace&gt;/&lt;path&gt;</code>. Survives the bytes changing.</p></div>
+    <div class="card"><h4>Policy</h4><p>Freshness rule per resource: <code>require_fresh</code> (re-verify every resolve), <code>allow_stale</code> (reuse within <code>--max-age</code>), or pin with a <code>@tag</code>.</p></div>
+    <div class="card"><h4>Snapshot</h4><p>An immutable observation: <code>sha256:…</code> content hash, source revision, observed-at, provenance (ETag, path, commit…). Identical bytes dedupe to one blob.</p></div>
+    <div class="card"><h4>Manifest</h4><p>The ordered, immutable record of everything a run resolved — position, URI, <code>@ref</code>, snapshot, content hash. Order is an invariant: it changes model input.</p></div>
+    <div class="card"><h4>Evidence bundle</h4><p>An in-toto Statement whose subject digest is a Merkle root over the manifest; carries entries, redacted resource definitions, and a replay check. Verifiable by anyone you hand it to.</p></div>
+  </div>
+</section>
+
+<section id="install">
+  <p class="eyebrow">Use it</p>
+  <h2>Install &amp; first resolve</h2>
+  <p class="lede">Embedded mode needs only Go 1.26+. Everything lives in a local <code>.ctx</code> directory (SQLite + blobs); no services.</p>
+  <pre class="code" data-lang="bash"><code>git clone &lt;this repo&gt; ctx &amp;&amp; cd ctx
+go build -o ctx ./cmd/ctx
+./ctx version            <span class="c"># ctx 0.2.0</span>
+
+<span class="c"># register a document: identity + source + freshness policy</span>
+./ctx resource add ctx://demo/policies/refunds \
+  --source-type filesystem \
+  --path examples/refund-agent/policies/refunds.md \
+  --policy require_fresh
+
+<span class="c"># resolve it (creates the first snapshot)</span>
+./ctx get ctx://demo/policies/refunds</code></pre>
+  <pre class="term"><span class="m">uri:          ctx://demo/policies/refunds
+snapshot:     snap_01M0HRB5GNVBJ1MYZXCPHA51VZ
+content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
+freshness:    fresh (observed 2026-08-21T08:52:32Z, policy require_fresh)
+provenance:   path=policies/refunds.md source_type=filesystem
+bytes:        41
+content_type: text/markdown
+
+--- content ---</span>
+<span class="hl">Products can be refunded within 30 days.</span></pre>
+  <p>Global flags on every command: <code>--data-dir</code> (embedded; default <code>.ctx</code> or <code>$CTX_HOME</code>), or <code>--server http://…</code> / <code>$CTX_SERVER_URL</code> to talk to a <code>ctxd</code> instead (plus <code>--api-key</code> / <code>$CTX_API_KEY</code>). Output and semantics are identical either way.</p>
+  <div class="note"><b>Tip.</b> Put <code>export CTX_HOME=$HOME/.ctx</code> in your shell profile so the CLI, the MCP server, and your scripts share one store.</div>
+</section>
+
+<section id="sources">
+  <h2>Sources &amp; freshness policies</h2>
+  <p class="lede">A resource is <em>where the bytes come from</em> plus <em>how fresh they must be</em>. Three adapters ship in v0.2.</p>
+  <h3>Filesystem</h3>
+  <pre class="code" data-lang="bash"><code>ctx resource add ctx://acme/policies/refunds \
+  --source-type filesystem --path /srv/policies/refunds.md --policy require_fresh</code></pre>
+  <h3>GitHub (file in a repo, at a branch or ref)</h3>
+  <pre class="code" data-lang="bash"><code><span class="c"># GITHUB_TOKEN is read from the ctx/ctxd process environment at fetch time; it is never stored.</span>
+export GITHUB_TOKEN=ghp_…
+ctx resource add ctx://acme/runbooks/oncall \
+  --source-type github --owner acme --repo ops --path runbooks/oncall.md --ref main \
+  --policy allow_stale --max-age 1h</code></pre>
+  <p>The snapshot's <code>source_revision</code> is the commit SHA the file was read at, so <code>ctx diff</code> can later say exactly which commit changed a run's input.</p>
+  <h3>HTTP (any URL; headers may reference env vars)</h3>
+  <pre class="code" data-lang="bash"><code>ctx resource add ctx://acme/pricing/table \
+  --source-type http --url https://pricing.internal/v3/table.json \
+  --header 'Authorization: Bearer ${PRICING_TOKEN}' \
+  --policy allow_stale --max-age 15m</code></pre>
+  <p><code>${VAR}</code> references are resolved from the server's environment at fetch time. As defense in depth, sensitive header values (<code>Authorization</code>, <code>Cookie</code>, anything matching <code>*token*</code>/<code>*key*</code>/<code>*secret*</code>…) are masked in every API response, in <code>ctx inspect</code>, and in evidence bundles. <code>ETag</code> and <code>Last-Modified</code> are recorded in snapshot provenance when the server sends them.</p>
+
+  <h3>Choosing a policy</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Policy</th><th>Behavior on resolve</th><th>Use when</th></tr></thead>
+    <tbody>
+      <tr><td><code>require_fresh</code> (default)</td><td>Re-verifies against the source on every resolve. Unchanged bytes dedupe to the same content hash (you'll see two snapshot rows, one blob).</td><td>Policies, prices, anything where "stale" is a bug.</td></tr>
+      <tr><td><code>allow_stale --max-age 1h</code></td><td>Reuses the current snapshot if it is younger than the TTL; otherwise fetches. <code>--max-age 0</code> means never refresh once a snapshot exists.</td><td>Slow or rate-limited sources; reference docs that change rarely.</td></tr>
+      <tr><td><code>@tag</code> <span class="chip pin">pin</span></td><td>Resolving <code>ctx://ns/path@prod</code> delivers exactly the tagged snapshot: <em>no fetch, policy not consulted</em>.</td><td>Promotion workflows (<code>@prod</code>, <code>@v3</code>), reproducible evals, incident fixtures. See <a href="#tags">Tags</a>.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Inspect what you registered, and the history of what was observed:</p>
+  <pre class="code" data-lang="bash"><code>ctx resource list
+ctx inspect ctx://demo/policies/refunds      <span class="c"># source, policy, tags, current snapshot</span>
+ctx history ctx://demo/policies/refunds      <span class="c"># every snapshot, newest first, with TAGS column</span></code></pre>
+</section>
+
+<section id="runs">
+  <h2>Runs, manifests, diff, replay</h2>
+  <p class="lede">A <strong>run</strong> is the unit of work you want to be able to reproduce — one agent turn, one job, one eval case. Mounting a URI into a run resolves it <em>and</em> records it at the next position; committing freezes the run into a manifest.</p>
+  <ol class="steps">
+    <li><div>
+      <h4>Record a run</h4>
+      <p>One-shot form (start + mount + commit) or the three-step form if your code mounts across time.</p>
+      <pre class="code" data-lang="bash"><code>ctx run --id run-a ctx://demo/policies/refunds ctx://demo/policies/tone
+<span class="c"># or, step by step:</span>
+ctx run start run-a
+ctx run mount run-a ctx://demo/policies/refunds
+ctx run mount run-a ctx://demo/policies/tone
+ctx run commit run-a</code></pre>
+      <pre class="term"><span class="m">Started run run-a
+Mounted ctx://demo/policies/refunds -> snapshot snap_01M0HRB5KJ2HNJBYH2TV22BBT0 (position 0)
+Committed manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP for run run-a (1 entry)</span></pre>
+    </div></li>
+    <li><div>
+      <h4>Read the manifest</h4>
+      <pre class="code" data-lang="bash"><code>ctx manifest run-a        <span class="c"># by run id or manifest id</span></code></pre>
+      <pre class="term"><span class="m">Manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), created 2026-08-21T08:52:32Z, 1 entry
+
+POS  URI                          SNAPSHOT                         CONTENT_HASH
+0    ctx://demo/policies/refunds  snap_01M0HRB5KJ2HNJBYH2TV22BBT0  sha256:c8b0bb212e93…</span></pre>
+    </div></li>
+    <li><div>
+      <h4>Change the world, run again, diff the inputs</h4>
+      <p>The <code>why:</code> line is the point: not just <em>that</em> the input changed, but <em>which source revision</em> and <em>when it was observed</em>.</p>
+      <pre class="code" data-lang="bash"><code>printf 'Products can be refunded within 14 days.\n' &gt; policies/refunds.md
+ctx run --id run-b ctx://demo/policies/refunds
+ctx diff run-a run-b</code></pre>
+      <pre class="term"><span class="m">--- run-a (manifest_01M0HRB5KJMHPS0X0GGXF853CP)
++++ run-b (manifest_01M0HRB68SZDF1N6TTNXC0VQCT)
+
+~ ctx://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
+<span class="pin">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 2026-08-21T08:52:32Z → 2026-08-21T08:52:33Z</span>
+<span class="m">  --- a/ctx://demo/policies/refunds
+  +++ b/ctx://demo/policies/refunds
+  @@ -1,2 +1,2 @@
+  -Products can be refunded within 30 days.
+  +Products can be refunded within 14 days.
+
+1 resource changed, 0 added, 0 removed, 0 unchanged</span></pre>
+    </div></li>
+    <li><div>
+      <h4>Replay — the invariant</h4>
+      <p><code>replay</code> rebuilds a manifest's bytes from the content-addressed store and re-hashes them. It never contacts the source, so it works after the file changed, after the API key expired, after the repo was archived. Any mismatch or missing blob exits non-zero.</p>
+      <pre class="code" data-lang="bash"><code>ctx replay run-a</code></pre>
+      <pre class="term"><span class="m">Replaying manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), 1 entry
+
+[0] ctx://demo/policies/refunds
+    content_hash (recorded):  sha256:c8b0bb212e93…
+    content_hash (replayed):  sha256:c8b0bb212e93…
+    match: OK
+
+--- content ---</span>
+<span class="hl">Products can be refunded within 30 days.</span>
+
+<span class="ok">Replay verified: SHA256 match for 1/1 entries.</span></pre>
+    </div></li>
+  </ol>
+  <div class="note"><b>Design note.</b> Entry order is part of the manifest's identity — two runs that read the same documents in a different order are different runs, because the model saw different input. Ctx commits to the order; it never sorts it away.</div>
+</section>
+
+<section id="tags">
+  <h2>Tags: <code>@prod</code> and friends</h2>
+  <p class="lede">A tag is a named, movable pointer <code>(resource, tag) → snapshot</code>. It turns "the policy we reviewed on Tuesday" into something code can ask for by name — and something a manifest records.</p>
+  <pre class="code" data-lang="bash"><code><span class="c"># point prod at the snapshot run-a delivered</span>
+ctx tag set ctx://demo/policies/refunds prod snap_01M0HRB5KJ2HNJBYH2TV22BBT0
+ctx tag list ctx://demo/policies/refunds
+ctx tag rm   ctx://demo/policies/refunds prod
+
+<span class="c"># resolve by tag: no fetch, policy not consulted</span>
+ctx get ctx://demo/policies/refunds@prod
+ctx run --id run-c ctx://demo/policies/refunds@prod
+ctx manifest run-c      <span class="c"># shows a REF column: prod</span></code></pre>
+  <pre class="term"><span class="m">uri:          ctx://demo/policies/refunds@prod</span>
+<span class="pin">ref:          prod</span>
+<span class="m">snapshot:     snap_01M0HRB5KJ2HNJBYH2TV22BBT0
+freshness:    tagged (@prod -> snapshot snap_01M0HRB5KJ…, observed 2026-08-21T08:52:32Z, policy not consulted)
+
+--- content ---</span>
+<span class="hl">Products can be refunded within 30 days.</span>   <span class="c"># even though the file now says 14</span></pre>
+  <ul>
+    <li>Tag names match <code>^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$</code>; a tag can only point at a snapshot of its own resource.</li>
+    <li>Manifest entries store the bare URI <em>plus</em> the <code>ref</code> they were mounted by — moving a tag later can never change what a committed manifest replays.</li>
+    <li>Deleting a tag doesn't delete the snapshot; old manifests still replay.</li>
+    <li>Typical flow: every run uses <code>require_fresh</code> in staging; a reviewer runs <code>ctx history</code>, picks a snapshot, <code>tag set … prod</code>; production mounts <code>@prod</code>. Promotion is a pointer move, audited in <code>history</code>'s <code>TAGS</code> column.</li>
+  </ul>
+</section>
+
+<section id="evidence">
+  <h2>Evidence bundles</h2>
+  <p class="lede">When someone asks "what did the agent actually see for this decision?", hand them a file. <code>ctx evidence export</code> produces an <a href="https://github.com/in-toto/attestation">in-toto Statement</a> whose subject digest is a Merkle root over the run's entries; <code>ctx evidence verify</code> checks it — offline if you like.</p>
+  <pre class="code" data-lang="bash"><code>ctx evidence export run-a --with-content --out bundle.json
+ctx evidence verify bundle.json             <span class="c"># also cross-checks against the store via replay</span>
+ctx evidence verify bundle.json --offline   <span class="c"># merkle root + embedded content only</span></code></pre>
+  <pre class="term"><span class="ok">evidence bundle written to bundle.json: 1 entry, merkle root 8482a7671b1d7ba1081f4a7b3a3e7400a3ab58dc3a3687430bae6fa316adbd68
+evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-hashed, replay match 1/1</span></pre>
+  <p>Shape (trimmed):</p>
+  <pre class="code" data-lang="json"><code>{
+  <span class="k">"_type"</span>: <span class="s">"https://in-toto.io/Statement/v1"</span>,
+  <span class="k">"subject"</span>: [{ <span class="k">"name"</span>: <span class="s">"manifest_01M0…"</span>, <span class="k">"digest"</span>: { <span class="k">"sha256"</span>: <span class="s">"8482a767…"</span> } }],
+  <span class="k">"predicateType"</span>: <span class="s">"urn:ctx:evidence:v0.2"</span>,
+  <span class="k">"predicate"</span>: {
+    <span class="k">"run_id"</span>: <span class="s">"run-a"</span>, <span class="k">"manifest_id"</span>: <span class="s">"manifest_01M0…"</span>,
+    <span class="k">"merkle"</span>: { <span class="k">"algorithm"</span>: <span class="s">"sha256"</span>,
+                <span class="k">"leaf"</span>: <span class="s">"sha256(position_be_uint32 || 0x00 || uri || 0x00 || content_hash)"</span>,
+                <span class="k">"root"</span>: <span class="s">"8482a767…"</span> },
+    <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"uri"</span>: <span class="s">"ctx://demo/policies/refunds"</span>, <span class="k">"ref"</span>: <span class="s">"prod"</span>,
+                  <span class="k">"snapshot_id"</span>: <span class="s">"snap_01M0…"</span>, <span class="k">"content_hash"</span>: <span class="s">"sha256:c8b0bb21…"</span>,
+                  <span class="k">"source_revision"</span>: <span class="s">"sha256:c8b0bb212e93"</span>, <span class="k">"observed_at"</span>: <span class="s">"2026-08-21T08:52:32Z"</span>,
+                  <span class="k">"content_type"</span>: <span class="s">"text/markdown"</span>, <span class="k">"bytes"</span>: <span class="n">41</span>,
+                  <span class="k">"provenance"</span>: { <span class="k">"path"</span>: <span class="s">"policies/refunds.md"</span>, <span class="k">"source_type"</span>: <span class="s">"filesystem"</span> },
+                  <span class="k">"content_b64"</span>: <span class="s">"UHJvZHVjdHMgY2FuIGJl…"</span> }],
+    <span class="k">"resources"</span>: [{ <span class="k">"uri"</span>: <span class="s">"ctx://demo/policies/refunds"</span>,
+                    <span class="k">"source"</span>: { <span class="k">"kind"</span>: <span class="s">"http"</span>, <span class="k">"config"</span>: { <span class="k">"http"</span>: { <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"[REDACTED]"</span> } } } },
+                    <span class="k">"policy"</span>: { <span class="k">"strategy"</span>: <span class="s">"require_fresh"</span> } }],
+    <span class="k">"replay"</span>: { <span class="k">"all_match"</span>: <span class="n">true</span>, <span class="k">"entries"</span>: [{ <span class="k">"position"</span>: <span class="n">0</span>, <span class="k">"match"</span>: <span class="n">true</span> }] }
+  }
+}</code></pre>
+  <div class="grid">
+    <div class="card"><h4>What it proves</h4><p>That these bytes (by hash, optionally embedded) were delivered for this run, in this order, under these resource definitions, and that the store can still reproduce them. The root ties the whole run to one digest.</p></div>
+    <div class="card"><h4>What it doesn't</h4><p>That the model <em>used</em> them, or that the source was authoritative. Bundles aren't signed yet (roadmap: cosign/in-toto attestation). Tamper with an entry and <code>verify</code> fails; re-root a forged bundle and only the store cross-check catches it — so keep <code>--offline</code> for transport, not trust.</p></div>
+    <div class="card"><h4>Where it fits</h4><p>EU AI Act Art. 12 automatic-logging (Annex III systems, from 2 Aug 2026) and SOC 2 "what data did the agent consider" reviews want exactly this record. Not legal advice — what you owe depends on your system and jurisdiction.</p></div>
+  </div>
+  <p>The same bundle can be built client-side from the TypeScript SDK (<code>buildEvidence</code>) with a byte-identical Merkle root, and exported by an agent through the MCP tool <code>ctx_evidence_export</code>.</p>
+</section>
+
+<section id="server">
+  <p class="eyebrow">Integrate</p>
+  <h2>Client/server mode &amp; HTTP API</h2>
+  <p class="lede"><code>ctxd</code> is the same engine behind an HTTP API, backed by Postgres + an S3-compatible store (MinIO in dev). Teams, services, and the MCP server share one history.</p>
+  <pre class="code" data-lang="bash"><code><span class="c"># full stack from a clean clone: Postgres + MinIO + ctxd (+ an OTel collector)</span>
+cp .env.example .env        <span class="c"># change the dev-only credentials</span>
+docker compose up -d --build
+curl http://localhost:8080/healthz      <span class="c"># ok</span>
+
+<span class="c"># point the CLI at it — every command works identically</span>
+export CTX_SERVER_URL=http://localhost:8080
+ctx resource add ctx://demo/hello-world --source-type http \
+  --url https://raw.githubusercontent.com/octocat/Hello-World/master/README --policy require_fresh
+ctx get ctx://demo/hello-world</code></pre>
+  <div class="warn"><b>Containerized ctxd can't see your host filesystem.</b> Use GitHub/HTTP sources there, or volume-mount the files. For local host-side work, run <code>ctxd</code> directly in embedded mode: <code>go build -o ctxd ./cmd/ctxd &amp;&amp; ./ctxd --addr :8080 --data-dir ~/.ctx</code> (omit <code>--postgres-dsn</code>).</div>
+  <h3><code>ctxd</code> flags (all also settable as <code>CTXD_*</code> env vars)</h3>
+  <pre class="code" data-lang="bash"><code>ctxd --addr :8080 \
+     --postgres-dsn 'postgres://ctx:…@localhost:5434/ctx?sslmode=disable' \
+     --s3-endpoint localhost:9000 --s3-access-key … --s3-secret-key … --s3-bucket ctx-blobs [--s3-use-ssl] \
+     --api-key "$CTXD_API_KEY"      <span class="c"># when set, every request except /healthz needs Authorization: Bearer &lt;key&gt;</span></code></pre>
+  <h3>Endpoints</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Method · path</th><th>What</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST /v1/resources</code> · <code>GET /v1/resources</code> · <code>GET /v1/resources/get?uri=</code> · <code>GET /v1/resources/history?uri=</code></td><td>Register / list / get one / snapshot history</td></tr>
+      <tr><td><code>GET /v1/snapshots?id=</code></td><td>One snapshot</td></tr>
+      <tr><td><code>PUT /v1/tags</code> · <code>GET /v1/tags?uri=</code> · <code>DELETE /v1/tags?uri=&amp;tag=</code></td><td>Tags (body <code>{uri, tag, snapshot_id}</code>)</td></tr>
+      <tr><td><code>POST /v1/resolve</code></td><td>Resolve a URI (accepts <code>uri@tag</code>)</td></tr>
+      <tr><td><code>POST /v1/runs</code> · <code>POST /v1/runs/mount</code> · <code>POST /v1/runs/commit</code></td><td>Start / mount (accepts <code>@tag</code>) / commit → manifest. Unknown run → 404, already committed → 409</td></tr>
+      <tr><td><code>GET /v1/manifests?target=</code> · <code>GET /v1/diff?a=&amp;b=</code> · <code>GET /v1/replay?target=</code></td><td>Manifest by id or run · diff with per-side provenance · replay</td></tr>
+      <tr><td><code>GET /healthz</code></td><td>Liveness (unauthenticated)</td></tr>
+    </tbody>
+  </table></div>
+  <pre class="code" data-lang="bash"><code>curl -s -X POST http://localhost:8080/v1/resolve \
+  -H 'Authorization: Bearer $CTX_API_KEY' -H 'Content-Type: application/json' \
+  -d '{"uri":"ctx://demo/policies/refunds@prod"}' | jq '.resource.ref, .snapshot.content_hash, .freshness.status'</code></pre>
+  <p>Full request/response schemas: <code>docs/api.md</code>.</p>
+</section>
+
+<section id="sdk">
+  <h2>TypeScript SDK</h2>
+  <p class="lede"><code>@ctx/sdk</code> is a typed, zero-dependency client for <code>ctxd</code> (Node 18+ <code>fetch</code>). Every method maps to one endpoint; <code>buildEvidence</code> composes a bundle client-side.</p>
+  <pre class="code" data-lang="bash"><code>cd sdk/typescript &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; npm link   <span class="c"># not on a registry yet</span></code></pre>
+  <pre class="code" data-lang="ts"><code><span class="k">import</span> { Ctx, buildEvidence, encodeEvidence } <span class="k">from</span> <span class="s">"@ctx/sdk"</span>;
+
+<span class="k">const</span> ctx = <span class="k">new</span> Ctx({ endpoint: <span class="s">"http://localhost:8080"</span>, apiKey: process.env.CTX_API_KEY });
+
+<span class="c">// one-off resolve</span>
+<span class="k">const</span> policy = <span class="k">await</span> ctx.resolve(<span class="s">"ctx://acme/policies/refunds"</span>);
+policy.content;                  <span class="c">// the bytes, decoded to text</span>
+policy.snapshot.content_hash;    <span class="c">// "sha256:…"</span>
+
+<span class="c">// record a run: mount = resolve + append to the manifest (starts lazily)</span>
+<span class="k">const</span> run = ctx.run({ id: <span class="s">`turn-${turnId}`</span> });
+<span class="k">const</span> refunds = <span class="k">await</span> run.mount(<span class="s">"ctx://acme/policies/refunds@prod"</span>);   <span class="c">// pinned by tag</span>
+<span class="k">const</span> customer = <span class="k">await</span> run.mount(<span class="s">`ctx://acme/customers/${customerId}`</span>);
+<span class="k">const</span> manifest = <span class="k">await</span> run.commit();
+manifest.manifest_id;            <span class="c">// store this next to the model call / checkpoint</span>
+
+<span class="c">// tags</span>
+<span class="k">await</span> ctx.setTag(<span class="s">"ctx://acme/policies/refunds"</span>, <span class="s">"prod"</span>, policy.snapshot.id);
+<span class="k">await</span> ctx.listTags(<span class="s">"ctx://acme/policies/refunds"</span>);
+refunds.freshness.status;        <span class="c">// "use_tag"</span>
+refunds.resource.ref;            <span class="c">// "prod"</span>
+
+<span class="c">// diff two runs, with the why</span>
+<span class="k">const</span> diff = <span class="k">await</span> ctx.diff(<span class="s">"turn-41"</span>, <span class="s">"turn-42"</span>);
+<span class="k">for</span> (<span class="k">const</span> e <span class="k">of</span> diff.entries) <span class="k">if</span> (e.status === <span class="s">"changed"</span>)
+  console.log(e.uri, e.source_revision_a, <span class="s">"->"</span>, e.source_revision_b, e.unified_diff);
+
+<span class="c">// replay and evidence</span>
+<span class="k">const</span> replay = <span class="k">await</span> ctx.replay(manifest.manifest_id);
+replay.entries.every((e) =&gt; e.match);                          <span class="c">// true</span>
+<span class="k">const</span> bundle = <span class="k">await</span> buildEvidence(ctx, manifest.manifest_id, { withContent: <span class="k">true</span> });
+<span class="k">await</span> fs.writeFile(<span class="s">"bundle.json"</span>, encodeEvidence(bundle));     <span class="c">// `ctx evidence verify` accepts it</span></code></pre>
+  <p>Errors are <code>CtxError</code>s carrying the HTTP status and server message (an unknown tag names both URI and tag). <code>content</code> fields are UTF-8 text; for binary sources prefer the Go exporter for evidence.</p>
+</section>
+
+<section id="mcp">
+  <h2>MCP: use Ctx from Claude Code, Claude Desktop, Cursor</h2>
+  <p class="lede"><code>ctx mcp</code> is a stdio MCP server. Registered documents become readable <code>ctx://</code> resources (with provenance in <code>_meta</code>), and resolve / runs / diff / replay / tags / evidence become 13 tools the model can call.</p>
+  <h3>Claude Code</h3>
+  <pre class="code" data-lang="bash"><code><span class="c"># embedded store</span>
+claude mcp add ctx -- /abs/path/to/ctx mcp --data-dir /abs/path/to/.ctx
+
+<span class="c"># against a running ctxd (API key via env, not argv)</span>
+claude mcp add ctx --env CTX_API_KEY=sk-… -- /abs/path/to/ctx mcp --server https://ctxd.internal</code></pre>
+  <h3>Claude Desktop (<code>claude_desktop_config.json</code>) · Cursor (<code>.cursor/mcp.json</code>)</h3>
+  <pre class="code" data-lang="json"><code>{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"ctx"</span>: {
+      <span class="k">"command"</span>: <span class="s">"/abs/path/to/ctx"</span>,
+      <span class="k">"args"</span>: [<span class="s">"mcp"</span>, <span class="s">"--server"</span>, <span class="s">"https://ctxd.internal"</span>],
+      <span class="k">"env"</span>: { <span class="k">"CTX_API_KEY"</span>: <span class="s">"sk-…"</span> }
+    }
+  }
+}</code></pre>
+  <h3>Try it — prompts that exercise the loop</h3>
+  <ul>
+    <li>"Read <code>ctx://demo/policies/refunds</code> and tell me the refund window." → the model calls <code>resources/read</code>; <code>_meta</code> carries snapshot id, content hash, source revision, observed-at, decision.</li>
+    <li>"Now read the <code>@prod</code> version." → same resource, <code>decision: use_tag</code>, the pinned bytes.</li>
+    <li>"Start run <code>ticket-1234</code>, mount the refunds and tone policies, commit, and give me the manifest id." → <code>ctx_run_start</code> → <code>ctx_run_mount</code> ×2 → <code>ctx_run_commit</code>.</li>
+    <li>"Diff <code>ticket-1234</code> against <code>ticket-1200</code> and explain why any input changed." → <code>ctx_diff</code> returns per-side source revision and observation time.</li>
+    <li>"Export evidence for <code>ticket-1234</code>." → <code>ctx_evidence_export</code> returns the bundle JSON.</li>
+  </ul>
+  <div class="scroll"><table>
+    <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>ctx_resources_list</code></td><td>Discovery: every registered document with source kind and policy.</td></tr>
+      <tr><td><code>ctx_resolve</code></td><td>Read one document; bytes + snapshot id, content hash, source revision. May create a snapshot.</td></tr>
+      <tr><td><code>ctx_history</code></td><td>Snapshots newest-first, with the tags on each.</td></tr>
+      <tr><td><code>ctx_run_start</code> · <code>ctx_run_mount</code> · <code>ctx_run_commit</code></td><td>Open a run, read-and-record, freeze into a manifest (returns the manifest id).</td></tr>
+      <tr><td><code>ctx_manifest</code></td><td>Show a manifest by manifest id or run id.</td></tr>
+      <tr><td><code>ctx_diff</code></td><td>Added/removed/changed, unified diff, each side's revision/observed-at/ref.</td></tr>
+      <tr><td><code>ctx_replay</code></td><td>Rebuild from storage and re-hash; <code>include_content: true</code> returns the bytes.</td></tr>
+      <tr><td><code>ctx_tag_set</code> · <code>ctx_tag_list</code> · <code>ctx_tag_delete</code></td><td>Manage <code>uri@tag</code> pointers.</td></tr>
+      <tr><td><code>ctx_evidence_export</code></td><td>Build the in-toto bundle for a run (<code>with_content</code> optional).</td></tr>
+    </tbody>
+  </table></div>
+  <p>Resources are served via the template <code>ctx://{namespace}/{+path}</code> (so multi-segment paths and <code>@tag</code> both work). Inline content is capped at 1 MiB with a truncation marker and the content hash. Stdio means local trust; <code>--server</code> mode inherits <code>ctxd</code>'s API-key auth. Details: <code>docs/mcp.md</code>.</p>
+</section>
+
+<section id="langgraph">
+  <h2>LangGraph (and any framework with checkpoints)</h2>
+  <p class="lede">The integration pattern is one line of state: mount inside a node, commit, and put the <code>manifest_id</code> in the checkpoint. Whatever can read the checkpoint later can replay the exact bytes of that turn.</p>
+  <pre class="code" data-lang="ts"><code><span class="c">// examples/langgraph-ts/src/graph.ts (condensed)</span>
+<span class="k">const</span> GraphState = Annotation.Root({
+  question: Annotation&lt;string&gt;,
+  ctx_manifest_id: Annotation&lt;string&gt;,          <span class="c">// lands in the checkpoint with the rest of state</span>
+  ctx_entries: Annotation&lt;MountedEntry[]&gt;({ reducer: (_p, n) =&gt; n, default: () =&gt; [] }),
+  answer: Annotation&lt;string&gt;,
+});
+
+<span class="k">async function</span> loadContext(_s: GraphStateType, config: RunnableConfig) {
+  <span class="k">const</span> run = ctxClient().run({ id: <span class="s">`langgraph-${threadIdOf(config)}`</span> });
+  <span class="k">const</span> entries = [];
+  <span class="k">for</span> (<span class="k">const</span> uri <span class="k">of</span> CONTEXT_RESOURCES) {              <span class="c">// e.g. ctx://demo/policies/refunds, …/tone</span>
+    <span class="k">const</span> r = <span class="k">await</span> run.mount(uri);
+    entries.push({ uri, snapshot_id: r.snapshot.id, content_hash: r.snapshot.content_hash, content: r.content });
+  }
+  <span class="k">const</span> manifest = <span class="k">await</span> run.commit();
+  <span class="k">return</span> { ctx_manifest_id: manifest.manifest_id, ctx_entries: entries };
+}
+<span class="c">// answer_question prompts the model with exactly `ctx_entries[*].content` — not a second read.</span></code></pre>
+  <pre class="code" data-lang="bash"><code>cd sdk/typescript &amp;&amp; npm ci &amp;&amp; npm run build
+go build -o ctxd ./cmd/ctxd &amp;&amp; ./ctxd --addr :8080 --data-dir /tmp/ctx-langgraph &amp;      <span class="c"># host-side, so it can read the fixture files</span>
+cd examples/langgraph-ts &amp;&amp; npm ci &amp;&amp; npm run build
+npm run start      <span class="c"># runs the graph with a fake in-memory model (real one if ANTHROPIC_API_KEY is set), prints the manifest id</span>
+printf 'Products can be refunded within 14 days.\n' &gt; ../refund-agent/policies/refunds.md
+npm run replay     <span class="c"># replays the checkpointed manifest: still "30 days", flags the live source as CHANGED</span></code></pre>
+  <p>Same shape works for Temporal/Restate activities (put <code>ctx.resolve</code> in an activity, the manifest id in the event history) and for plain request handlers (log the manifest id with the request id).</p>
+</section>
+
+<section id="otel">
+  <h2>Observability</h2>
+  <p class="lede">Every stage is traced; set <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> and spans flow. Unset, instrumentation is a no-op. Content is never attached to spans or metrics.</p>
+  <pre class="term"><span class="m">ctx.run.start                         ctx.run.id=r
+ctx.run.mount                         ctx.run.id=r · ctx.resource.uri=ctx://demo/policies/refunds · ctx.resource.ref=prod · ctx.manifest.position=0
+├─ ctx.resolve                        ctx.snapshot.content_hash=sha256:c8b0… · ctx.snapshot.source_revision=sha256:c8b0bb212e93
+│  ├─ ctx.resource.lookup                 ctx.policy.decision=use_tag · gen_ai.data_source.id=ctx://demo
+│  ├─ ctx.tag.lookup
+│  ├─ ctx.cache.lookup                ctx.cache.hit=true
+│  └─ ctx.materialize
+└─ ctx.manifest.append
+ctx.run.commit                        ctx.manifest.id=manifest_… · ctx.manifest.entries=1 · ctx.manifest.merkle_root=8482a767…</span></pre>
+  <ul>
+    <li><code>ctx.manifest.merkle_root</code> on the commit span equals the evidence bundle's subject digest — a trace and a bundle join on one field.</li>
+    <li><code>gen_ai.data_source.id</code> follows the OpenTelemetry GenAI semantic conventions (<code>ctx://&lt;namespace&gt;</code>), so Phoenix, Langfuse, LangSmith, Datadog, Honeycomb can correlate retrieval by source. The proposal to carry <code>content_hash</code>/<code>source_revision</code>/<code>uri</code> on <code>gen_ai.retrieval.documents</code> is in <code>docs/observability.md</code>.</li>
+    <li>Metrics: <code>ctx_resolve_total</code>/<code>_duration_seconds</code>/<code>_errors_total</code>, <code>ctx_cache_hit_total</code>/<code>_miss_total</code>, <code>ctx_source_fetch_*</code>, <code>ctx_snapshot_created_total</code>, <code>ctx_manifest_created_total</code>, <code>ctx_run_committed_total</code>, <code>ctx_tag_resolve_total</code>.</li>
+    <li><code>docker compose up</code> already wires <code>ctxd</code> to a collector; <code>docker compose logs -f otel-collector</code> shows spans arriving.</li>
+  </ul>
+</section>
+
+<section id="cli">
+  <p class="eyebrow">Reference</p>
+  <h2>CLI cheat-sheet</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>ctx resource add &lt;uri&gt; --source-type filesystem|github|http … --policy require_fresh|allow_stale [--max-age d]</code></td><td>Register a resource</td></tr>
+      <tr><td><code>ctx resource list</code> · <code>ctx inspect &lt;uri&gt;[@tag]</code> · <code>ctx history &lt;uri&gt;</code></td><td>Browse</td></tr>
+      <tr><td><code>ctx get &lt;uri&gt;[@tag]</code></td><td>Resolve and print</td></tr>
+      <tr><td><code>ctx run --id &lt;run&gt; &lt;uri&gt;…</code> · <code>ctx run start|mount|commit</code></td><td>Record a run → manifest</td></tr>
+      <tr><td><code>ctx manifest &lt;manifest|run&gt;</code> · <code>ctx diff &lt;a&gt; &lt;b&gt;</code> · <code>ctx replay &lt;manifest|run&gt;</code></td><td>Inspect, compare (with <code>why:</code>), reproduce (strict)</td></tr>
+      <tr><td><code>ctx tag set &lt;uri&gt; &lt;tag&gt; &lt;snapshot&gt;</code> · <code>tag list</code> · <code>tag rm</code></td><td>Movable pointers</td></tr>
+      <tr><td><code>ctx evidence export &lt;target&gt; [--with-content] [--out f]</code> · <code>ctx evidence verify &lt;bundle&gt; [--offline]</code></td><td>Evidence bundles</td></tr>
+      <tr><td><code>ctx mcp</code></td><td>Stdio MCP server</td></tr>
+      <tr><td><code>ctx version</code> · global <code>--data-dir</code> · <code>--server</code> · <code>--api-key</code></td><td>—</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="faq">
+  <h2>FAQ &amp; status</h2>
+  <h3>Does Ctx replace my RAG pipeline / vector DB?</h3>
+  <p>No. Ctx is about the <em>source documents</em> and what a run actually received. Keep retrieving however you do; mount what you retrieved (or the documents you retrieved from) so the run is reproducible. Derived chunk materializations are on the roadmap; v0.2 delivers raw bytes only.</p>
+  <h3>What happens when the source is unreachable?</h3>
+  <p><code>require_fresh</code> fails the resolve (no silent staleness). <code>allow_stale</code> serves the cached snapshot if within <code>--max-age</code>. <code>@tag</code> never touches the source. <code>replay</code> never touches the source either.</p>
+  <h3>How is this different from logging tool outputs in my tracing tool?</h3>
+  <p>Traces key on spans; Ctx keys on <em>source identity</em>. You get a freshness policy, a run-to-run diff of inputs with the source revision that changed, and byte-exact replay without re-fetching — and the manifest's Merkle root shows up in your trace, so the two complement each other.</p>
+  <h3>Is the store encrypted / multi-tenant / signed?</h3>
+  <p>v0.2 is a security <em>baseline</em>: no plaintext credentials at rest (env refs resolved at fetch time, redaction everywhere), optional single API key on <code>ctxd</code>, dev-only Compose credentials clearly labeled, dependency scanning clean. Not enterprise IAM; bundles aren't signed yet. See the roadmap.</p>
+  <h3>Status</h3>
+  <p><strong>v0.2.0</strong> — tags/<code>@ref</code>, provenance-aware diff, strict replay, evidence bundles, MCP server, OTel GenAI attributes, LangGraph example, TypeScript SDK, Postgres/S3 or embedded SQLite storage, CI incl. a Compose integration run. Private checkpoint: no LICENSE yet, and the name will change before public launch. Roadmap (in order): rename + LICENSE + public repo; Python SDK; trace-context propagation over the HTTP API; MCP HTTP transport; a policy file (allowed sources / SSRF allow-list / content scanning); signed + OCI-distributed evidence bundles; <code>tag promote</code>; more adapters (S3, Confluence/Notion, generic git); Temporal/Restate helpers; auth beyond one API key; operator UI.</p>
+  <p class="foot">Docs in the repo: <code>README.md</code> · <code>docs/api.md</code> · <code>docs/mcp.md</code> · <code>docs/evidence.md</code> · <code>docs/observability.md</code> · <code>docs/roadmap.md</code> · <code>examples/refund-agent</code> · <code>examples/langgraph-ts</code>. Every command output on this page was captured from <code>ctx</code> 0.2.0 on 2026-08-21; ULIDs and hashes are trimmed for width.</p>
+</section>
+</main>
+</div>
+
+<script>
+  // Copy buttons on code blocks. Decorative convenience only — the page is complete without it.
+  (function () {
+    if (!navigator.clipboard) return;
+    document.querySelectorAll('pre.code').forEach(function (pre) {
+      var b = document.createElement('button');
+      b.className = 'copy'; b.type = 'button'; b.textContent = 'copy'; b.setAttribute('aria-label', 'Copy code');
+      b.addEventListener('click', function () {
+        var code = pre.querySelector('code');
+        navigator.clipboard.writeText((code ? code.innerText : pre.innerText)).then(function () {
+          b.textContent = 'copied'; setTimeout(function () { b.textContent = 'copy'; }, 1400);
+        });
+      });
+      pre.appendChild(b);
+    });
+  })();
+</script>
