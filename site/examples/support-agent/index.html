@@ -1,0 +1,583 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Readproof Support Agent</title>
+<meta name="description" content="The complete guide to examples/support-agent: a customer-support agent answering tickets from Readproof-governed policies with an open model on Ollama — architecture, every file, every command, the real transcript, tests, environment, and how to extend it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #0A0B09; --surface: #101210; --surface-2: #151814;
+    --ink: #E9F1E6; --ink-2: #A9B7A5; --muted: #6D7C69;
+    --rule: #222A20; --rule-strong: #33402E;
+    --accent: #B8FF29; --accent-ink: #B8FF29; --accent-contrast: #0A0B09; --accent-dim: rgba(184,255,41,.09);
+    --cyan: #4FE3FF; --cyan-dim: rgba(79,227,255,.09); --amber: #FFC24D; --red: #FF6B6B;
+    --panel: #060705; --panel-ink: #D7E2D2; --panel-muted: #75836F; --panel-rule: #1C231A;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --display: "Space Grotesk", var(--mono), sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #FAFBF6; --surface: #FFFFFF; --surface-2: #F0F3EA;
+      --ink: #14170F; --ink-2: #454E3E; --muted: #6E7864;
+      --rule: #DFE4D4; --rule-strong: #C4CCB4;
+      --accent: #3E6C00; --accent-ink: #355C00; --accent-contrast: #FFFFFF; --accent-dim: rgba(62,108,0,.08);
+      --cyan: #0E7490; --cyan-dim: rgba(14,116,144,.08); --amber: #8A5800; --red: #B42318;
+      --panel: #0C0E0A; --panel-ink: #D7E2D2; --panel-muted: #75836F; --panel-rule: #232B1E;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #FAFBF6; --surface: #FFFFFF; --surface-2: #F0F3EA;
+    --ink: #14170F; --ink-2: #454E3E; --muted: #6E7864;
+    --rule: #DFE4D4; --rule-strong: #C4CCB4;
+    --accent: #3E6C00; --accent-ink: #355C00; --accent-contrast: #FFFFFF; --accent-dim: rgba(62,108,0,.08);
+    --cyan: #0E7490; --cyan-dim: rgba(14,116,144,.08); --amber: #8A5800; --red: #B42318;
+    --panel: #0C0E0A; --panel-ink: #D7E2D2; --panel-muted: #75836F; --panel-rule: #232B1E;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--bg); scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 22px; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent-ink); text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code { font-family: var(--mono); font-size: 13px; line-height: 20px; background: var(--surface-2); border: 1px solid var(--rule); padding: 0 4px; color: var(--ink); }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; line-height: inherit; color: inherit; }
+  h1, h2, h3, h4 { font-family: var(--display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.06; font-weight: 700; margin-bottom: 20px; max-width: 24ch; }
+  h2 { font-size: 28px; line-height: 34px; font-weight: 700; margin-bottom: 12px; scroll-margin-top: 24px; }
+  h3 { font-size: 18px; line-height: 26px; font-weight: 700; margin: 28px 0 8px; scroll-margin-top: 24px; }
+  h4 { font-size: 14px; line-height: 22px; font-weight: 700; margin: 18px 0 6px; }
+  p { margin: 0 0 14px; max-width: 72ch; text-wrap: pretty; }
+  ul, ol { margin: 0 0 14px; padding-left: 20px; max-width: 72ch; }
+  li { margin: 0 0 6px; }
+  li::marker { color: var(--muted); }
+  strong { font-weight: 700; color: var(--ink); }
+  .eyebrow { font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 14px; }
+  .eyebrow::before { content: "// "; color: var(--accent); }
+  .lede { font-size: 17px; line-height: 27px; color: var(--ink-2); margin: 0 0 24px; max-width: 66ch; }
+  .muted { color: var(--muted); }
+
+  /* layout */
+  .shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 40px; max-width: 1200px; margin: 0 auto; padding: 0 24px 96px; }
+  nav.side { position: sticky; top: 0; align-self: start; height: 100vh; box-sizing: border-box; overflow-y: auto; padding: 28px 0 40px; border-right: 1px solid var(--rule); }
+  nav.side .brand { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--ink); text-decoration: none; display: block; margin: 0 0 4px; }
+  nav.side .sub { font-size: 12px; line-height: 16px; color: var(--muted); margin: 0 0 20px; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side li { margin: 0; }
+  nav.side ol a { display: block; padding: 5px 0 5px 12px; color: var(--ink-2); text-decoration: none; font-size: 13px; border-left: 2px solid transparent; margin-left: -1px; }
+  nav.side ol a:hover { color: var(--ink); border-left-color: var(--accent); }
+  nav.side .grp { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px 12px; }
+  main { min-width: 0; padding-top: 28px; }
+  section { margin: 0 0 64px; }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; gap: 0; padding: 0 16px 64px; }
+    nav.side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); padding: 16px 0 10px; }
+    nav.side ol { display: flex; flex-wrap: wrap; gap: 2px 6px; }
+    nav.side .grp { display: none; }
+    nav.side ol a { border-left: 0; padding: 4px 8px; border: 1px solid var(--rule); margin: 2px 0; }
+  }
+
+  /* blocks */
+  .term { background: var(--panel); color: var(--panel-ink); border: 1px solid var(--panel-rule); padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 19px; overflow-x: auto; margin: 12px 0 18px; }
+  .term .p { color: var(--accent); } .term .m { color: var(--panel-muted); } .term .ok { color: var(--accent); } .term .pin { color: var(--amber); } .term .cy { color: var(--cyan); } .term .hl { color: #fff; font-weight: 600; } .term .c { color: var(--panel-muted); } .term .bad { color: var(--red); }
+  .code { background: var(--panel); color: var(--panel-ink); border: 1px solid var(--panel-rule); padding: 14px 16px; font-size: 12.5px; line-height: 19px; overflow-x: auto; margin: 12px 0 18px; position: relative; }
+  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 0; right: 0; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--panel-muted); padding: 4px 8px; border-left: 1px solid var(--panel-rule); border-bottom: 1px solid var(--panel-rule); }
+  .code .k { color: var(--cyan); } .code .s { color: var(--accent); } .code .c { color: var(--panel-muted); } .code .n { color: var(--amber); }
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); margin: 12px 0 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 20px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 14px 0 18px; }
+  .card { background: var(--surface); border: 1px solid var(--rule); padding: 16px 18px 12px; }
+  .card h4 { margin: 0 0 6px; }
+  .card p { font-size: 13px; line-height: 20px; color: var(--ink-2); margin: 0 0 6px; }
+  .card .tag { display: inline-block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: 6px; }
+  .card .tag.amber { color: var(--amber); } .card .tag.cyan { color: var(--cyan); }
+  .note { border: 1px solid var(--rule-strong); border-left: 3px solid var(--accent); background: var(--accent-dim); padding: 12px 14px; margin: 14px 0 18px; max-width: 76ch; font-size: 13px; line-height: 20px; }
+  .note.warn { border-left-color: var(--amber); background: rgba(255,194,77,.08); }
+  .note b { font-weight: 700; }
+  ol.steps { list-style: none; padding: 0; counter-reset: s; max-width: none; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 10px; padding: 16px 0; border-top: 1px solid var(--rule); margin: 0; }
+  ol.steps > li::before { content: counter(s, decimal-leading-zero); font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--accent); padding-top: 2px; }
+  ol.steps h4 { margin: 0 0 6px; font-size: 15px; }
+  ol.steps .term, ol.steps .code { margin: 8px 0 6px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 10px 18px; border: 1px solid var(--accent); color: var(--accent-ink); background: transparent; text-decoration: none; transition: background .12s, color .12s; }
+  .btn.primary { background: var(--accent); color: var(--accent-contrast); }
+  .btn:hover { text-decoration: none; background: var(--accent); color: var(--accent-contrast); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 22px; }
+  figure { margin: 14px 0 22px; }
+  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink); }
+  figcaption { font-size: 12.5px; line-height: 19px; color: var(--muted); margin-top: 8px; max-width: 76ch; }
+  kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--rule-strong); padding: 0 4px; }
+  .tree { white-space: pre; }
+  .foot { border-top: 1px solid var(--rule); padding-top: 16px; font-size: 12.5px; color: var(--muted); }
+</style>
+
+<div class="shell">
+<nav class="side" aria-label="Sections">
+  <a class="brand" href="#top">Readproof · support agent</a>
+  <p class="sub">examples/support-agent — the complete guide</p>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#arch">Architecture</a></li>
+    <li><a href="#policies">The three policies</a></li>
+    <li><a href="#ticket">How a ticket is answered</a></li>
+    <li><a href="#model">The model layer (Ollama)</a></li>
+    <li class="grp">Use it</li>
+    <li><a href="#run">Run it</a></li>
+    <li><a href="#scenario">The scenario, step by step</a></li>
+    <li><a href="#commands">Command reference</a></li>
+    <li><a href="#env">Environment variables</a></li>
+    <li class="grp">Under the hood</li>
+    <li><a href="#files">Every file</a></li>
+    <li><a href="#record">The ticket record</a></li>
+    <li><a href="#tests">Tests and CI</a></li>
+    <li><a href="#mapping">Mapping to Readproof</a></li>
+    <li><a href="#gotchas">Gotchas and limits</a></li>
+    <li><a href="#extend">Extend it</a></li>
+  </ol>
+</nav>
+
+<main id="top">
+<section id="overview">
+  <p class="eyebrow">examples/support-agent · Readproof 0.3.0 · open model on Ollama</p>
+  <h1>A support agent you can replay, diff, and prove.</h1>
+  <p class="lede">A customer-support agent answers tickets from three policy documents. Every ticket is one <strong>Readproof run</strong>: the agent mounts the policies, hands the model exactly those bytes, commits a manifest, and stores the manifest id next to the answer. When a policy changes, <code>diff</code> names which document moved and why, <code>replay</code> reconstructs the exact text the old answer was based on, and <code>evidence</code> exports a bundle the Go CLI verifies — while the house-style document, mounted by tag, does not move until someone promotes it.</p>
+  <div class="row">
+    <a class="btn primary" href="#run">Run it in one command</a>
+    <a class="btn" href="#scenario">Read the real transcript</a>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="tag">no Claude, no API key</span><h4>Open model via Ollama</h4><p>Any chat model Ollama serves: local (<code>llama3.2</code>), remote, or Ollama Cloud (<code>deepseek-v4-flash:cloud</code> was used for the transcript). A deterministic fake model runs the whole story with no network at all.</p></div>
+    <div class="card"><span class="tag cyan">three freshness contracts</span><h4>Same agent, different rules per document</h4><p><code>refunds</code> is <code>require_fresh</code> (money), <code>shipping</code> is <code>allow_stale</code> for an hour, <code>tone</code> is mounted as <code>@prod</code> — edits are inert until promoted.</p></div>
+    <div class="card"><span class="tag amber">provable</span><h4>Replay, diff, evidence</h4><p>Every guarantee is a property of Readproof, not the model: swap the model or use the fake one and the replay still matches, the diff still names the revision, the Go verifier still passes.</p></div>
+  </div>
+</section>
+
+<section id="arch">
+  <p class="eyebrow">Architecture</p>
+  <h2>What talks to what</h2>
+  <p>Four moving parts, all local. The agent is a TypeScript CLI built on the Readproof TypeScript SDK; it talks HTTP to a <code>readproofd</code> server (the scenario starts a throwaway one) and to Ollama for the model. The Go CLI <code>readproof</code> appears once, as the independent auditor that verifies the evidence bundle.</p>
+  <figure>
+    <svg viewBox="0 0 980 430" role="img" aria-label="The CLI calls agent.ts; agent.ts mounts policies through the Readproof SDK into readproofd, which fetches policy files and stores content-addressed snapshots; model.ts sends exactly those bytes to Ollama; the answer and manifest id go to tickets.jsonl; replay, diff and evidence read from readproofd; the Go readproof binary verifies the evidence bundle." xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, ui-monospace, monospace" font-size="12">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g stroke="currentColor" fill="none" stroke-width="1.2">
+        <rect x="20" y="150" width="150" height="56"/>
+        <rect x="230" y="110" width="170" height="136"/>
+        <rect x="470" y="40" width="200" height="72"/>
+        <rect x="470" y="170" width="200" height="72"/>
+        <rect x="470" y="300" width="200" height="72"/>
+        <rect x="740" y="40" width="220" height="72"/>
+        <rect x="740" y="300" width="220" height="72"/>
+      </g>
+      <g fill="currentColor">
+        <text x="95" y="174" text-anchor="middle" font-weight="700">src/cli.ts</text>
+        <text x="95" y="193" text-anchor="middle" font-size="11">setup · ask · replay · diff …</text>
+        <text x="315" y="134" text-anchor="middle" font-weight="700">src/agent.ts</text>
+        <text x="315" y="154" text-anchor="middle" font-size="11">run = rp.run({id: "ticket-N"})</text>
+        <text x="315" y="172" text-anchor="middle" font-size="11">mount ×3 → answer → commit</text>
+        <text x="315" y="196" text-anchor="middle" font-size="11">src/model.ts builds the</text>
+        <text x="315" y="212" text-anchor="middle" font-size="11">prompt from the mounted bytes</text>
+        <text x="570" y="64" text-anchor="middle" font-weight="700">readproofd  (HTTP, :18090)</text>
+        <text x="570" y="84" text-anchor="middle" font-size="11">resolve · runs · manifests · tags</text>
+        <text x="570" y="100" text-anchor="middle" font-size="11">SQLite + content-addressed blobs</text>
+        <text x="570" y="194" text-anchor="middle" font-weight="700">Ollama  (:11434)</text>
+        <text x="570" y="214" text-anchor="middle" font-size="11">chat(model, messages, stream)</text>
+        <text x="570" y="230" text-anchor="middle" font-size="11">or the fake deterministic model</text>
+        <text x="570" y="324" text-anchor="middle" font-weight="700">data/tickets.jsonl</text>
+        <text x="570" y="344" text-anchor="middle" font-size="11">{ticket, question, answer, model,</text>
+        <text x="570" y="360" text-anchor="middle" font-size="11">manifest_id, run_id, entries[], at}</text>
+        <text x="850" y="64" text-anchor="middle" font-weight="700">context/policies/*.md</text>
+        <text x="850" y="84" text-anchor="middle" font-size="11">refunds.md · shipping.md · tone.md</text>
+        <text x="850" y="100" text-anchor="middle" font-size="11">(filesystem sources)</text>
+        <text x="850" y="324" text-anchor="middle" font-weight="700">readproof  (Go CLI)</text>
+        <text x="850" y="344" text-anchor="middle" font-size="11">evidence verify bundle.json</text>
+        <text x="850" y="360" text-anchor="middle" font-size="11">merkle root · re-hash · replay</text>
+      </g>
+      <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#ar)">
+        <line x1="170" y1="178" x2="228" y2="178"/>
+        <line x1="400" y1="130" x2="468" y2="86"/>
+        <line x1="400" y1="200" x2="468" y2="206"/>
+        <line x1="400" y1="236" x2="468" y2="326"/>
+        <line x1="670" y1="76" x2="738" y2="76"/>
+        <path d="M740,336 C700,336 690,120 672,100" />
+      </g>
+      <g fill="currentColor" font-size="11" opacity=".8">
+        <text x="172" y="170">argv</text>
+        <text x="404" y="100">SDK: resolve, run.mount, commit, diff, replay, buildEvidence</text>
+        <text x="404" y="195">exactly the mounted bytes</text>
+        <text x="404" y="296">append record</text>
+        <text x="676" y="68">fetch per policy</text>
+        <text x="700" y="210" text-anchor="middle">cross-check by replay</text>
+      </g>
+      <g fill="currentColor" font-size="11" opacity=".6">
+        <text x="20" y="412">replay / diff / evidence read from readproofd only — the policy files are never consulted again.</text>
+      </g>
+    </svg>
+    <figcaption>One ticket = one run. The model sees exactly the bytes the manifest records; everything that comes later (replay, diff, evidence) reads the store, never the files.</figcaption>
+  </figure>
+</section>
+
+<section id="policies">
+  <p class="eyebrow">The governed documents</p>
+  <h2>Three policies, three freshness contracts</h2>
+  <p>The documents are deliberately tiny so the whole story fits in one screen. What matters is that each one gets a different freshness rule, declared once in <code>src/config.ts</code> and applied by <code>readproofd</code> on every resolve.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Resource</th><th>File</th><th>Policy (on resolve)</th><th>How the agent mounts it</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><code>readproof://acme/policies/refunds</code></td><td><code>context/policies/refunds.md</code></td><td><code>require_fresh</code></td><td>bare URI</td><td>Money is involved: re-verify the source on every ticket. Unchanged bytes dedupe to the same hash.</td></tr>
+      <tr><td><code>readproof://acme/policies/shipping</code></td><td><code>context/policies/shipping.md</code></td><td><code>allow_stale</code>, <code>max_age_seconds: 3600</code></td><td>bare URI</td><td>Changes rarely; an hour-old copy is fine and saves a fetch.</td></tr>
+      <tr><td><code>readproof://acme/policies/tone</code></td><td><code>context/policies/tone.md</code></td><td><code>require_fresh</code></td><td><code>…/tone@prod</code> (tag)</td><td>House style is a deployment decision: a tag delivers exactly the promoted snapshot, no fetch, policy not consulted.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Their contents (as shipped)</h3>
+  <pre class="code" data-lang="refunds.md"><code># Refund policy
+
+Products can be refunded within 30 days of delivery. Refunds go to the original payment method within 5 business days.</code></pre>
+  <pre class="code" data-lang="shipping.md"><code># Shipping policy
+
+Orders ship within 2 business days. Standard delivery takes 3-5 business days, express 1-2. Tracking is emailed as soon as the label is created.</code></pre>
+  <pre class="code" data-lang="tone.md"><code># House style for support replies
+
+Keep replies under 120 words. Use plain language and no jargon. Name the policy you relied on, in the form "per the refund policy". Close with one concrete next step the customer can take.</code></pre>
+  <p>They are registered as <strong>filesystem sources with absolute paths</strong> (computed from <code>import.meta.url</code>), because <code>readproofd</code> resolves a filesystem path relative to its own working directory, never the example's. <code>SUPPORT_CONTEXT_DIR</code> points at a different directory — the tests use that to register a throwaway copy they can edit freely.</p>
+</section>
+
+<section id="ticket">
+  <p class="eyebrow">The core loop</p>
+  <h2>How a ticket is answered</h2>
+  <ol class="steps">
+    <li><div><h4>Open a run named after the ticket</h4><p><code>rp.run({ id: "ticket-1001" })</code>. Run ids are deterministic (<code>runIdFor</code>), so <code>show</code>/<code>replay</code> need no lookup table. The run starts lazily on the first mount.</p></div></li>
+    <li><div><h4>Mount the three policies, in a fixed order</h4><p><code>mountSpecs()</code> returns <code>["readproof://acme/policies/refunds", "readproof://acme/policies/shipping", "readproof://acme/policies/tone@prod"]</code>. Each <code>run.mount(spec)</code> resolves the resource under its policy (or by tag) <em>and</em> records it as the next ordered manifest entry. The agent keeps <code>{uri, ref?, snapshot_id, content_hash, content}</code> per mount. Order is a hard Readproof invariant — it is committed to the manifest and folded into the evidence Merkle root.</p></div></li>
+    <li><div><h4>Build the prompt from the mounted bytes and nothing else</h4><p>No second read of the files, no retrieval of its own. The system message is the tone document's text plus a fixed instruction; the user message is every document under a header naming its URI and the first 12 hex of its content hash, then the question.</p>
+      <pre class="code" data-lang="prompt shape"><code><span class="c">system:</span>
+&lt;contents of tone.md&gt;
+
+Answer only from the policies given. Name the policy you relied on. If the policies do not cover it, say so.
+
+<span class="c">user:</span>
+### readproof://acme/policies/refunds (sha256:72be2c034713)
+&lt;contents of refunds.md&gt;
+
+### readproof://acme/policies/shipping (sha256:e8178eaf5ca5)
+&lt;contents of shipping.md&gt;
+
+### readproof://acme/policies/tone (sha256:c04b1f6dbc3c)
+&lt;contents of tone.md&gt;
+
+I bought headphones 20 days ago. Can I still get a refund?</code></pre>
+      <p>Those headers are what tie a sentence in the answer back to a line in the manifest, for about a dozen tokens.</p></div></li>
+    <li><div><h4>Stream the answer</h4><p><code>ollama.chat({ model, messages, stream: true })</code>; tokens go to stdout as they arrive so a slow local model still looks alive. <code>model: &lt;name&gt;</code> is printed once so the record can store which model actually answered.</p></div></li>
+    <li><div><h4>Commit the manifest</h4><p><code>run.commit()</code> freezes the three entries into an immutable manifest and returns its id.</p></div></li>
+    <li><div><h4>Append the ticket record</h4><p>One JSON line in <code>data/tickets.jsonl</code>: ticket, question, answer, model, <code>manifest_id</code>, <code>run_id</code>, the entries (without content), and a timestamp. The manifest id next to the answer is the whole trick: months later <code>replay 1001</code> reconstructs the exact policy text that produced that reply.</p></div></li>
+  </ol>
+</section>
+
+<section id="model">
+  <p class="eyebrow">src/model.ts</p>
+  <h2>The model layer</h2>
+  <div class="cards">
+    <div class="card"><h4>Model resolution</h4><p>1. <code>OLLAMA_MODEL</code> wins. 2. Otherwise <code>ollama.list()</code> and the first model whose name does not contain <code>embed</code> (Ollama happily lists <code>nomic-embed-text</code>, which cannot chat). 3. Otherwise: <code>set OLLAMA_MODEL or: ollama pull llama3.2</code>.</p></div>
+    <div class="card"><h4>Where Ollama is</h4><p>The <code>ollama</code> JS client (0.6.3) does <strong>not</strong> read <code>OLLAMA_HOST</code> — it hardcodes <code>127.0.0.1:11434</code>. The example reads the variable itself and passes <code>new Ollama({ host })</code>, so a remote or cloud-backed Ollama works with one env var.</p></div>
+    <div class="card"><h4>Errors</h4><p>Connection failures (<code>ECONNREFUSED</code>, <code>fetch failed</code>, DNS) become one line naming <code>OLLAMA_HOST</code> and asking whether <code>ollama serve</code> is running. Everything else is passed through.</p></div>
+    <div class="card"><h4>Fake mode</h4><p><code>SUPPORT_FAKE_MODEL=1</code> replaces the chat call with a deterministic function that answers from the refund policy's first sentence, byte-identical output for byte-identical input. The run, mounts, manifest, tag, diff, replay and evidence are the same code path — which is the point: the guarantees are Readproof's, not the model's. Tests and CI always run this way.</p></div>
+  </div>
+  <pre class="code" data-lang="fake answer"><code>Products can be refunded within 30 days of delivery. (per readproof://acme/policies/refunds, sha256:72be2c034713) — asked: I bought headphones 20 days ago. Can I still get a refund?</code></pre>
+</section>
+
+<section id="run">
+  <p class="eyebrow">Use it</p>
+  <h2>Run it</h2>
+  <h3>Prerequisites</h3>
+  <ul>
+    <li><strong>Go 1.26+</strong> — the scenario builds <code>readproof</code> and <code>readproofd</code> from this repo.</li>
+    <li><strong>Node 18+</strong> — the agent is TypeScript and uses the global <code>fetch</code>.</li>
+    <li><strong>Ollama with a chat model</strong> for the real run (<code>ollama serve</code>, <code>ollama pull llama3.2</code>), or <code>OLLAMA_HOST</code> pointing at a remote/cloud instance — or skip it with the fake model.</li>
+  </ul>
+  <h3>One command</h3>
+  <pre class="code" data-lang="bash"><code><span class="k">cd</span> examples/support-agent
+npm install
+npm run scenario                              <span class="c"># needs Ollama; picks the first chat model it finds</span>
+OLLAMA_MODEL=llama3.2 npm run scenario        <span class="c"># choose the model</span>
+OLLAMA_MODEL=deepseek-v4-flash:cloud npm run scenario   <span class="c"># what produced the transcript below</span>
+SUPPORT_FAKE_MODEL=1 npm run scenario         <span class="c"># no Ollama, no network</span></code></pre>
+  <p><code>scripts/scenario.sh</code> is self-contained: it builds <code>readproof</code> and <code>readproofd</code>, builds the SDK if needed, starts a throwaway <code>readproofd</code> on <code>:18090</code> with its own data directory, runs the twelve steps, and restores the two policy files it edits — always, including on failure and on <kbd>Ctrl‑C</kbd> (it backs them up by copy, not with git, so it can never clobber edits you had in flight). It leaves its scratch directory behind (evidence bundle, <code>readproofd</code> log) and prints the path.</p>
+  <h3>Against your own readproofd</h3>
+  <pre class="code" data-lang="bash"><code><span class="c"># host-side embedded readproofd (so it can read the policy files)</span>
+go build -o readproofd ./cmd/readproofd &amp;&amp; ./readproofd --addr :8080 --data-dir ~/.readproof &amp;
+<span class="k">export</span> READPROOF_ENDPOINT=http://localhost:8080        <span class="c"># READPROOF_SERVER_URL also works</span>
+npm run agent -- setup
+npm run agent -- ask 1001 "I bought headphones 20 days ago. Can I still get a refund?"
+npm run agent -- replay 1001</code></pre>
+  <div class="note warn"><b>Containerized readproofd.</b> <code>docker compose up</code>'s <code>readproofd</code> cannot see your host filesystem, so the filesystem sources would fail there. Run <code>readproofd</code> on the host, or switch the policies to GitHub/HTTP sources (see <a href="#extend">Extend it</a>).</div>
+</section>
+
+<section id="scenario">
+  <p class="eyebrow">Real output</p>
+  <h2>The scenario, step by step</h2>
+  <p>Everything below is real output from <code>OLLAMA_MODEL=deepseek-v4-flash:cloud bash scripts/scenario.sh</code> on 2026‑08‑21, ids and hashes trimmed. The two answers are the model's own words.</p>
+  <ol class="steps">
+    <li><div><h4>setup — put the policies under Readproof</h4>
+      <pre class="term"><span class="p">$</span> npm run agent -- setup
+<span class="m">readproofd http://localhost:18090 ok
+register   readproof://acme/policies/refunds -> …/context/policies/refunds.md (require_fresh)
+register   readproof://acme/policies/shipping -> …/context/policies/shipping.md (allow_stale, max age 3600s)
+register   readproof://acme/policies/tone -> …/context/policies/tone.md (require_fresh)</span>
+<span class="pin">tag        readproof://acme/policies/tone@prod -> snap_01M0HW18V0…</span>
+
+<span class="m">3 policies governed by Readproof, 3 registered just now.</span></pre>
+      <p>Idempotent: run it twice and it registers nothing and moves no tag. If a URI is already registered against a different path, it warns with both paths.</p></div></li>
+    <li><div><h4>ask 1001 — while the policy says 30 days</h4>
+      <pre class="term"><span class="p">$</span> npm run agent -- ask 1001 "I bought headphones 20 days ago. Can I still get a refund?"
+<span class="m">ticket:   1001
+question: I bought headphones 20 days ago. Can I still get a refund?
+
+model: deepseek-v4-flash:cloud</span>
+<span class="hl">Yes, you can still get a refund. Per the refund policy, products can be refunded
+within 30 days of delivery, and your purchase is 20 days old, so you're within the
+window. The refund will go to your original payment method within 5 business days.
+To proceed, please start a return request through your account or reply with your
+order number.</span>
+
+<span class="cy">manifest: manifest_01M0HW1AQ9…</span>
+<span class="m">POS  URI@REF                                 SNAPSHOT             HASH
+0    readproof://acme/policies/refunds       snap_01M0HW194M…     sha256:72be2c034713
+1    readproof://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
+2    readproof://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c</span></pre></div></li>
+    <li><div><h4>Somebody edits the refund policy</h4>
+      <pre class="term"><span class="p">$</span> sed 's/within 30 days/within 14 days/' context/policies/refunds.md   <span class="c"># 30 → 14 days</span></pre>
+      <p>Nobody told the agent. Nothing was redeployed.</p></div></li>
+    <li><div><h4>ask 1002 — same question, different answer</h4>
+      <pre class="term"><span class="p">$</span> npm run agent -- ask 1002 "I bought headphones 20 days ago. Can I still get a refund?"
+<span class="m">model: deepseek-v4-flash:cloud</span>
+<span class="hl">Per the refund policy, products can be refunded within 14 days of delivery. Since
+your purchase was 20 days ago, it's past that window, so a refund isn't possible.
+If you have a different issue, like a defect, please check the warranty or contact
+support for options. Next step: reply with your order number if you'd like us to
+review any other concerns.</span>
+
+<span class="cy">manifest: manifest_01M0HW1CFV…</span>
+<span class="m">POS  URI@REF                                 SNAPSHOT             HASH
+0    readproof://acme/policies/refunds       snap_01M0HW1AZH…     sha256:3117512b66c3
+1    readproof://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5
+2    readproof://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c</span></pre>
+      <p>The decision flipped. <code>require_fresh</code> is why: Readproof re-verified the source and delivered a new snapshot. Shipping and tone are byte-identical to ticket 1001.</p></div></li>
+    <li><div><h4>diff 1001 1002 — which document moved, and why</h4>
+      <pre class="term"><span class="p">$</span> npm run agent -- diff 1001 1002
+<span class="m">--- ticket 1001 (manifest_01M0HW1AQ9…)
++++ ticket 1002 (manifest_01M0HW1CFV…)
+
+~ readproof://acme/policies/refunds  (snap_01M0HW194M… -> snap_01M0HW1AZH…)</span>
+<span class="pin">  why: source revision sha256:72be2c034713 -> sha256:3117512b66c3; observed 2026-08-21T09:57:02Z -> 2026-08-21T09:57:04Z</span>
+<span class="m">  --- a/readproof://acme/policies/refunds
+  +++ b/readproof://acme/policies/refunds
+  @@ -1,4 +1,4 @@
+   # Refund policy
+
+  -Products can be refunded within 30 days of delivery. Refunds go to the original payment method within 5 business days.
+  +Products can be refunded within 14 days of delivery. Refunds go to the original payment method within 5 business days.
+
+= readproof://acme/policies/shipping  (snap_01M0HW194S…)
+= readproof://acme/policies/tone  (snap_01M0HW18V0…)
+
+1 resource changed, 0 added, 0 removed, 2 unchanged</span></pre>
+      <p>"Why did the agent answer differently?" — answered with a document name, a revision, and a timestamp.</p></div></li>
+    <li><div><h4>replay 1001 — the bytes the old answer was actually based on</h4>
+      <pre class="term"><span class="p">$</span> npm run agent -- replay 1001
+<span class="m">ticket:   1001
+manifest: manifest_01M0HW1AQ9…  (answered 2026-08-21T09:57:04Z)
+
+  [0] readproof://acme/policies/refunds
+        recorded sha256:72be2c034713…
+        replayed sha256:72be2c034713…   </span><span class="ok">MATCH</span>
+<span class="m">      | # Refund policy
+      |
+      | Products can be refunded within 30 days of delivery. Refunds go to the original payment method within 5 business days.</span>
+<span class="pin">        live source: CHANGED -> sha256:3117512b66c3…</span>
+<span class="m">
+  [1] readproof://acme/policies/shipping   … MATCH   live source: unchanged
+  [2] readproof://acme/policies/tone       … MATCH   live source: unchanged
+</span>
+<span class="ok">Replay verified: 3/3 entries match.</span>
+<span class="m">1 of them no longer match the live source — the manifest, not the source, is what a replay reads.</span></pre>
+      <p>The file on disk says 14 days. The replay says 30, because that is what the agent read at 09:57:04, reconstructed from Readproof's store with no fetch. Replay is strict: any hash mismatch exits non-zero.</p></div></li>
+    <li><div><h4>evidence 1001 — for someone who doesn't trust you</h4>
+      <pre class="term"><span class="p">$</span> npm run agent -- evidence 1001 --out ticket-1001.bundle.json --with-content
+<span class="m">evidence bundle written to …/ticket-1001.bundle.json
+  entries:     3 (with embedded content)
+  merkle root: e8d8572c0d97…
+  replay:      all entries match
+
+verify it with the Go CLI:
+  readproof --server http://localhost:18090 evidence verify …/ticket-1001.bundle.json</span>
+
+<span class="p">$</span> readproof --server http://localhost:18090 evidence verify ticket-1001.bundle.json
+<span class="ok">evidence verified: 3 entries, merkle root e8d8572c0d97…, embedded content 3/3 re-hashed, replay match 3/3</span></pre>
+      <p>The bundle is an in-toto Statement built by the TypeScript SDK's <code>buildEvidence()</code>; the Go verifier recomputes the Merkle root, re-hashes the embedded bytes, and cross-checks the store by replay. Flip one base64 character and it exits non-zero — the tests assert exactly that.</p></div></li>
+    <li><div><h4>Edit the house style — and watch nothing happen</h4>
+      <pre class="term"><span class="p">$</span> printf '\nAlways open with a one-line summary of the decision.\n' &gt;&gt; context/policies/tone.md
+<span class="p">$</span> npm run agent -- ask 1003 "I bought headphones 20 days ago. Can I still get a refund?"
+<span class="m">model: deepseek-v4-flash:cloud</span>
+<span class="hl">Per the refund policy, products can be refunded within 14 days of delivery. Since
+your headphones were delivered 20 days ago, the refund window has passed, so a
+refund is not available. As a next step, please contact our support team if you
+have any other questions or concerns.</span>
+
+<span class="cy">manifest: manifest_01M0HW1GMK…</span>
+<span class="m">POS  URI@REF                                 SNAPSHOT             HASH
+0    readproof://acme/policies/refunds       snap_01M0HW1E27…     sha256:3117512b66c3
+1    readproof://acme/policies/shipping      snap_01M0HW194S…     sha256:e8178eaf5ca5</span>
+<span class="pin">2    readproof://acme/policies/tone@prod     snap_01M0HW18V0…     sha256:c04b1f6dbc3c</span></pre>
+      <p>The tone entry is <code>snap_01M0HW18V0…</code> — the same snapshot ticket 1001 used, three edits ago. A tag delivers exactly the snapshot it points at: no fetch, policy not consulted. Editing the file is not deploying it.</p></div></li>
+    <li><div><h4>Deploying it is: promote</h4>
+      <pre class="term"><span class="p">$</span> npm run agent -- promote tone
+<span class="pin">readproof://acme/policies/tone@prod -> snap_01M0HW6DMN…</span>
+
+<span class="p">$</span> npm run agent -- history tone
+<span class="m">readproof://acme/policies/tone
+SNAPSHOT                         OBSERVED                      CONTENT_HASH          TAGS
+snap_01M0HW6DMN…                 2026-08-21T09:59:51Z          sha256:8ed369c0dc9b   prod
+snap_01M0HW6D8B…                 2026-08-21T09:59:50Z          sha256:c04b1f6dbc3c</span></pre>
+      <p><code>promote</code> with no snapshot id resolves the resource first, then promotes what its policy says is current. The previous snapshot is still there; <code>promote tone &lt;old-snapshot-id&gt;</code> rolls back.</p></div></li>
+  </ol>
+</section>
+
+<section id="commands">
+  <p class="eyebrow">src/cli.ts</p>
+  <h2>Command reference</h2>
+  <p>All commands: <code>npm run agent -- &lt;command&gt; [args]</code>; <code>npm run agent -- --help</code> prints this. Runtime errors print one line and exit 1 (no usage dump); misuse prints usage and exits 2.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Command</th><th>What it does</th><th>Reads / writes</th></tr></thead>
+    <tbody>
+      <tr><td><code>setup</code></td><td>Checks <code>/healthz</code>, registers the three policies idempotently (get → 404 → create; warns on a path mismatch), resolves <code>tone</code> once and tags it <code>prod</code> if no tag exists.</td><td>readproofd</td></tr>
+      <tr><td><code>ask &lt;ticket&gt; &lt;question…&gt;</code></td><td>One Readproof run: mount ×3 → model → commit → append. Prints the streamed answer, the manifest id and the entries table.</td><td>readproofd, Ollama, <code>tickets.jsonl</code></td></tr>
+      <tr><td><code>show &lt;ticket&gt;</code></td><td>The stored record plus the manifest read back from readproofd (<code>getManifest</code>).</td><td><code>tickets.jsonl</code>, readproofd</td></tr>
+      <tr><td><code>replay &lt;ticket&gt;</code></td><td><code>rp.replay(manifest_id)</code>; asserts every entry matches (exit 1 otherwise), prints recorded vs replayed hashes and the bytes, then resolves each URI live and prints <code>unchanged</code> / <code>CHANGED -&gt; hash</code>.</td><td>readproofd</td></tr>
+      <tr><td><code>diff &lt;a&gt; &lt;b&gt;</code></td><td><code>rp.diff(manifestA, manifestB)</code>; per entry: status, the <code>why:</code> line (source revision, observed-at, ref — only fields present), unified diff; summary counts.</td><td>readproofd</td></tr>
+      <tr><td><code>evidence &lt;ticket&gt; [--out f] [--with-content]</code></td><td><code>buildEvidence</code> + <code>encodeEvidence</code>; prints merkle root and the exact Go verify command.</td><td>readproofd, writes the bundle</td></tr>
+      <tr><td><code>promote &lt;policy&gt; [snapshot-id]</code></td><td>Moves the <code>prod</code> tag. With no id: resolves first, then promotes the resource's current snapshot.</td><td>readproofd</td></tr>
+      <tr><td><code>history &lt;policy&gt;</code></td><td>Snapshots newest first with their tags.</td><td>readproofd</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>&lt;policy&gt;</code> accepts a full <code>readproof://</code> URI or a short name (<code>refunds</code>, <code>shipping</code>, <code>tone</code>).</p>
+</section>
+
+<section id="env">
+  <p class="eyebrow">Configuration</p>
+  <h2>Environment variables</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>READPROOF_ENDPOINT</code></td><td><code>http://localhost:8080</code></td><td>Base URL of the <code>readproofd</code> to use. <code>READPROOF_SERVER_URL</code> (the Go CLI's variable) is accepted as a fallback so one export serves both halves.</td></tr>
+      <tr><td><code>READPROOF_API_KEY</code></td><td>—</td><td>Bearer token, if <code>readproofd</code> runs with <code>--api-key</code>.</td></tr>
+      <tr><td><code>OLLAMA_HOST</code></td><td><code>http://localhost:11434</code></td><td>Where Ollama is. Read by the example and passed to the client explicitly.</td></tr>
+      <tr><td><code>OLLAMA_MODEL</code></td><td>first non-embedding model listed</td><td>Which chat model answers.</td></tr>
+      <tr><td><code>SUPPORT_FAKE_MODEL</code></td><td>—</td><td><code>1</code>/<code>true</code>/<code>yes</code>/<code>on</code> = deterministic fake model, no Ollama.</td></tr>
+      <tr><td><code>SUPPORT_CONTEXT_DIR</code></td><td><code>./context/policies</code></td><td>Where the policy files live (tests point it at a throwaway copy).</td></tr>
+      <tr><td><code>SUPPORT_DATA_DIR</code></td><td><code>./data</code></td><td>Where <code>tickets.jsonl</code> is written (the scenario uses its scratch dir).</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="files">
+  <p class="eyebrow">Under the hood</p>
+  <h2>Every file</h2>
+  <pre class="code tree" data-lang="examples/support-agent">package.json           scripts: build · agent (node dist/src/cli.js) · scenario · test · clean; deps: @readproof/sdk (file:../../sdk/typescript), ollama 0.6.3; dev: typescript 5.9.3, @types/node 22.20.1
+tsconfig.json          strict, noUncheckedIndexedAccess, ESM → dist/
+.gitignore             node_modules/ dist/ data/ *.bundle.json
+README.md              the same story as this page, in markdown
+context/policies/      refunds.md · shipping.md · tone.md — the three governed documents (fixtures)
+src/config.ts          every knob in one place: READPROOF_ENDPOINT/API key, OLLAMA_HOST/MODEL, FAKE_MODEL, POLICY_DIR, DATA_DIR, the POLICY_RESOURCES table, mountSpecs(), resolvePolicyURI()
+src/model.ts           answer(): Ollama streaming chat or the fake model; systemPrompt() = tone + instruction; userPrompt() = documents with uri+hash headers; resolveModel(); ollamaError()
+src/agent.ts           setup() (idempotent registration + prod tag), ask() (one run per ticket), loadTicket(), appendTicket(), checkHealth()
+src/cli.ts             the eight commands, table/diff/replay printers, one-line runtime errors
+scripts/scenario.sh    builds readproof/readproofd/SDK/example, runs a throwaway readproofd on :18090, the 12 steps, restores fixtures via trap
+test/agent.test.ts     7 end-to-end tests against a real readproofd with the fake model (below)</pre>
+</section>
+
+<section id="record">
+  <p class="eyebrow">data/tickets.jsonl</p>
+  <h2>The ticket record</h2>
+  <p>Append-only, one JSON object per line, written by <code>ask</code> and read by <code>show</code>/<code>replay</code>/<code>diff</code>/<code>evidence</code> (last record for a ticket wins). The bytes the model saw are <em>not</em> stored here — they live in Readproof, addressed by the manifest.</p>
+  <pre class="code" data-lang="json"><code>{
+  <span class="k">"ticket"</span>: <span class="s">"1001"</span>,
+  <span class="k">"question"</span>: <span class="s">"I bought headphones 20 days ago. Can I still get a refund?"</span>,
+  <span class="k">"answer"</span>: <span class="s">"Yes, you can still get a refund. Per the refund policy, …"</span>,
+  <span class="k">"model"</span>: <span class="s">"deepseek-v4-flash:cloud"</span>,
+  <span class="k">"manifest_id"</span>: <span class="s">"manifest_01M0HW1AQ9…"</span>,
+  <span class="k">"run_id"</span>: <span class="s">"ticket-1001"</span>,
+  <span class="k">"entries"</span>: [
+    { <span class="k">"uri"</span>: <span class="s">"readproof://acme/policies/refunds"</span>,  <span class="k">"snapshot_id"</span>: <span class="s">"snap_01M0HW194M…"</span>, <span class="k">"content_hash"</span>: <span class="s">"sha256:72be2c03…"</span> },
+    { <span class="k">"uri"</span>: <span class="s">"readproof://acme/policies/shipping"</span>, <span class="k">"snapshot_id"</span>: <span class="s">"snap_01M0HW194S…"</span>, <span class="k">"content_hash"</span>: <span class="s">"sha256:e8178eaf…"</span> },
+    { <span class="k">"uri"</span>: <span class="s">"readproof://acme/policies/tone"</span>, <span class="k">"ref"</span>: <span class="s">"prod"</span>, <span class="k">"snapshot_id"</span>: <span class="s">"snap_01M0HW18V0…"</span>, <span class="k">"content_hash"</span>: <span class="s">"sha256:c04b1f6d…"</span> }
+  ],
+  <span class="k">"at"</span>: <span class="s">"2026-08-21T09:57:04.512Z"</span>
+}</code></pre>
+  <p>Field names follow the SDK types exactly: <code>resource.uri</code> is always the bare URI and the tag is reported separately as <code>resource.ref</code> — the same split the manifest uses, so a moved tag can never change what a committed manifest replays.</p>
+</section>
+
+<section id="tests">
+  <p class="eyebrow">test/agent.test.ts · CI</p>
+  <h2>Tests and CI</h2>
+  <p><code>npm test</code> builds, then runs <code>node --test dist/test/*.test.js</code> with <code>SUPPORT_FAKE_MODEL=1</code>. The suite <code>go build</code>s <code>readproof</code> and <code>readproofd</code>, starts a throwaway <code>readproofd</code> on a free port, copies the three fixtures into a temp directory and registers <em>those</em>, then asserts:</p>
+  <ol>
+    <li><strong>setup</strong> registers three resources with their declared policies and creates <code>tone@prod</code> — and is idempotent.</li>
+    <li><strong>ask</strong> commits a manifest with three entries in mount order, the third carrying <code>ref === "prod"</code>.</li>
+    <li>Editing <code>refunds.md</code> produces exactly one <code>changed</code> diff entry with <code>source_revision_a !== source_revision_b</code> and both <code>observed_at</code> fields; the others are unchanged.</li>
+    <li>Replaying the first ticket still matches and returns the <strong>old</strong> bytes while a live resolve returns the new ones.</li>
+    <li>Editing <code>tone.md</code> leaves the tone entry's snapshot identical (pinned by the tag) while the refunds entry moves.</li>
+    <li>The evidence bundle's <code>subject[0].digest.sha256</code> equals <code>merkleRoot()</code> recomputed from its entries; <code>readproof evidence verify</code> exits 0 — and exits non-zero after one byte of <code>content_b64</code> is flipped.</li>
+    <li>The repository's own fixtures were never touched.</li>
+  </ol>
+  <p>CI job <code>support-agent-example</code> (<code>.github/workflows/ci.yml</code>): set up Go and Node, build the SDK, <code>npm ci</code>, <code>npm run build</code>, <code>npm test</code>. No Ollama in CI, by design.</p>
+</section>
+
+<section id="mapping">
+  <p class="eyebrow">Concepts</p>
+  <h2>How it maps to Readproof</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Readproof concept</th><th>In this example</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Identity</strong></td><td><code>readproof://acme/policies/{refunds,shipping,tone}</code> — stable names, independent of the files behind them.</td></tr>
+      <tr><td><strong>Policy</strong></td><td><code>require_fresh</code> on refunds (money), <code>allow_stale</code> 1h on shipping (rarely changes), <code>require_fresh</code> on tone but mounted by tag, so it never fetches.</td></tr>
+      <tr><td><strong>Tag</strong></td><td><code>tone@prod</code>, moved only by <code>promote</code> — an explicit, revertible deployment of house style.</td></tr>
+      <tr><td><strong>Run</strong></td><td>One per ticket, id <code>ticket-&lt;id&gt;</code>; <code>mount()</code> resolves <em>and</em> records.</td></tr>
+      <tr><td><strong>Manifest</strong></td><td>The three ordered entries <code>commit()</code> freezes; its id is stored with the answer.</td></tr>
+      <tr><td><strong>Diff</strong></td><td><code>diff 1001 1002</code>, with per-side <code>source_revision</code> / <code>observed_at</code> / <code>ref</code>.</td></tr>
+      <tr><td><strong>Replay</strong></td><td><code>replay 1001</code> — strict SHA256 reconstruction, no source fetch.</td></tr>
+      <tr><td><strong>Evidence</strong></td><td><code>evidence 1001</code> — in-toto Statement, Merkle root over the entries, verified by the Go CLI.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="gotchas">
+  <p class="eyebrow">Honest notes</p>
+  <h2>Gotchas and limits</h2>
+  <ul>
+    <li><strong><code>promote</code> resolves first.</strong> <code>current_snapshot_id</code> only moves on resolve, so "promote the current snapshot" right after an edit would otherwise re-promote the pre-edit one. The example resolves, then tags.</li>
+    <li><strong>The tone document is sent twice</strong> — as the system prompt (it <em>is</em> the house style) and in the documents list (so "exactly the mounted bytes" stays literal). A few dozen tokens; drop the duplicate if you prefer.</li>
+    <li><strong>The ticket log is append-only JSONL</strong>; re-asking a ticket id appends a second record and the last one wins. It is a demo store, not a database.</li>
+    <li><strong>The real run depends on your Ollama.</strong> Model quality and latency are the model's; the transcript used Ollama Cloud's <code>deepseek-v4-flash:cloud</code>. Tests never touch a model.</li>
+    <li><strong>The scenario leaves its scratch directory</strong> (bundle + readproofd log) and prints the path; delete it when done.</li>
+    <li><strong>Filesystem sources need a host-side readproofd.</strong> A containerized readproofd cannot read the example's files.</li>
+  </ul>
+</section>
+
+<section id="extend">
+  <p class="eyebrow">Next</p>
+  <h2>Extend it</h2>
+  <div class="cards">
+    <div class="card"><h4>Add a policy</h4><p>Append an entry to <code>POLICY_RESOURCES</code> in <code>src/config.ts</code> (uri, name, file, policy, optional <code>mountRef</code>) and drop the file in <code>context/policies/</code>. <code>setup</code> registers it; <code>mountSpecs()</code> mounts it in order; the manifest, diff, replay, and evidence pick it up unchanged.</p></div>
+    <div class="card"><h4>Govern a GitHub or HTTP document</h4><p>Swap <code>policySource()</code> to <code>{ kind: "github", github: { owner, repo, path, ref } }</code> or <code>{ kind: "http", http: { url, headers } }</code>; the source revision becomes the commit SHA or ETag, and <code>diff</code> names it. Then a containerized <code>readproofd</code> works too.</p></div>
+    <div class="card"><h4>Swap the model</h4><p><code>OLLAMA_MODEL=…</code> for any Ollama model; for another provider replace <code>answer()</code> in <code>src/model.ts</code> — keep the rule that the prompt is built only from <code>entries</code>.</p></div>
+    <div class="card"><h4>Let an agent harness do the mounting</h4><p>The same tools exist over MCP (<code>readproof mcp</code>) for Claude Code, Cursor, or DeepSeek Harness, and as a LangGraph node in <code>examples/langgraph-ts</code> — the manifest id lands in the checkpoint instead of a JSONL line.</p></div>
+  </div>
+  <p class="foot">Page: <code>examples/support-agent/guide.html</code> · code: <code>examples/support-agent/</code> · Readproof 0.3.0 · output captured 2026‑08‑21.</p>
+</section>
+</main>
+</div>

@@ -150,7 +150,7 @@
 
 <div class="shell">
 <nav class="side" aria-label="Sections">
-  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.2.0</small></p>
+  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.3.0</small></p>
   <p class="tag">docs · <a href="../">home</a></p>
   <ol>
     <li><a href="#overview">Overview</a></li>
@@ -166,6 +166,8 @@
     <li><a href="#sdk">TypeScript SDK</a></li>
     <li><a href="#mcp">MCP (Claude Code, Cursor…)</a></li>
     <li><a href="#langgraph">LangGraph</a></li>
+    <li><a href="#dsh">DeepSeek Harness</a></li>
+    <li><a href="#support-agent">Support agent example</a></li>
     <li><a href="#otel">Observability</a></li>
     <li class="group">Reference</li>
     <li><a href="#cli">CLI cheat sheet</a></li>
@@ -175,7 +177,7 @@
 
 <main>
 <section class="hero" id="overview">
-  <p class="eyebrow">documentation · readproof 0.2.0</p>
+  <p class="eyebrow">documentation · readproof 0.3.0</p>
   <h1>Give your agent's context a lockfile.</h1>
   <p class="lede">Readproof records <strong>exactly</strong> which bytes an agent read — every policy, document, or dataset, by content hash — so any run can be diffed against another, replayed byte for byte without touching the live source, and exported as evidence.</p>
   <p class="thesis">Models are probabilistic, but many context failures are infrastructural. Agent reliability is bounded by context reliability.</p>
@@ -316,7 +318,7 @@
   <p class="lede">Embedded mode needs only Go 1.26+. Everything lives in a local <code>.readproof</code> directory (SQLite + blobs); no services.</p>
   <pre class="code" data-lang="bash"><code>git clone &lt;this repo&gt; readproof &amp;&amp; cd readproof
 go build -o readproof ./cmd/readproof
-./readproof version            <span class="c"># readproof 0.2.0</span>
+./readproof version            <span class="c"># readproof 0.3.0</span>
 
 <span class="c"># register a document: identity + source + freshness policy</span>
 ./readproof resource add readproof://demo/policies/refunds \
@@ -659,6 +661,37 @@ npm run replay     <span class="c"># replays the checkpointed manifest: still "3
   <p>Same shape works for Temporal/Restate activities (put <code>readproof.resolve</code> in an activity, the manifest id in the event history) and for plain request handlers (log the manifest id with the request id).</p>
 </section>
 
+<section id="dsh">
+  <h2>DeepSeek Harness</h2>
+  <p class="lede"><a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a> (<code>dsh</code>) is DeepSeek's open source agent harness where every capability is a plugin and every context injection is logged. Readproof ships as a native <strong>bundle</strong> for it — the same 13 tools as the MCP server, registered through the harness's own tool service — plus a zero code MCP overlay.</p>
+  <h3>Install as a bundle</h3>
+  <pre class="code" data-lang="bash"><code><span class="c"># a reachable readproofd (or let the plugin spawn one), then:</span>
+go build -o readproofd ./cmd/readproofd
+dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof
+dsh web                                   <span class="c"># boots the web profile with the plugin mounted</span></code></pre>
+  <p>Local dev without installing: <code>dsh web --patch ./integrations/deepseek-harness/readproof-plugin.cordis.yml</code> (set <code>__READPROOF_REPO__</code> to your absolute repo path first). Zero code alternative: <code>readproof-mcp.cordis.yml</code> runs <code>readproof mcp</code> over stdio through <code>@deepseek-ai/dsh-mcp-client</code>; tools appear as <code>mcp__readproof__readproof_*</code>.</p>
+  <h3>What the plugin does</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Capability</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Tools</td><td><code>readproof_resources_list</code>, <code>readproof_resolve</code>, <code>readproof_history</code>, <code>readproof_run_start</code> / <code>_mount</code> / <code>_commit</code>, <code>readproof_manifest</code>, <code>readproof_diff</code>, <code>readproof_replay</code>, <code>readproof_tag_set</code> / <code>_list</code> / <code>_delete</code>, <code>readproof_evidence_export</code> — descriptions written for the model, JSON results, 1 MiB inline cap.</td></tr>
+      <tr><td>Session runs</td><td>Every <code>readproof_resolve</code> made on behalf of a DSH session is also mounted into a Readproof run <code>dsh-&lt;sessionId&gt;</code>, committed when the session ends (or lazily on the next commit/manifest/diff/replay/evidence call). A session that keeps reading rolls to <code>-2</code>, <code>-3</code>, …</td></tr>
+      <tr><td>Config</td><td><code>endpoint</code> (default <code>http://127.0.0.1:8080</code>), <code>apiKey</code> (or <code>READPROOF_API_KEY</code>), <code>spawn</code> (start a child <code>readproofd</code>; <code>readproofdPath</code>, <code>dataDir</code>, <code>addr</code>), <code>sessionRuns</code>, <code>toolPrefix</code>, <code>systemPromptSection</code>, <code>maxInlineBytes</code>.</td></tr>
+      <tr><td>Verified</td><td>26 in process tests against a real <code>readproofd</code> through a real Cordis app; booted with <code>@deepseek-ai/dsh@0.1.1-rc.1</code>, all 13 tools registered. Not yet exercised with a live model turn; text content only.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Source and README: <code>integrations/deepseek-harness/dsh-plugin-readproof/</code>.</p>
+</section>
+
+<section id="support-agent">
+  <h2>Support agent example (open model on Ollama)</h2>
+  <p class="lede">A complete, runnable agent in <code>examples/support-agent</code>: a customer support agent answers tickets from three policy documents governed by Readproof, using any chat model Ollama serves (no API key). Every ticket is one run; the manifest id is stored next to the answer.</p>
+  <pre class="code" data-lang="bash"><code>cd examples/support-agent &amp;&amp; npm install
+OLLAMA_MODEL=llama3.2 npm run scenario      <span class="c"># or SUPPORT_FAKE_MODEL=1 npm run scenario (no Ollama)</span></code></pre>
+  <p>The scenario builds <code>readproof</code>/<code>readproofd</code>, starts a throwaway server, registers the policies (<code>refunds</code> require_fresh, <code>shipping</code> allow_stale 1h, <code>tone</code> pinned <code>@prod</code>), answers a ticket, edits the refund policy from 30 to 14 days, answers again (the decision flips), then <code>diff</code> names the revision that changed, <code>replay</code> returns the 30 day bytes the first answer saw, <code>evidence</code> exports a bundle the Go CLI verifies, and an edit to the house style changes nothing until <code>promote</code> moves the tag. Seven end to end tests run against a real server with a deterministic fake model.</p>
+  <p><a href="../examples/support-agent/">Read the complete guide</a> — architecture, every file and command, the real transcript, tests, environment variables, and how to extend it.</p>
+</section>
+
 <section id="otel">
   <h2>Observability</h2>
   <p class="lede">Every stage is traced; set <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> and spans flow. Unset, instrumentation is a no op. Content is never attached to spans or metrics.</p>
@@ -707,10 +740,10 @@ readproof.run.commit                        readproof.manifest.id=manifest_… �
   <h3>How is this different from logging tool outputs in my tracing tool?</h3>
   <p>Traces key on spans; Readproof keys on <strong>source identity</strong>. You get a freshness policy, a run to run diff of inputs with the source revision that changed, and byte exact replay without fetching again — and the manifest's Merkle root shows up in your trace, so the two complement each other.</p>
   <h3>Is the store encrypted / multi tenant / signed?</h3>
-  <p>v0.2 is a security <strong>baseline</strong>: no plaintext credentials at rest (env refs resolved at fetch time, redaction everywhere), optional single API key on <code>readproofd</code>, dev only Compose credentials clearly labeled, dependency scanning clean. Not enterprise IAM; bundles aren't signed yet. See the roadmap.</p>
+  <p>v0.3 is a security <strong>baseline</strong>: no plaintext credentials at rest (env refs resolved at fetch time, redaction everywhere), optional single API key on <code>readproofd</code>, dev only Compose credentials clearly labeled, dependency scanning clean. Not enterprise IAM; bundles aren't signed yet. See the roadmap.</p>
   <h3>Status</h3>
-  <p><strong>v0.2.0</strong> — tags/<code>@ref</code>, provenance aware diff, strict replay, evidence bundles, MCP server, OTel GenAI attributes, LangGraph example, TypeScript SDK, Postgres/S3 or embedded SQLite storage, CI incl. a Compose integration run. Private checkpoint: no LICENSE yet, and the name will change before public launch. Roadmap (in order): rename + LICENSE + public repo; Python SDK; trace context propagation over the HTTP API; MCP HTTP transport; a policy file (allowed sources / SSRF allow list / content scanning); signed + OCI distributed evidence bundles; <code>tag promote</code>; more adapters (S3, Confluence/Notion, generic git); Temporal/Restate helpers; auth beyond one API key; operator UI.</p>
-  <p class="foot">Docs in the repo: <code>README.md</code> · <code>docs/api.md</code> · <code>docs/mcp.md</code> · <code>docs/evidence.md</code> · <code>docs/observability.md</code> · <code>docs/roadmap.md</code> · <code>examples/refund-agent</code> · <code>examples/langgraph-ts</code>. Every command output on this page was captured from <code>readproof</code> 0.2.0 on 2026-08-21; ULIDs and hashes are trimmed for width.</p>
+  <p><strong>v0.3.0</strong> — tags/<code>@ref</code>, provenance aware diff, strict replay, evidence bundles, MCP server, OTel GenAI attributes, LangGraph example, support agent example (Ollama), DeepSeek Harness plugin, TypeScript SDK, Postgres/S3 or embedded SQLite storage, CI incl. a Compose integration run. Licensed Apache-2.0; renamed from Ctx to Readproof in 0.3.0; repository public launch pending. Roadmap (in order): public repo; Python SDK; trace context propagation over the HTTP API; MCP HTTP transport; a policy file (allowed sources / SSRF allow list / content scanning); signed + OCI distributed evidence bundles; <code>tag promote</code>; more adapters (S3, Confluence/Notion, generic git); Temporal/Restate helpers; auth beyond one API key; operator UI.</p>
+  <p class="foot">Docs in the repo: <code>README.md</code> · <code>docs/api.md</code> · <code>docs/mcp.md</code> · <code>docs/evidence.md</code> · <code>docs/observability.md</code> · <code>docs/roadmap.md</code> · <code>examples/refund-agent</code> · <code>examples/langgraph-ts</code> · <code>examples/support-agent</code> · <code>integrations/deepseek-harness</code>. Every command output on this page was captured from <code>readproof</code> 0.3.0 on 2026-08-21; ULIDs and hashes are trimmed for width.</p>
 </section>
 </main>
 </div>

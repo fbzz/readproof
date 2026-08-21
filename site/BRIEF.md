@@ -114,7 +114,8 @@ Cursor; what is the license (Apache-2.0).
 - **3 source adapters** (filesystem, GitHub, HTTP); **2 storage backends**
   (embedded SQLite + local blobs, or Postgres + S3 compatible store);
   **13 MCP tools**; TypeScript SDK with zero runtime dependencies;
-  OpenTelemetry spans with GenAI attributes; a LangGraph.js example.
+  OpenTelemetry spans with GenAI attributes; a LangGraph.js example; a DeepSeek Harness plugin (26 tests);
+  a support agent example on Ollama (7 e2e tests).
 - The core invariant is a test: the reference demo asserts
   `SHA256(original) == SHA256(replay)` over SQLite, over Postgres + MinIO,
   and over a real HTTP round trip.
@@ -360,6 +361,19 @@ the evidence bundle's subject digest), `readproof.resolve` (`readproof.resource.
 _errors_total, readproof_cache_hit_total/_miss_total, readproof_source_fetch_*, readproof_snapshot_created_total, readproof_manifest_created_total,
 readproof_run_committed_total, readproof_tag_resolve_total.
 
+### 5.10a DeepSeek Harness plugin (`integrations/deepseek-harness/`)
+Native DSH bundle `dsh-plugin-readproof` (Cordis plugin: `name = 'readproof'`, `inject = ['tools']`, Schemastery `Config`) registering the same 13 tools
+as `readproof_*` via `defineTool`, recording one Readproof run per DSH session (`dsh-<sessionId>`, committed on session end or lazily), config
+`endpoint/apiKey/spawn/readproofdPath/dataDir/addr/sessionRuns/toolPrefix/systemPromptSection/maxInlineBytes`. Install:
+`dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof && dsh web`; dev: `dsh web --patch ./integrations/deepseek-harness/readproof-plugin.cordis.yml`;
+zero code: `readproof-mcp.cordis.yml` (tools `mcp__readproof__readproof_*`). 26 tests; booted on `@deepseek-ai/dsh@0.1.1-rc.1`; not yet exercised with a live model.
+
+### 5.10b Support agent example (`examples/support-agent/`)
+TypeScript agent on `@readproof/sdk` + `ollama` (open models, no API key): three policies (`refunds` require_fresh, `shipping` allow_stale 1h,
+`tone` mounted `@prod`), one run per ticket, answer + manifest id in `data/tickets.jsonl`; commands `setup · ask · show · replay · diff · evidence · promote · history`;
+`npm run scenario` runs the whole story (also `SUPPORT_FAKE_MODEL=1`); 7 e2e tests; a self contained guide page at `examples/support-agent/guide.html`
+(hosted on the site at `/examples/support-agent/`). Real transcript used `deepseek-v4-flash:cloud` via Ollama Cloud.
+
 ### 5.10 Roadmap (in order) and status
 Rename + LICENSE + public repo · Python SDK · trace context propagation over the HTTP API · MCP HTTP transport · a policy file
 (allowed sources / SSRF allow list / content scanning) · signed and OCI distributed evidence bundles · `tag promote` ·
@@ -387,7 +401,7 @@ Sections in order (content per sections 3–5; you choose the visual treatment):
 
 ### Docs (`site/docs/index.html`)
 Single page with a sticky table of contents. Keep these anchor ids (the landing links to them):
-`#overview #how #install #sources #runs #tags #evidence #server #sdk #mcp #langgraph #otel #cli #faq`.
+`#overview #how #install #sources #runs #tags #evidence #server #sdk #mcp #langgraph #dsh #support-agent #otel #cli #faq`.
 Content to cover under each: overview/thesis; mechanism + the six concepts (+ tags, evidence); install & first resolve
 (verbatim output); sources (filesystem/GitHub/HTTP with the header env var pattern) and policies table; runs/manifest/diff/replay
 walkthrough with verbatim output; tags workflow; evidence export/verify + bundle shape + what it proves/doesn't + Art. 12/SOC 2
