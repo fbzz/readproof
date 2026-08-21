@@ -1,16 +1,16 @@
 /**
- * dsh-plugin-ctx — Ctx as a DeepSeek Harness plugin.
+ * dsh-plugin-readproof — Readproof as a DeepSeek Harness plugin.
  *
- * Ctx gives the documents an agent reads a stable `ctx://` identity, a
+ * Readproof gives the documents an agent reads a stable `readproof://` identity, a
  * freshness policy, content-addressed snapshots, per-run manifests, diff,
  * byte-exact replay, and evidence bundles. This plugin registers that whole
  * surface as model-callable tools, mirroring the MCP server in
  * internal/mcp so the two surfaces cannot drift.
  *
- * @module dsh-plugin-ctx
+ * @module dsh-plugin-readproof
  */
 
-import { Ctx } from '@ctx/sdk'
+import { Readproof } from '@readproof/sdk'
 import type { Context } from '@deepseek-ai/cordis'
 // Declaration merges: `agent/disposed` and `session/disposed` on
 // `Context.Events`, and `ctx.tools` itself. Type-only, so none of these is a
@@ -21,32 +21,32 @@ import type {} from '@deepseek-ai/dsh-tools'
 
 import { Config } from './config.js'
 import { SessionRuns } from './session-runs.js'
-import { spawnCtxd } from './spawn.js'
+import { spawnReadproofd } from './spawn.js'
 import { registerTools } from './tools.js'
 
 export { Config }
 export type { Config as ConfigType } from './config.js'
 export { TOOL_BASE_NAMES } from './tools.js'
 
-export const name = 'ctx'
+export const name = 'readproof'
 
 /**
  * Only `tools` is required. `systemPrompt` is read opportunistically with
  * `ctx.get` instead of being injected: injecting it would hold this plugin
- * — and every Ctx tool — hostage to a service it merely decorates. (The
+ * — and every Readproof tool — hostage to a service it merely decorates. (The
  * same optional-backend idiom `ToolRuntime` uses for `approval`.)
  */
 export const inject = ['tools']
 
 export async function apply(ctx: Context, config: Config): Promise<() => Promise<void>> {
-  const log = ctx.logger('ctx')
+  const log = ctx.logger('readproof')
 
-  const spawned = config.spawn ? await spawnCtxd(config, (message) => log.info(message)) : undefined
+  const spawned = config.spawn ? await spawnReadproofd(config, (message) => log.info(message)) : undefined
   const endpoint = spawned?.endpoint ?? config.endpoint
   // An API key belongs in the environment rather than in a patch file that
   // is checked in, so the env var wins nothing but fills a blank.
-  const apiKey = config.apiKey !== '' ? config.apiKey : (process.env['CTX_API_KEY'] ?? '')
-  const client = new Ctx({ endpoint, ...(apiKey !== '' ? { apiKey } : {}) })
+  const apiKey = config.apiKey !== '' ? config.apiKey : (process.env['READPROOF_API_KEY'] ?? '')
+  const client = new Readproof({ endpoint, ...(apiKey !== '' ? { apiKey } : {}) })
 
   const sessions = config.sessionRuns
     ? new SessionRuns(client, (message) => log.warn(message))
@@ -87,7 +87,7 @@ export async function apply(ctx: Context, config: Config): Promise<() => Promise
     const systemPrompt = ctx.get('systemPrompt')
     if (systemPrompt) {
       systemPrompt.section({
-        name: 'ctx',
+        name: 'readproof',
         // Tool guidance is 100-199 by the harness's ordering convention.
         order: 150,
         text: promptSection(config.toolPrefix, config.sessionRuns),
@@ -98,11 +98,11 @@ export async function apply(ctx: Context, config: Config): Promise<() => Promise
   }
 
   log.info(
-    `Ctx tools registered against ${endpoint}` +
+    `Readproof tools registered against ${endpoint}` +
       (sessions ? ' (session runs on)' : ' (session runs off)'),
   )
 
-  // One disposer, ordered: open runs are committed while ctxd is still up,
+  // One disposer, ordered: open runs are committed while readproofd is still up,
   // and only then is a spawned child taken down.
   return async () => {
     if (sessions) await sessions.commitAll()
@@ -114,12 +114,12 @@ export async function apply(ctx: Context, config: Config): Promise<() => Promise
 function promptSection(prefix: string, sessionRuns: boolean): string {
   const t = (base: string): string => `${prefix}${base}`
   const lines = [
-    '## Ctx (governed documents)',
+    '## Readproof (governed documents)',
     '',
-    `Policies, specs, and runbooks live in Ctx under \`ctx://<namespace>/<path>\`. Read them with \`${t('resolve')}\` rather than guessing or reading files directly: what comes back carries the snapshot id, content hash, and source revision that identify exactly which bytes you saw.`,
+    `Policies, specs, and runbooks live in Readproof under \`readproof://<namespace>/<path>\`. Read them with \`${t('resolve')}\` rather than guessing or reading files directly: what comes back carries the snapshot id, content hash, and source revision that identify exactly which bytes you saw.`,
     '',
     `- \`${t('resources_list')}\` — what you are allowed to read.`,
-    `- \`ctx://ns/path@tag\` — read one exact pinned snapshot, with no fetch and no freshness check.`,
+    `- \`readproof://ns/path@tag\` — read one exact pinned snapshot, with no fetch and no freshness check.`,
     `- \`${t('run_start')}\` → \`${t('run_mount')}\` → \`${t('run_commit')}\` — when the work should be auditable. The commit returns a manifest id; cite it in what you produce.`,
     `- \`${t('diff')}\`, \`${t('replay')}\`, \`${t('evidence_export')}\` — take a manifest id (or a run id) and explain, reproduce, or attest to what a run read.`,
   ]

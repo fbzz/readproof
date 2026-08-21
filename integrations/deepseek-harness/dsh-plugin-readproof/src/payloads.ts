@@ -2,10 +2,10 @@
  * The JSON payloads the tools return.
  *
  * These mirror internal/mcp/types.go field for field, so a model that has
- * seen Ctx through `ctx mcp` sees the same shapes here, and so anything
+ * seen Readproof through `readproof mcp` sees the same shapes here, and so anything
  * written against one surface reads the other. They are deliberately
  * separate from the SDK's wire types (sdk/typescript/src/types.ts), which
- * are shaped by ctxd's HTTP API rather than by what a model needs.
+ * are shaped by readproofd's HTTP API rather than by what a model needs.
  */
 
 import type {
@@ -16,7 +16,7 @@ import type {
   ResolveResult,
   Snapshot,
   Tag,
-} from '@ctx/sdk'
+} from '@readproof/sdk'
 import type { JsonValue } from '@deepseek-ai/dsh-tools'
 
 import type { ContentPayload } from './content.js'
@@ -29,7 +29,7 @@ export type SourceInfo = {
   repo?: string
   ref?: string
   url?: string
-  /** Already redacted by ctxd (internal/wire.SourceToWire) before it reaches us. */
+  /** Already redacted by readproofd (internal/wire.SourceToWire) before it reaches us. */
   headers?: Record<string, string>
 }
 

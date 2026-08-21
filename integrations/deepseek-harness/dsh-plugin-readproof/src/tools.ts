@@ -1,11 +1,11 @@
-import { buildEvidence, CtxError, type Ctx } from '@ctx/sdk'
+import { buildEvidence, ReadproofError, type Readproof } from '@readproof/sdk'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { defineTool, type JsonValue, type ToolRunContext } from '@deepseek-ai/dsh-tools'
 
 import type { Config } from './config.js'
 import { encodeContent } from './content.js'
-import { commitRun, mountRun, startRun } from './ctx-client.js'
+import { commitRun, mountRun, startRun } from './readproof-client.js'
 import {
   diffOut,
   manifestOut,
@@ -20,7 +20,7 @@ import {
 import type { SessionRuns } from './session-runs.js'
 
 export interface ToolDeps {
-  client: Ctx
+  client: Readproof
   config: Config
   /** Absent when `sessionRuns` is off. */
   sessions?: SessionRuns
@@ -44,7 +44,7 @@ export const TOOL_BASE_NAMES = [
 ] as const
 
 /**
- * Register every Ctx tool on `ctx.tools`.
+ * Register every Readproof tool on `ctx.tools`.
  *
  * Names, descriptions, parameter documentation, and result shapes mirror
  * internal/mcp/tools.go, so the harness surface and the MCP surface are the
@@ -64,12 +64,12 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
     defineTool({
       name: t('resources_list'),
       description:
-        'List every document registered in Ctx, with its ctx:// URI, where its bytes come from, and the freshness policy that governs reading it. ' +
+        'List every document registered in Readproof, with its readproof:// URI, where its bytes come from, and the freshness policy that governs reading it. ' +
         'Call this first to discover what you are allowed to read.',
       parameters: {},
       output: {
         schema: { type: 'json', description: 'A { resources: [...] } object.' },
-        render: (_args, value) => blocks(`${count(read(value).resources, 'resource')} registered in Ctx.`, value),
+        render: (_args, value) => blocks(`${count(read(value).resources, 'resource')} registered in Readproof.`, value),
       },
       async execute() {
         return attempt('list resources', async () => {
@@ -88,14 +88,14 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
         'Use it whenever you need the current governed version of a policy, spec, or runbook; append @<tag> to the URI to read a pinned snapshot instead. ' +
         'Note: depending on the resource’s policy this may fetch from the source and record a new snapshot.' +
         (sessions
-          ? ` Every read is also recorded in this session’s Ctx run, so the result carries the run id it landed in; commit that run with ${t('run_commit')} to freeze it into a manifest.`
+          ? ` Every read is also recorded in this session’s Readproof run, so the result carries the run id it landed in; commit that run with ${t('run_commit')} to freeze it into a manifest.`
           : ''),
       parameters: {
         uri: {
           type: 'string',
           required: true,
           description:
-            'the resource to read, ctx://<namespace>/<path>; append @<tag> (e.g. ctx://acme/policies/refunds@prod) to pin exactly the snapshot that tag names',
+            'the resource to read, readproof://<namespace>/<path>; append @<tag> (e.g. readproof://acme/policies/refunds@prod) to pin exactly the snapshot that tag names',
         },
       },
       output: {
@@ -120,13 +120,13 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
     defineTool({
       name: t('history'),
       description:
-        'List every snapshot Ctx has recorded for one resource, newest first, with the tags that point at each. ' +
+        'List every snapshot Readproof has recorded for one resource, newest first, with the tags that point at each. ' +
         `Use it to find the snapshot id to pin with ${t('tag_set')}, or to see when and how often a document changed.`,
       parameters: {
         uri: {
           type: 'string',
           required: true,
-          description: 'a Ctx resource reference, ctx://<namespace>/<path>, optionally with a trailing @<tag>',
+          description: 'a Readproof resource reference, readproof://<namespace>/<path>, optionally with a trailing @<tag>',
         },
       },
       output: {
@@ -201,7 +201,7 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
         uri: {
           type: 'string',
           required: true,
-          description: 'the resource to mount, ctx://<namespace>/<path>, optionally with @<tag>',
+          description: 'the resource to mount, readproof://<namespace>/<path>, optionally with @<tag>',
         },
       },
       output: {
@@ -311,7 +311,7 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
     defineTool({
       name: t('replay'),
       description:
-        'Reconstruct a manifest’s bytes from Ctx’s own storage and re-hash them, without contacting any source. ' +
+        'Reconstruct a manifest’s bytes from Readproof’s own storage and re-hash them, without contacting any source. ' +
         'Use it to prove a past run is still reproducible, or (with include_content) to get back exactly the bytes that run saw even after the sources changed.',
       parameters: {
         target: { type: 'string', required: true, description: 'a manifest id, or the run id it was committed from' },
@@ -356,10 +356,10 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
     defineTool({
       name: t('tag_set'),
       description:
-        'Create or move a named pointer from a resource to one of its snapshots, so it can be read as ctx://<namespace>/<path>@<tag>. ' +
+        'Create or move a named pointer from a resource to one of its snapshots, so it can be read as readproof://<namespace>/<path>@<tag>. ' +
         "Use it to freeze a known-good version (e.g. 'prod') that later reads resolve to with no fetch and no policy evaluation.",
       parameters: {
-        uri: { type: 'string', required: true, description: 'the resource the tag belongs to, ctx://<namespace>/<path>' },
+        uri: { type: 'string', required: true, description: 'the resource the tag belongs to, readproof://<namespace>/<path>' },
         tag: { type: 'string', required: true, description: 'the tag name, matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' },
         snapshot_id: {
           type: 'string',
@@ -388,7 +388,7 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
         uri: {
           type: 'string',
           required: true,
-          description: 'a Ctx resource reference, ctx://<namespace>/<path>, optionally with a trailing @<tag>',
+          description: 'a Readproof resource reference, readproof://<namespace>/<path>, optionally with a trailing @<tag>',
         },
       },
       output: {
@@ -456,7 +456,7 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
         return attempt(`export evidence for ${args.target}`, async () => {
           await sessions?.commitIfOwned(args.target)
           // buildEvidence is composed purely from public SDK calls, so this
-          // bundle is byte-comparable with the one `ctx evidence export`
+          // bundle is byte-comparable with the one `readproof evidence export`
           // writes for the same target — same merkle root above all.
           return toJson(await buildEvidence(client, args.target, { withContent: args.with_content === true }))
         })
@@ -478,15 +478,15 @@ export function sessionIdOf(exec: ToolRunContext): string | undefined {
 
 /** Strip a trailing `@<tag>`; mirrors resource.SplitRef in Go. */
 export function bareUri(raw: string): string {
-  const prefix = 'ctx://'
+  const prefix = 'readproof://'
   if (!raw.startsWith(prefix)) {
-    throw new Error(`ctx: invalid uri ${JSON.stringify(raw)}: must start with "${prefix}"`)
+    throw new Error(`readproof: invalid uri ${JSON.stringify(raw)}: must start with "${prefix}"`)
   }
   const rest = raw.slice(prefix.length)
   const at = rest.lastIndexOf('@')
   if (at < 0) return raw
   if (at === rest.length - 1) {
-    throw new Error(`ctx: invalid reference ${JSON.stringify(raw)}: empty tag after "@"`)
+    throw new Error(`readproof: invalid reference ${JSON.stringify(raw)}: empty tag after "@"`)
   }
   return prefix + rest.slice(0, at)
 }
@@ -508,7 +508,7 @@ async function attempt<T>(what: string, body: () => Promise<T>): Promise<T> {
 }
 
 function describe(err: unknown): string {
-  if (err instanceof CtxError) return err.message
+  if (err instanceof ReadproofError) return err.message
   if (err instanceof Error) return err.message
   return String(err)
 }

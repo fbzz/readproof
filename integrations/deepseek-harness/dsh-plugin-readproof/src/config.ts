@@ -6,38 +6,38 @@ import Schema from '@deepseek-ai/schemastery'
  * configuration doctrine (docs/user/develop/basic/config.md).
  */
 export interface Config {
-  /** Base URL of a running `ctxd`. Ignored when `spawn` is true. */
+  /** Base URL of a running `readproofd`. Ignored when `spawn` is true. */
   endpoint: string
   /**
-   * Bearer token for a `ctxd` started with `--api-key`. Left empty here it
-   * falls back to `CTX_API_KEY`, so a deployment never has to write the
+   * Bearer token for a `readproofd` started with `--api-key`. Left empty here it
+   * falls back to `READPROOF_API_KEY`, so a deployment never has to write the
    * secret into a patch file that lives in version control.
    */
   apiKey: string
-  /** Start a private `ctxd` child process instead of using `endpoint`. */
+  /** Start a private `readproofd` child process instead of using `endpoint`. */
   spawn: boolean
   /** Executable used when `spawn` is true; resolved on PATH unless absolute. */
-  ctxdPath: string
-  /** `--data-dir` for the spawned `ctxd`. `~` expands to the home directory. */
+  readproofdPath: string
+  /** `--data-dir` for the spawned `readproofd`. `~` expands to the home directory. */
   dataDir: string
-  /** `--addr` for the spawned `ctxd`; also determines the endpoint used. */
+  /** `--addr` for the spawned `readproofd`; also determines the endpoint used. */
   addr: string
-  /** Milliseconds to wait for a spawned `ctxd` to answer `/healthz`. */
+  /** Milliseconds to wait for a spawned `readproofd` to answer `/healthz`. */
   spawnTimeoutMs: number
   /**
-   * Mirror every model-driven resolve into a Ctx run keyed by the DSH
+   * Mirror every model-driven resolve into a Readproof run keyed by the DSH
    * session, so a session's reads are replayable without the model having
-   * to drive `ctx_run_start` / `ctx_run_mount` itself.
+   * to drive `readproof_run_start` / `readproof_run_mount` itself.
    */
   sessionRuns: boolean
-  /** Prefix for every registered tool name. `ctx_` yields `ctx_resolve`. */
+  /** Prefix for every registered tool name. `readproof_` yields `readproof_resolve`. */
   toolPrefix: string
-  /** Contribute a short "how to use Ctx" section to the system prompt. */
+  /** Contribute a short "how to use Readproof" section to the system prompt. */
   systemPromptSection: boolean
   /**
    * Cap on inline content bytes per tool result. Past it the text is cut on
    * a UTF-8 boundary and a marker naming the content hash is appended —
-   * the same 1 MiB default `ctx mcp` uses (internal/mcp/content.go).
+   * the same 1 MiB default `readproof mcp` uses (internal/mcp/content.go).
    */
   maxInlineBytes: number
 }
@@ -51,34 +51,34 @@ export interface Config {
 export const Config: Schema<Partial<Config>, Config> = Schema.object({
   endpoint: Schema.string()
     .default('http://127.0.0.1:8080')
-    .description('Base URL of a running ctxd. Ignored when spawn is true.'),
+    .description('Base URL of a running readproofd. Ignored when spawn is true.'),
   apiKey: Schema.string()
     .default('')
-    .description('Bearer token for ctxd; falls back to $CTX_API_KEY when empty.'),
+    .description('Bearer token for readproofd; falls back to $READPROOF_API_KEY when empty.'),
   spawn: Schema.boolean()
     .default(false)
-    .description('Start a private ctxd child process instead of using endpoint.'),
-  ctxdPath: Schema.string()
-    .default('ctxd')
-    .description('ctxd executable used when spawn is true.'),
+    .description('Start a private readproofd child process instead of using endpoint.'),
+  readproofdPath: Schema.string()
+    .default('readproofd')
+    .description('readproofd executable used when spawn is true.'),
   dataDir: Schema.string()
-    .default('~/.ctx')
-    .description('Data directory for the spawned ctxd.'),
+    .default('~/.readproof')
+    .description('Data directory for the spawned readproofd.'),
   addr: Schema.string()
     .default('127.0.0.1:18080')
-    .description('Listen address for the spawned ctxd.'),
+    .description('Listen address for the spawned readproofd.'),
   spawnTimeoutMs: Schema.number()
     .default(10_000)
-    .description('How long to wait for a spawned ctxd to answer /healthz.'),
+    .description('How long to wait for a spawned readproofd to answer /healthz.'),
   sessionRuns: Schema.boolean()
     .default(true)
-    .description('Record every model-driven resolve in a per-session Ctx run.'),
+    .description('Record every model-driven resolve in a per-session Readproof run.'),
   toolPrefix: Schema.string()
-    .default('ctx_')
+    .default('readproof_')
     .description('Prefix for every registered tool name.'),
   systemPromptSection: Schema.boolean()
     .default(true)
-    .description('Contribute a short Ctx usage section to the system prompt.'),
+    .description('Contribute a short Readproof usage section to the system prompt.'),
   maxInlineBytes: Schema.number()
     .default(1024 * 1024)
     .description('Maximum inline content bytes per tool result.'),

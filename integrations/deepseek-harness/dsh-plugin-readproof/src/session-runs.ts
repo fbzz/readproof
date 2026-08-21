@@ -1,6 +1,6 @@
-import { CtxError, type Ctx, type Manifest, type ResolveResult } from '@ctx/sdk'
+import { ReadproofError, type Readproof, type Manifest, type ResolveResult } from '@readproof/sdk'
 
-import { commitRun, mountRun, startRun } from './ctx-client.js'
+import { commitRun, mountRun, startRun } from './readproof-client.js'
 
 /** Where a resolve landed in the session's run. */
 export interface SessionMount {
@@ -25,7 +25,7 @@ interface SessionState {
 const MAX_EPOCH_PROBE = 16
 
 /**
- * SessionRuns mirrors every model-driven resolve into a Ctx run keyed by the
+ * SessionRuns mirrors every model-driven resolve into a Readproof run keyed by the
  * DSH session, so "what did this session read?" is answerable without the
  * model having to drive the run lifecycle itself.
  *
@@ -41,7 +41,7 @@ export class SessionRuns {
   private readonly queues = new Map<string, Promise<unknown>>()
 
   constructor(
-    private readonly client: Ctx,
+    private readonly client: Readproof,
     private readonly warn: (message: string) => void,
   ) {}
 
@@ -84,8 +84,8 @@ export class SessionRuns {
 
   /**
    * Commit the session run named by `target`, if `target` is one of ours and
-   * still open. This is what makes `ctx_manifest`/`ctx_diff`/`ctx_replay`/
-   * `ctx_evidence_export` work on a session run mid-session: a manifest only
+   * still open. This is what makes `readproof_manifest`/`readproof_diff`/`readproof_replay`/
+   * `readproof_evidence_export` work on a session run mid-session: a manifest only
    * exists after a commit, and the session has not ended yet.
    */
   async commitIfOwned(target: string): Promise<Manifest | undefined> {
@@ -123,17 +123,17 @@ export class SessionRuns {
       try {
         await startRun(this.client, runId)
       } catch (err) {
-        // ctxd answers 500 for a run id that already exists (the store's
+        // readproofd answers 500 for a run id that already exists (the store's
         // uniqueness constraint). Anything else — unreachable server, bad
         // API key — is not a name collision and must surface.
-        if (err instanceof CtxError && err.status === 500) continue
+        if (err instanceof ReadproofError && err.status === 500) continue
         throw err
       }
       const state: SessionState = { runId, epoch, entries: 0, open: true }
       this.states.set(sessionId, state)
       return state
     }
-    throw new Error(`ctx: no unused run id after ${MAX_EPOCH_PROBE} attempts starting from ${base}`)
+    throw new Error(`readproof: no unused run id after ${MAX_EPOCH_PROBE} attempts starting from ${base}`)
   }
 
   /**
@@ -154,7 +154,7 @@ export class SessionRuns {
 }
 
 /**
- * A Ctx run id is opaque, but it ends up in manifests, evidence bundles, and
+ * A Readproof run id is opaque, but it ends up in manifests, evidence bundles, and
  * CLI arguments, so keep it to characters that survive all three unquoted.
  */
 export function runIdBase(sessionId: string): string {

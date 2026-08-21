@@ -1,5 +1,5 @@
 /**
- * Test fixture: a real `ctxd`, built from this repository, with the
+ * Test fixture: a real `readproofd`, built from this repository, with the
  * refund-agent policy registered, plus a real Cordis app with the harness
  * tool registry and this plugin mounted.
  *
@@ -19,7 +19,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
-import { Ctx } from '@ctx/sdk'
+import { Readproof } from '@readproof/sdk'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { CallId } from '@deepseek-ai/dsh-llm'
@@ -27,28 +27,28 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { type JsonValue, type ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 
-import * as ctxPlugin from '../src/index.js'
+import * as readproofPlugin from '../src/index.js'
 import type { Config } from '../src/config.js'
 
 const execFileAsync = promisify(execFile)
 
-export const DEMO_URI = 'ctx://demo/policies/refunds'
+export const DEMO_URI = 'readproof://demo/policies/refunds'
 
 export interface Fixture {
   endpoint: string
   /** Path of the file the demo resource resolves from; edit it to change the source. */
   policyPath: string
-  /** The `ctx` CLI built from this repository. */
-  ctxBin: string
-  /** The `ctxd` binary built from this repository. */
-  ctxdBin: string
+  /** The `readproof` CLI built from this repository. */
+  readproofBin: string
+  /** The `readproofd` binary built from this repository. */
+  readproofdBin: string
   /** A scratch directory that is removed on `stop()`. */
   tmpDir: string
-  client: Ctx
+  client: Readproof
   stop: () => Promise<void>
 }
 
-/** Walk up from this file until the Ctx repository root (the one with go.mod). */
+/** Walk up from this file until the Readproof repository root (the one with go.mod). */
 export function repoRoot(): string {
   let dir = dirname(fileURLToPath(import.meta.url))
   for (let i = 0; i < 10; i++) {
@@ -61,29 +61,29 @@ export function repoRoot(): string {
 }
 
 /**
- * Build `ctxd` and `ctx`, start `ctxd` on a free port over a fresh data
+ * Build `readproofd` and `readproof`, start `readproofd` on a free port over a fresh data
  * directory, and register the refund-agent policy against a copy of the
  * fixture (a copy, so a test can edit it without dirtying the repository).
  */
 export async function startFixture(): Promise<Fixture> {
   const root = repoRoot()
-  const tmpDir = await mkdtemp(join(tmpdir(), 'dsh-plugin-ctx-'))
+  const tmpDir = await mkdtemp(join(tmpdir(), 'dsh-plugin-readproof-'))
   const binDir = join(tmpDir, 'bin')
   const dataDir = join(tmpDir, 'data')
   const policyDir = join(tmpDir, 'policies')
   await Promise.all([mkdir(binDir), mkdir(dataDir), mkdir(policyDir)])
 
-  const ctxdBin = join(binDir, 'ctxd')
-  const ctxBin = join(binDir, 'ctx')
-  await execFileAsync('go', ['build', '-o', ctxdBin, './cmd/ctxd'], { cwd: root })
-  await execFileAsync('go', ['build', '-o', ctxBin, './cmd/ctx'], { cwd: root })
+  const readproofdBin = join(binDir, 'readproofd')
+  const readproofBin = join(binDir, 'readproof')
+  await execFileAsync('go', ['build', '-o', readproofdBin, './cmd/readproofd'], { cwd: root })
+  await execFileAsync('go', ['build', '-o', readproofBin, './cmd/readproof'], { cwd: root })
 
   const policyPath = join(policyDir, 'refunds.md')
   await copyFile(join(root, 'examples', 'refund-agent', 'policies', 'refunds.md'), policyPath)
 
   const port = await freePort()
   const endpoint = `http://127.0.0.1:${port}`
-  const child = spawn(ctxdBin, ['--addr', `127.0.0.1:${port}`, '--data-dir', dataDir], {
+  const child = spawn(readproofdBin, ['--addr', `127.0.0.1:${port}`, '--data-dir', dataDir], {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   const logs: string[] = []
@@ -95,10 +95,10 @@ export async function startFixture(): Promise<Fixture> {
   } catch (err) {
     child.kill('SIGKILL')
     await rm(tmpDir, { recursive: true, force: true })
-    throw new Error(`${err instanceof Error ? err.message : String(err)}\nctxd output:\n${logs.join('')}`)
+    throw new Error(`${err instanceof Error ? err.message : String(err)}\nreadproofd output:\n${logs.join('')}`)
   }
 
-  const client = new Ctx({ endpoint })
+  const client = new Readproof({ endpoint })
   await client.registerResource({
     uri: DEMO_URI,
     source: { kind: 'filesystem', filesystem: { path: policyPath } },
@@ -108,8 +108,8 @@ export async function startFixture(): Promise<Fixture> {
   return {
     endpoint,
     policyPath,
-    ctxBin,
-    ctxdBin,
+    readproofBin,
+    readproofdBin,
     tmpDir,
     client,
     stop: async () => {
@@ -139,7 +139,7 @@ export async function startApp(config: Partial<Config>): Promise<App> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
-  const fiber = await ctx.plugin(ctxPlugin, config)
+  const fiber = await ctx.plugin(readproofPlugin, config)
   // `await ctx.plugin(...)` settles once loading finished; `await()` rethrows
   // a startup error instead of leaving the fiber quietly FAILED.
   await fiber.await()

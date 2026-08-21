@@ -1,7 +1,7 @@
 {
-  "name": "dsh-plugin-ctx",
+  "name": "dsh-plugin-readproof",
   "version": "0.1.0",
-  "description": "DeepSeek Harness plugin for Ctx: stable ctx:// identity, freshness policy, snapshots, per-run manifests, diff, byte-exact replay, and evidence bundles as model-callable tools.",
+  "description": "DeepSeek Harness plugin for Readproof: stable readproof:// identity, freshness policy, snapshots, per-run manifests, diff, byte-exact replay, and evidence bundles as model-callable tools.",
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -23,7 +23,7 @@
     "dsh-plugin",
     "deepseek-harness",
     "cordis",
-    "ctx",
+    "readproof",
     "provenance",
     "evidence"
   ],
@@ -39,7 +39,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@ctx/sdk": "file:../../../sdk/typescript",
+    "@readproof/sdk": "file:../../../sdk/typescript",
     "@deepseek-ai/schemastery": "3.18.1"
   },
   "peerDependencies": {

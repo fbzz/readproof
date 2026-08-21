@@ -24,7 +24,7 @@ describe('inline content capping', () => {
     assert.ok(payload.text.startsWith('éé'), `unexpected prefix: ${JSON.stringify(payload.text)}`)
     assert.ok(!payload.text.startsWith('ééé'))
     assert.ok(!payload.text.includes('�'), 'truncation must not produce a replacement character')
-    assert.match(payload.text, /\[ctx: content truncated — 4 of 6 bytes shown\./)
+    assert.match(payload.text, /\[readproof: content truncated — 4 of 6 bytes shown\./)
     assert.ok(payload.text.includes(HASH), 'the marker must name the content hash')
   })
 

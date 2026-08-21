@@ -8,9 +8,9 @@
 # Since only a row's `config` is `!!js`-interpolated, the path cannot be
 # computed either — resolve it once and feed the result to dsh:
 #
-#   cd integrations/deepseek-harness/dsh-plugin-ctx && npm install && npm run build && cd -
-#   sed "s#__CTX_REPO__#$PWD#" integrations/deepseek-harness/ctx-plugin.cordis.yml > /tmp/ctx-plugin.cordis.yml
-#   npx @deepseek-ai/dsh web --patch /tmp/ctx-plugin.cordis.yml
+#   cd integrations/deepseek-harness/dsh-plugin-readproof && npm install && npm run build && cd -
+#   sed "s#__READPROOF_REPO__#$PWD#" integrations/deepseek-harness/readproof-plugin.cordis.yml > /tmp/readproof-plugin.cordis.yml
+#   npx @deepseek-ai/dsh web --patch /tmp/readproof-plugin.cordis.yml
 #
 # It names the built entry point rather than the package directory because
 # Node's ESM resolver does not resolve a directory. Keep `npx tsc -w`
@@ -18,17 +18,17 @@
 # every registration is a reversible Cordis effect, so the old tools are
 # unregistered first.
 - insert:
-    - id: ctx
-      name: '__CTX_REPO__/integrations/deepseek-harness/dsh-plugin-ctx/dist/src/index.js'
+    - id: readproof
+      name: '__READPROOF_REPO__/integrations/deepseek-harness/dsh-plugin-readproof/dist/src/index.js'
       config:
-        # Start a private ctxd from this repository's `go build ./cmd/ctxd`
+        # Start a private readproofd from this repository's `go build ./cmd/readproofd`
         # output instead of expecting one to already be running. Set
         # `spawn: false` and an `endpoint` to use a shared deployment.
         spawn: true
-        ctxdPath: !!js >-
-          process.env.CTXD_BIN?.trim() || 'ctxd'
+        readproofdPath: !!js >-
+          process.env.READPROOFD_BIN?.trim() || 'readproofd'
         dataDir: !!js >-
-          process.env.CTX_HOME?.trim() || process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:os').homedir(), '.ctx')
+          process.env.READPROOF_HOME?.trim() || process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:os').homedir(), '.readproof')
         addr: 127.0.0.1:18080
         sessionRuns: true
-        toolPrefix: ctx_
+        toolPrefix: readproof_

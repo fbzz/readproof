@@ -12,15 +12,15 @@ const execFileAsync = promisify(execFile)
 
 describe('spawn: true', () => {
   let tmpDir: string
-  let ctxdBin: string
+  let readproofdBin: string
   let endpoint: string
   let app: App | undefined
 
   before(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), 'dsh-plugin-ctx-spawn-'))
+    tmpDir = await mkdtemp(join(tmpdir(), 'dsh-plugin-readproof-spawn-'))
     await mkdir(join(tmpDir, 'data'))
-    ctxdBin = join(tmpDir, 'ctxd')
-    await execFileAsync('go', ['build', '-o', ctxdBin, './cmd/ctxd'], { cwd: repoRoot() })
+    readproofdBin = join(tmpDir, 'readproofd')
+    await execFileAsync('go', ['build', '-o', readproofdBin, './cmd/readproofd'], { cwd: repoRoot() })
     endpoint = `http://127.0.0.1:${await freePort()}`
   })
 
@@ -29,11 +29,11 @@ describe('spawn: true', () => {
     await rm(tmpDir, { recursive: true, force: true })
   })
 
-  it('starts a private ctxd, serves tools from it, and kills it on disposal', async () => {
+  it('starts a private readproofd, serves tools from it, and kills it on disposal', async () => {
     const addr = endpoint.replace('http://', '')
     app = await startApp({
       spawn: true,
-      ctxdPath: ctxdBin,
+      readproofdPath: readproofdBin,
       dataDir: join(tmpDir, 'data'),
       addr,
       sessionRuns: false,
@@ -42,7 +42,7 @@ describe('spawn: true', () => {
     // The child answers: the plugin only finishes loading after /healthz does.
     assert.ok((await fetch(`${endpoint}/healthz`)).ok)
     // And the tools are wired to it — an empty data directory lists nothing.
-    const value = await app.value('ctx_resources_list', {})
+    const value = await app.value('readproof_resources_list', {})
     assert.equal(list(field(value, 'resources')).length, 0)
 
     await app.stop()
@@ -52,11 +52,11 @@ describe('spawn: true', () => {
     await assert.rejects(fetch(`${endpoint}/healthz`))
   })
 
-  it('fails to load loudly when the ctxd binary does not exist', async () => {
+  it('fails to load loudly when the readproofd binary does not exist', async () => {
     await assert.rejects(
       startApp({
         spawn: true,
-        ctxdPath: join(tmpDir, 'no-such-ctxd'),
+        readproofdPath: join(tmpDir, 'no-such-readproofd'),
         dataDir: join(tmpDir, 'data'),
         addr: `127.0.0.1:${await freePort()}`,
         sessionRuns: false,

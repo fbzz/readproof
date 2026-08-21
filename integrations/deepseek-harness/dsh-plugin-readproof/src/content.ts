@@ -1,7 +1,7 @@
 /**
  * Inline content capping, mirroring internal/mcp/content.go so a model
  * talking to this plugin sees the same payload shape and the same
- * truncation marker it would see through `ctx mcp`.
+ * truncation marker it would see through `readproof mcp`.
  *
  * One deliberate difference: the TypeScript SDK decodes a resolve's bytes to
  * a UTF-8 string before this layer ever sees them (sdk/typescript/src/
@@ -26,9 +26,9 @@ export interface ContentPayload {
  */
 function truncationMarker(shown: number, total: number, contentHash: string): string {
   return (
-    `\n\n[ctx: content truncated — ${shown} of ${total} bytes shown. ` +
+    `\n\n[readproof: content truncated — ${shown} of ${total} bytes shown. ` +
     `The full content is unchanged and content-addressed as ${contentHash}; ` +
-    `use ctx_replay or ctx_evidence_export --with-content to obtain all of it.]\n`
+    `use readproof_replay or readproof_evidence_export --with-content to obtain all of it.]\n`
   )
 }
 
