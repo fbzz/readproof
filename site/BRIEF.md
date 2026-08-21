@@ -31,9 +31,8 @@ Hard constraints:
   made up statistics. Real numbers you may use are in section 4.
 - No "Lorem ipsum", no placeholder brands, no exclamation marks, sentence case
   headings, plain engineer to engineer voice, no marketing clichés.
-- Name caveat: the product is currently called **Readproof** (CLI `readproof`, server
-  `readproofd`, URI scheme `readproof://`). The name will change before public launch, so
-  keep it as a plain word mark (no logo needed) and make it easy to swap.
+- Name: the product is **Readproof** (CLI `readproof`, server `readproofd`, URI
+  scheme `readproof://`). Keep it as a plain word mark (no logo yet).
 
 Deliverables: the three HTML files, and a short note listing anything you
 could not verify against this brief.
@@ -105,13 +104,13 @@ machine; delete the `.readproof` directory to uninstall.
 **Typical objections to answer (FAQ):** is it a vector DB; does it replace my
 tracing tool; do I need a server; which sources; how are credentials handled;
 what does the evidence prove and not prove; does it work with Claude Code and
-Cursor; what is the license / why will the name change.
+Cursor; what is the license (Apache-2.0).
 
 ---
 
 ## 4. Honest proof and real numbers
 
-- Version **0.2.0**, private checkpoint, no LICENSE yet (chosen at launch).
+- Version **0.3.0**, licensed Apache-2.0, pre public launch.
 - **3 source adapters** (filesystem, GitHub, HTTP); **2 storage backends**
   (embedded SQLite + local blobs, or Postgres + S3 compatible store);
   **13 MCP tools**; TypeScript SDK with zero runtime dependencies;
