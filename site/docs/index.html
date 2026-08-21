@@ -142,6 +142,8 @@
 
   .skip { position: fixed; left: 16px; top: -64px; z-index: 60; background: var(--accent); color: var(--accent-contrast); padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: top .7s var(--ease); }
   .skip:focus { top: 16px; }
+  /* long commands and transcripts wrap instead of hiding behind a horizontal scrollbar */
+  .term, .code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 20px; }
 </style>
 </head>
 <body>
