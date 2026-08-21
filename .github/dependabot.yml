@@ -1,0 +1,30 @@
+# Keeps the Go module, the four npm workspaces and the SHA-pinned GitHub
+# Actions current. Security advisories open PRs regardless of schedule; the
+# weekly cadence below is for ordinary version bumps, grouped so a Monday
+# does not bring fifteen one-line PRs.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      go-deps: { patterns: ["*"] }
+    commit-message: { prefix: "deps(go)" }
+
+  - package-ecosystem: npm
+    directories:
+      - /sdk/typescript
+      - /integrations/deepseek-harness/dsh-plugin-readproof
+      - /examples/support-agent
+      - /examples/langgraph-ts
+    schedule: { interval: weekly, day: monday }
+    groups:
+      npm-deps: { patterns: ["*"] }
+    commit-message: { prefix: "deps(npm)" }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      actions: { patterns: ["*"] }
+    commit-message: { prefix: "deps(actions)" }
