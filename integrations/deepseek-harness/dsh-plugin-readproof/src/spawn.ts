@@ -23,7 +23,7 @@ export async function spawnReadproofd(config: Config, log: (message: string) => 
   const dataDir = expandHome(config.dataDir)
   const endpoint = endpointForAddr(config.addr)
 
-  const child = spawn(config.readproofdPath, ['--addr', config.addr, '--data-dir', dataDir], {
+  const child = spawn(config.readproofdPath, readproofdArgs(config, dataDir), {
     // readproofd logs to stderr and speaks HTTP, so nothing needs its stdin; the
     // output is piped rather than inherited so it can be prefixed and does
     // not interleave into a CLI's own rendering.
@@ -61,6 +61,23 @@ export async function spawnReadproofd(config: Config, log: (message: string) => 
 
   log(`spawned ${config.readproofdPath} on ${endpoint} (data-dir ${dataDir})`)
   return { endpoint, stop: () => killChild(child) }
+}
+
+/**
+ * argv for the child, allow-list roots included.
+ *
+ * `readproofd` refuses filesystem sources unless it is given at least one
+ * `--filesystem-root`, so a deployment that governs local documents has to
+ * name their directory here. Each root is expanded like `dataDir`: the value
+ * comes from a config file written by a human, not from a shell.
+ */
+export function readproofdArgs(config: Config, dataDir: string): string[] {
+  const args = ['--addr', config.addr, '--data-dir', dataDir]
+  for (const root of config.filesystemRoots ?? []) {
+    if (root.trim() === '') continue
+    args.push('--filesystem-root', expandHome(root))
+  }
+  return args
 }
 
 /** `:8080` and `0.0.0.0:8080` are reachable locally at 127.0.0.1. */

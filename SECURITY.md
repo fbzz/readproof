@@ -48,10 +48,18 @@ lists every finding, its status, and a concrete fix design.
 to shell access on the `readproofd` host, and never expose `readproofd`
 without `--api-key` plus a network boundary:
 
-- **Filesystem sources read any file the server can read.** There is no
-  allow-list root. A resource registered with
-  `--path /etc/passwd` — or pointed at the SQLite database, or a `.env`
-  beside the binary — resolves normally and returns the bytes.
+- **Filesystem sources are refused unless a root is allow-listed.**
+  `readproofd --filesystem-root <dir>` (repeatable; env
+  `READPROOFD_FILESYSTEM_ROOTS`, `,`- or path-separator-separated) is the
+  only way a filesystem source resolves on the server. Reads are confined
+  to files inside a root, with symlinks resolved *before* the containment
+  check, so a link inside a root cannot serve a file outside it. With no
+  root configured — the default — every filesystem source is refused, at
+  registration (400) and at fetch. The embedded `readproof` CLI is
+  deliberately unrestricted: it reads the operator's own files as the
+  operator, and an allow-list there would restrict a user's access to their
+  own documents and protect nobody. With `--server`, the server's policy is
+  what applies.
 - **HTTP source headers can read the server's environment.** A `"${VAR}"`
   header value is resolved from `readproofd`'s environment and sent to
   whatever URL that resource names. `readproofd`'s *own* credentials

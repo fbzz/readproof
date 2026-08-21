@@ -33,7 +33,13 @@ func TestRefundAgentDemoReplayInvariant_RemoteClient(t *testing.T) {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	a, err := app.Open(dataDir)
+	// Opened with readproofd's own source policy — default-deny — plus the
+	// one allow-listed root this demo reads from, so the remote path is
+	// exercised the way a server actually runs it and not with the embedded
+	// CLI's unrestricted filesystem access.
+	opts := app.ServerOptions()
+	opts.FilesystemRoots = []string{fixtureDir}
+	a, err := app.OpenWithOptions(dataDir, opts)
 	if err != nil {
 		t.Fatalf("open app: %v", err)
 	}

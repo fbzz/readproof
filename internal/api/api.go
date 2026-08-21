@@ -18,6 +18,7 @@ import (
 	"github.com/fbzz/readproof/internal/resource"
 	"github.com/fbzz/readproof/internal/run"
 	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/source"
 	"github.com/fbzz/readproof/internal/tag"
 	"github.com/fbzz/readproof/internal/wire"
 )
@@ -103,6 +104,16 @@ func handleRegisterResource(a *app.App) http.HandlerFunc {
 			Path:         parsed.Path,
 			SourceConfig: wire.SourceFromWire(req.Source),
 			Policy:       wire.PolicyFromWire(req.Policy),
+		}
+		// A source definition the server's policy refuses is refused here,
+		// not three calls later on the first resolve: an operator who
+		// registers a filesystem source outside every --filesystem-root
+		// should learn that from the registration, with the flag named. The
+		// adapter still enforces it at fetch time — a row can predate the
+		// policy that now refuses it.
+		if err := a.Sources.Validate(res.SourceConfig); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
 		}
 		if err := a.Resources.Create(r.Context(), res); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
@@ -386,6 +397,13 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		// race (or repeated itself) against the commit that already
 		// produced this run's one manifest.
 		writeError(w, http.StatusConflict, err)
+	case source.IsDenied(err):
+		// The server's source policy refused this resource — a filesystem
+		// path outside every allow-listed root, a private target address, an
+		// environment variable that may not be expanded. Nothing failed and
+		// nothing leaked, so this is a 400 carrying the reason (and the flag
+		// that relaxes it), not a generic 500.
+		writeError(w, http.StatusBadRequest, err)
 	case errors.Is(err, tag.ErrInvalidName), errors.Is(err, tag.ErrSnapshotMismatch):
 		// The caller sent a well-formed request naming something that can
 		// never be valid — a bad tag name, or a snapshot of another

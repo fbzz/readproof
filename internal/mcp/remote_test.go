@@ -23,12 +23,18 @@ import (
 // `readproof mcp --server https://…` therefore behaves like `readproof mcp
 // --data-dir …`.
 func TestServerOverRemoteClient(t *testing.T) {
-	fixturePath := filepath.Join(t.TempDir(), "refunds.md")
+	fixtureDir := t.TempDir()
+	fixturePath := filepath.Join(fixtureDir, "refunds.md")
 	if err := os.WriteFile(fixturePath, []byte(originalContent), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	a, err := app.Open(t.TempDir())
+	// readproofd's own source policy (default-deny) plus the one root this
+	// fixture lives under: the MCP server has to work against a server that
+	// restricts filesystem sources, since that is what a server does.
+	opts := app.ServerOptions()
+	opts.FilesystemRoots = []string{fixtureDir}
+	a, err := app.OpenWithOptions(t.TempDir(), opts)
 	if err != nil {
 		t.Fatalf("open app: %v", err)
 	}

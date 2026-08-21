@@ -77,6 +77,11 @@ services:
       # Empty by default (unauthenticated) — set READPROOFD_API_KEY in .env to
       # require it. See .env.example.
       READPROOFD_API_KEY: ${READPROOFD_API_KEY:-}
+      # Filesystem sources are refused unless a root is allow-listed. A
+      # containerized readproofd sees only what is mounted into it, so name
+      # the in-container path of a volume you mounted, never a host path:
+      #   READPROOFD_FILESYSTEM_ROOTS: "/srv/policies"
+      READPROOFD_FILESYSTEM_ROOTS: ${READPROOFD_FILESYSTEM_ROOTS:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
     ports:
       - "8080:8080"

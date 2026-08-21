@@ -61,6 +61,12 @@ A reachable `readproofd`. Either:
   go build -o /usr/local/bin/readproof  ./cmd/readproof     # the CLI, for `readproof evidence verify`
   ```
 
+A `readproofd` refuses filesystem sources unless it was started with at least
+one `--filesystem-root` — otherwise registering a resource would be a
+file-read primitive on its host. Start it with the directory holding the
+documents you govern (`readproofd --filesystem-root /srv/policies …`), or,
+for a `spawn: true` plugin, set `filesystemRoots` in the plugin config.
+
 Register the documents you want the agent to read before it asks for them:
 
 ```sh
@@ -192,6 +198,7 @@ What you gain: no build step, and one fewer process model to reason about.
 | `readproofdPath` | string | `readproofd` | Executable used when `spawn` is true. |
 | `dataDir` | string | `~/.readproof` | `--data-dir` for the spawned `readproofd`. `~` is expanded. |
 | `addr` | string | `127.0.0.1:18080` | `--addr` for the spawned `readproofd`; also determines the endpoint. |
+| `filesystemRoots` | string[] | `[]` | Directories a filesystem source may read from, passed to the spawned `readproofd` as `--filesystem-root`. Empty = filesystem sources refused. `~` is expanded. |
 | `spawnTimeoutMs` | number | `10000` | How long to wait for the spawned `readproofd` to answer `/healthz`. |
 | `sessionRuns` | boolean | `true` | Mirror every model-driven `readproof_resolve` into a run keyed by the DSH session. |
 | `toolPrefix` | string | `readproof_` | Prefix for every registered tool name. |

@@ -55,9 +55,14 @@ before(async () => {
 
   const port = await freePort();
   endpoint = `http://127.0.0.1:${port}`;
-  readproofdProcess = spawn(readproofdBin, ["--addr", `:${port}`, "--data-dir", path.join(tmpDir, "data")], {
-    stdio: "ignore",
-  });
+  // readproofd refuses filesystem sources without an allow-listed root, so
+  // the copied policy directory — the only place these tests read from — is
+  // named explicitly.
+  readproofdProcess = spawn(
+    readproofdBin,
+    ["--addr", `:${port}`, "--data-dir", path.join(tmpDir, "data"), "--filesystem-root", policyDir],
+    { stdio: "ignore" },
+  );
   await waitForHealthz(endpoint);
 
   process.env["READPROOF_ENDPOINT"] = endpoint;

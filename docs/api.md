@@ -40,6 +40,25 @@ environment at fetch time; see the README's Security section).
 `policy.strategy` is `"require_fresh"`, `"allow_stale"` (with optional
 `max_age_seconds`), or `"pinned"` (with `pinned_snapshot_id`).
 
+**Registering a resource is a privileged action, and `readproofd` refuses
+by default what it cannot vouch for.** A resource definition tells the
+server which file to read, which address to connect to, and which of its
+own environment variables to send. All three default to deny, and each is
+opened by one explicit flag:
+
+| Source | Default on `readproofd` | Opt in with |
+| --- | --- | --- |
+| `filesystem` | refused — no path is readable | `--filesystem-root <dir>` (repeatable; env `READPROOFD_FILESYSTEM_ROOTS`, `,`- or path-separator-separated). Reads are confined to files inside a root, with symlinks resolved before the check |
+| `http` header `"${VAR}"` | refused — no variable expands | `--header-env-allow <NAME>` (repeatable; env `READPROOFD_HEADER_ENV_ALLOWLIST`, comma-separated) |
+| `http` private target | refused — loopback, link-local (incl. `169.254.169.254`), RFC1918, CGNAT, unique-local | `--allow-private-sources` (env `READPROOFD_ALLOW_PRIVATE_SOURCES=1`) |
+
+A refused definition is a `400` naming the flag that would allow it, both
+here and on `POST /v1/resolve` (the adapter, not this handler, is the
+enforcement point — a row registered under a wider policy is still refused
+at fetch time). The embedded `readproof` CLI has none of these
+restrictions: it reads the operator's own files, with the operator's own
+environment, as the operator.
+
 **Response** `201` — the registered resource, with any sensitive HTTP
 header values in `source.http.headers` replaced by `"[REDACTED]"`:
 ```json

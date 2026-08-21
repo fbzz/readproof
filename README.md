@@ -156,7 +156,16 @@ export READPROOF_SERVER_URL=http://localhost:8080
 ./readproof get readproof://demo/policies/refunds
 ```
 
-> A containerized `readproofd` cannot see your host filesystem; use GitHub/HTTP sources there, or run `readproofd --data-dir ~/.readproof` on the host.
+> A containerized `readproofd` cannot see your host filesystem; use GitHub/HTTP sources there, or run `readproofd` on the host:
+>
+> ```bash
+> # --filesystem-root allow-lists the directories a filesystem source may read.
+> # Without one, readproofd refuses filesystem sources outright — registering a
+> # resource would otherwise let any caller read any file the server can.
+> readproofd --data-dir ~/.readproof --filesystem-root "$PWD"
+> ```
+>
+> The same default-deny applies to `${VAR}` headers (`--header-env-allow NAME`) and to private network targets (`--allow-private-sources`). None of it applies to the embedded CLI, which reads your own files as you. See [`docs/api.md`](docs/api.md) and [`SECURITY.md`](SECURITY.md).
 
 ## Add it to your coding agent
 

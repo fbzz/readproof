@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { promisify } from 'node:util'
+
+import { Readproof } from '@readproof/sdk'
 
 import { field, freePort, list, repoRoot, startApp, type App } from './support.js'
 
@@ -50,6 +52,71 @@ describe('spawn: true', () => {
 
     // The disposer killed the child, so nothing is listening any more.
     await assert.rejects(fetch(`${endpoint}/healthz`))
+  })
+
+  // A spawned readproofd inherits the same default-deny as any other:
+  // without filesystemRoots it refuses filesystem sources outright, and with
+  // them it reads only inside what the config named.
+  it('passes filesystemRoots to the child as --filesystem-root', async () => {
+    const roots = join(tmpDir, 'policies')
+    await mkdir(roots, { recursive: true })
+    const policyPath = join(roots, 'refunds.md')
+    await writeFile(policyPath, 'Products can be refunded within 30 days.\n')
+
+    const rootedAddr = `127.0.0.1:${await freePort()}`
+    const rooted = await startApp({
+      spawn: true,
+      readproofdPath: readproofdBin,
+      dataDir: join(tmpDir, 'data-rooted'),
+      addr: rootedAddr,
+      filesystemRoots: [roots],
+      sessionRuns: false,
+    })
+    try {
+      const client = new Readproof({ endpoint: `http://${rootedAddr}` })
+      await client.registerResource({
+        uri: 'readproof://demo/policies/refunds',
+        source: { kind: 'filesystem', filesystem: { path: policyPath } },
+        policy: { strategy: 'require_fresh' },
+      })
+      const resolved = await client.resolve('readproof://demo/policies/refunds')
+      assert.match(resolved.content, /refunded within 30 days/)
+
+      // Outside the root, the same server refuses at registration.
+      await assert.rejects(
+        client.registerResource({
+          uri: 'readproof://demo/etc/hosts',
+          source: { kind: 'filesystem', filesystem: { path: '/etc/hosts' } },
+          policy: { strategy: 'require_fresh' },
+        }),
+        /outside every configured/,
+      )
+    } finally {
+      await rooted.stop()
+    }
+
+    // With no roots configured at all, filesystem sources are refused.
+    const bareAddr = `127.0.0.1:${await freePort()}`
+    const bare = await startApp({
+      spawn: true,
+      readproofdPath: readproofdBin,
+      dataDir: join(tmpDir, 'data-bare'),
+      addr: bareAddr,
+      sessionRuns: false,
+    })
+    try {
+      const client = new Readproof({ endpoint: `http://${bareAddr}` })
+      await assert.rejects(
+        client.registerResource({
+          uri: 'readproof://demo/policies/refunds',
+          source: { kind: 'filesystem', filesystem: { path: policyPath } },
+          policy: { strategy: 'require_fresh' },
+        }),
+        /--filesystem-root/,
+      )
+    } finally {
+      await bare.stop()
+    }
   })
 
   it('fails to load loudly when the readproofd binary does not exist', async () => {

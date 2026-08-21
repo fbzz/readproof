@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fbzz/readproof/internal/api"
@@ -30,6 +31,18 @@ func main() {
 	s3Bucket := flag.String("s3-bucket", envOr("READPROOFD_S3_BUCKET", "readproof-blobs"), "S3-compatible bucket name (postgres mode only)")
 	s3UseSSL := flag.Bool("s3-use-ssl", envBool("READPROOFD_S3_USE_SSL", false), "use TLS for the S3-compatible endpoint (postgres mode only)")
 	apiKey := flag.String("api-key", os.Getenv("READPROOFD_API_KEY"), "if set, require this value as a Bearer token on every request except /healthz (off by default)")
+
+	// Registering a resource names a path, a URL and a set of headers that
+	// readproofd will then read, connect to, and expand out of its own
+	// environment. On a server that is a file-read and environment-read
+	// primitive reachable over the network, so all three default to deny and
+	// each is relaxed by an explicit flag. See docs/security-audit-2026-08.md.
+	filesystemRoots := stringList(splitPathList(os.Getenv("READPROOFD_FILESYSTEM_ROOTS")))
+	flag.Var(&filesystemRoots, "filesystem-root", "directory a filesystem source may read from; repeatable (env READPROOFD_FILESYSTEM_ROOTS, separated by ',' or the OS path separator). No root configured = filesystem sources are refused")
+	headerEnvAllow := stringList(splitList(os.Getenv("READPROOFD_HEADER_ENV_ALLOWLIST")))
+	flag.Var(&headerEnvAllow, "header-env-allow", "environment variable an http source header may reference as ${VAR}; repeatable (env READPROOFD_HEADER_ENV_ALLOWLIST, comma-separated). Nothing allow-listed = no ${VAR} expands")
+	allowPrivateSources := flag.Bool("allow-private-sources", envBool("READPROOFD_ALLOW_PRIVATE_SOURCES", false), "let http sources reach loopback, link-local and private addresses (off by default; turn on only on a trusted network)")
+
 	showVersion := flag.Bool("version", false, "print the readproofd version and exit")
 	flag.Parse()
 
@@ -47,11 +60,18 @@ func main() {
 	}
 	defer shutdownTelemetry(ctx)
 
-	a, backend, err := openApp(ctx, *dataDir, *postgresDSN, *s3Endpoint, *s3AccessKey, *s3SecretKey, *s3Bucket, *s3UseSSL)
+	opts := app.ServerOptions()
+	opts.FilesystemRoots = filesystemRoots
+	opts.HeaderEnvAllowlist = headerEnvAllow
+	opts.DenyPrivateHTTPTargets = !*allowPrivateSources
+
+	a, backend, err := openApp(ctx, *dataDir, *postgresDSN, *s3Endpoint, *s3AccessKey, *s3SecretKey, *s3Bucket, *s3UseSSL, opts)
 	if err != nil {
 		log.Fatalf("readproofd: %v", err)
 	}
 	defer a.Close()
+
+	logSourcePolicy(opts)
 
 	handler := api.NewHandler(a, api.Options{APIKey: *apiKey})
 	// Every timeout is set, not just the header one: a peer that opens a
@@ -78,9 +98,9 @@ func main() {
 	}
 }
 
-func openApp(ctx context.Context, dataDir, postgresDSN, s3Endpoint, s3AccessKey, s3SecretKey, s3Bucket string, s3UseSSL bool) (*app.App, string, error) {
+func openApp(ctx context.Context, dataDir, postgresDSN, s3Endpoint, s3AccessKey, s3SecretKey, s3Bucket string, s3UseSSL bool, opts app.Options) (*app.App, string, error) {
 	if postgresDSN != "" {
-		a, err := app.OpenPostgres(ctx,
+		a, err := app.OpenPostgresWithOptions(ctx,
 			app.PostgresConfig{DSN: postgresDSN},
 			app.S3Config{
 				Endpoint:        s3Endpoint,
@@ -89,6 +109,7 @@ func openApp(ctx context.Context, dataDir, postgresDSN, s3Endpoint, s3AccessKey,
 				Bucket:          s3Bucket,
 				UseSSL:          s3UseSSL,
 			},
+			opts,
 		)
 		if err != nil {
 			return nil, "", fmt.Errorf("open postgres backend: %w", err)
@@ -96,11 +117,72 @@ func openApp(ctx context.Context, dataDir, postgresDSN, s3Endpoint, s3AccessKey,
 		return a, "postgres+s3", nil
 	}
 
-	a, err := app.Open(dataDir)
+	a, err := app.OpenWithOptions(dataDir, opts)
 	if err != nil {
 		return nil, "", fmt.Errorf("open embedded backend: %w", err)
 	}
 	return a, "sqlite+local", nil
+}
+
+// logSourcePolicy states, at startup, exactly what a registered resource is
+// allowed to reach. An operator should never have to resolve a resource to
+// find out which of these is on.
+func logSourcePolicy(opts app.Options) {
+	if len(opts.FilesystemRoots) == 0 {
+		log.Printf("readproofd: filesystem sources are refused (no --filesystem-root configured)")
+	} else {
+		log.Printf("readproofd: filesystem sources restricted to: %s", strings.Join(opts.FilesystemRoots, ", "))
+	}
+	if len(opts.HeaderEnvAllowlist) == 0 {
+		log.Printf("readproofd: ${VAR} expansion in source headers is refused (no --header-env-allow configured)")
+	} else {
+		log.Printf("readproofd: ${VAR} expansion in source headers allowed for: %s", strings.Join(opts.HeaderEnvAllowlist, ", "))
+	}
+	if opts.DenyPrivateHTTPTargets {
+		log.Printf("readproofd: http sources may not reach loopback, link-local or private addresses")
+	} else {
+		log.Printf("readproofd: http sources MAY reach private addresses (--allow-private-sources)")
+	}
+}
+
+// stringList is a repeatable string flag: each --flag occurrence appends.
+// Pre-seeding it from an environment variable makes the flag the override,
+// which is the direction operators expect.
+type stringList []string
+
+func (l *stringList) String() string { return strings.Join(*l, ",") }
+
+func (l *stringList) Set(value string) error {
+	for _, part := range splitList(value) {
+		*l = append(*l, part)
+	}
+	return nil
+}
+
+// splitList splits a comma-separated environment variable, dropping blanks.
+func splitList(raw string) []string {
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// splitPathList splits a list of directories on either a comma or the OS path
+// separator (':' on Unix, ';' on Windows). Splitting on a bare ':' everywhere
+// would cut Windows drive letters in half.
+func splitPathList(raw string) []string {
+	var out []string
+	for _, part := range strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == os.PathListSeparator
+	}) {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 func envOr(key, def string) string {

@@ -94,6 +94,15 @@ func newRootCmd() *cobra.Command {
 // client talking to readproofd when --server / READPROOF_SERVER_URL is set.
 // Every CLI command is written against client.Client, so behavior is
 // identical either way.
+//
+// Embedded, the App is opened with the default (unrestricted) source policy:
+// a filesystem source may name any path, a "${VAR}" header any variable, an
+// http source any address. That is deliberate — the files, the environment
+// and the person typing the command are the same trust domain here, and a
+// restriction would only stop a user reading their own documents. With
+// --server none of this applies: the fetch happens on the server, so the
+// server's policy (--filesystem-root, --header-env-allow,
+// --allow-private-sources) is what governs. See SECURITY.md.
 func openClient() (client.Client, error) {
 	if serverURL != "" {
 		return remote.New(serverURL, apiKey), nil
