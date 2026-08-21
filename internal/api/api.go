@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -395,10 +396,33 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	}
 }
 
+// MaxRequestBytes caps the request body every JSON endpoint will read. No
+// Readproof request carries content — resources are registered by
+// reference, and bytes only ever travel outward — so the largest legitimate
+// body is a resource definition with a handful of headers. 1 MiB is orders
+// of magnitude above that and keeps an unauthenticated peer from spending
+// the server's memory a request at a time.
+const MaxRequestBytes int64 = 1 << 20
+
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBytes)
+
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(dst); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, fmt.Errorf("request body exceeds %d bytes", MaxRequestBytes))
+			return false
+		}
 		writeError(w, http.StatusBadRequest, errors.New("invalid request body: "+err.Error()))
+		return false
+	}
+	// A second JSON value after the first is a malformed request, not a
+	// document to ignore: accepting it would let two callers disagree about
+	// what a request said.
+	if dec.More() {
+		writeError(w, http.StatusBadRequest, errors.New("invalid request body: unexpected data after the JSON value"))
 		return false
 	}
 	return true
