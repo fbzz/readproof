@@ -164,7 +164,7 @@
 <a class="skip" href="#top">Skip to content</a>
 <div class="shell">
 <nav class="side" aria-label="Sections">
-  <p class="brand"><a href="../../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.3.0</small></p>
+  <p class="brand"><a href="../../" style="color:inherit;text-decoration:none">readproof</a> <small>v0.3.1</small></p>
   <p class="tag">example · <a href="../../">home</a> · <a href="../../docs/">docs</a></p>
   <ol>
     <li><a href="#overview">Overview</a></li>
@@ -189,7 +189,7 @@
 
 <main id="top">
 <section id="overview">
-  <p class="eyebrow">examples/support-agent · Readproof 0.3.0 · open model on Ollama</p>
+  <p class="eyebrow">examples/support-agent · Readproof 0.3.1 · open model on Ollama</p>
   <h1>A support agent you can replay, diff, and prove.</h1>
   <p class="lede">A customer-support agent answers tickets from three policy documents. Every ticket is one <strong>Readproof run</strong>: the agent mounts the policies, hands the model exactly those bytes, commits a manifest, and stores the manifest id next to the answer. When a policy changes, <code>diff</code> names which document moved and why, <code>replay</code> reconstructs the exact text the old answer was based on, and <code>evidence</code> exports a bundle the Go CLI verifies — while the house-style document, mounted by tag, does not move until someone promotes it.</p>
   <div class="cta">
@@ -621,7 +621,7 @@ test/agent.test.ts     7 end-to-end tests against a real readproofd with the fak
     <div class="card"><h4>Swap the model</h4><p><code>OLLAMA_MODEL=…</code> for any Ollama model; for another provider replace <code>answer()</code> in <code>src/model.ts</code> — keep the rule that the prompt is built only from <code>entries</code>.</p></div>
     <div class="card"><h4>Let an agent harness do the mounting</h4><p>The same tools exist over MCP (<code>readproof mcp</code>) for Claude Code, Cursor, or DeepSeek Harness, and as a LangGraph node in <code>examples/langgraph-ts</code> — the manifest id lands in the checkpoint instead of a JSONL line.</p></div>
   </div>
-  <p class="foot">Page: <code>examples/support-agent/guide.html</code> · code: <code>examples/support-agent/</code> · Readproof 0.3.0 · output captured 2026‑08‑21.</p>
+  <p class="foot">Page: <code>examples/support-agent/guide.html</code> · code: <code>examples/support-agent/</code> · Readproof 0.3.1 · output captured 2026‑08‑21.</p>
 </section>
 </main>
 </div>

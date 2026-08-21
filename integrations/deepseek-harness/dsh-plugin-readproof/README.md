@@ -311,7 +311,7 @@ to bump. Confirm it any time with:
 
 ```sh
 npm pack && tar xzOf dsh-plugin-readproof-*.tgz package/package.json | grep '@readproof/sdk'
-#   "@readproof/sdk": "^0.3.0",
+#   "@readproof/sdk": "^0.3.1",
 ```
 
 If a pack is interrupted between the two hooks, `package.json.prepack-backup`

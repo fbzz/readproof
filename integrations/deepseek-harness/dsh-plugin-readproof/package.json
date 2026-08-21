@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-readproof",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DeepSeek Harness plugin for Readproof: stable readproof:// identity, freshness policy, snapshots, per-run manifests, diff, byte-exact replay, and evidence bundles as model-callable tools.",
   "license": "Apache-2.0",
   "homepage": "https://fbzz.github.io/readproof/",

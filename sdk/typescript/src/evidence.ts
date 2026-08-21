@@ -24,7 +24,7 @@ export const EVIDENCE_STATEMENT_TYPE = "https://in-toto.io/Statement/v1";
 export const EVIDENCE_PREDICATE_TYPE = "urn:readproof:evidence:v0.3";
 
 export const EVIDENCE_EXPORTER_NAME = "readproof";
-export const EVIDENCE_EXPORTER_VERSION = "0.3.0";
+export const EVIDENCE_EXPORTER_VERSION = "0.3.1";
 
 export const EVIDENCE_MERKLE_ALGORITHM = "sha256";
 export const EVIDENCE_MERKLE_LEAF_FORMULA =

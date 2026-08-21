@@ -215,7 +215,7 @@
 <a class="skip" href="#main">Skip to content</a>
 
 <nav class="island" aria-label="Primary">
-  <a class="brand" href="./">readproof <small>v0.3.0</small></a>
+  <a class="brand" href="./">readproof <small>v0.3.1</small></a>
   <div class="links">
     <a href="#how">How it works</a>
     <a href="#benefits">Benefits</a>
@@ -310,7 +310,7 @@
     <div class="rv">
       <p class="eyebrow">How it works</p>
       <h2>Register. Record. Prove.</h2>
-      <p class="lede">Three commands, and every one of them is real output from <code>readproof</code> 0.3.0.</p>
+      <p class="lede">Three commands, and every one of them is real output from <code>readproof</code> 0.3.1.</p>
     </div>
     <div class="steps">
       <div class="card rv"><p class="n">01 · register</p><h3>Give the document an identity</h3><p>A source (file, GitHub path, or HTTP URL) plus a freshness policy. The URI survives the bytes changing.</p>
@@ -397,7 +397,7 @@ $ readproof evidence export run-a --out bundle.json
       <details class="rv"><summary>How are credentials handled? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Tokens are read from the <code>readproof</code> or <code>readproofd</code> process environment at fetch time and never stored. Sensitive header values are masked in every API response, in <code>readproof inspect</code>, and in evidence bundles. <code>readproofd</code> can require a single API key.</p></details>
       <details class="rv"><summary>What does the evidence bundle prove, and what does it not? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>It proves these bytes, by hash and optionally embedded, were delivered for this run in this order under these resource definitions, and that the store can still reproduce them. It does not prove the model used them or that the source was authoritative. Bundles are not signed yet; signing is on the roadmap.</p></details>
       <details class="rv"><summary>Does it work with Claude Code, Cursor, and DeepSeek Harness? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Yes. <code>readproof mcp</code> is a stdio MCP server: registered documents become readable <code>readproof://</code> resources with provenance in <code>_meta</code>, and resolve, runs, diff, replay, tags, and evidence export are 13 tools. One <code>claude mcp add</code> line sets it up. For DeepSeek Harness there is a native plugin bundle that registers the same 13 tools and records one Readproof run per DSH session (<code>dsh plugin --profile web add …</code>), plus a zero-code MCP overlay.</p></details>
-      <details class="rv"><summary>What is the license? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Apache-2.0 — see <code>LICENSE</code> and <code>NOTICE</code> in the repository. The project was renamed from Ctx to Readproof in v0.3.0; the name is final. Everything on this page reflects the code as it is today.</p></details>
+      <details class="rv"><summary>What is the license? <svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></summary><p>Apache-2.0 — see <code>LICENSE</code> and <code>NOTICE</code> in the repository. The project was renamed from Ctx to Readproof in v0.3.1; the name is final. Everything on this page reflects the code as it is today.</p></details>
     </div>
   </div>
 </section>
@@ -417,14 +417,14 @@ $ readproof evidence export run-a --out bundle.json
 <section class="legal">
   <div class="wrap cols">
     <div id="privacy"><h3>Privacy</h3><p>This page is static. It sets no cookies, runs no analytics, and collects no personal data. The only external request is for fonts from Google Fonts.</p></div>
-    <div id="terms"><h3>Terms</h3><p>Readproof is provided as is, without warranty, under the Apache-2.0 license, as a pre launch release. Command output shown here was captured from version 0.3.0 and is reproducible from the repository's reference demo.</p></div>
+    <div id="terms"><h3>Terms</h3><p>Readproof is provided as is, without warranty, under the Apache-2.0 license, as a pre launch release. Command output shown here was captured from version 0.3.1 and is reproducible from the repository's reference demo.</p></div>
   </div>
 </section>
 </main>
 
 <footer>
   <div class="wrap row">
-    <div>readproof v0.3.0 · the lockfile and replay primitive for what agents read</div>
+    <div>readproof v0.3.1 · the lockfile and replay primitive for what agents read</div>
     <ul>
       <li><a href="docs/">Docs</a></li><li><a href="docs/#cli">CLI</a></li><li><a href="docs/#server">HTTP API</a></li><li><a href="docs/#sdk">SDK</a></li><li><a href="docs/#mcp">MCP</a></li><li><a href="docs/#evidence">Evidence</a></li><li><a href="docs/#dsh">DeepSeek Harness</a></li><li><a href="examples/support-agent/">Support agent example</a></li><li><a href="docs/#faq">Roadmap</a></li><li><a href="https://github.com/fbzz/readproof">GitHub</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#terms">Terms</a></li>
     </ul>
