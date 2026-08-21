@@ -51,11 +51,14 @@ func (s *LocalStore) Put(content []byte) (string, error) {
 	if _, err := os.Stat(path); err == nil {
 		return contentHash, nil // dedup: identical bytes already stored
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	// 0700/0600: a blob is the verbatim content of a document somebody's
+	// agent read. Whatever made that document worth pinning is a reason not
+	// to leave a copy of it readable by every account on the host.
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return "", fmt.Errorf("blob: mkdir: %w", err)
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, content, 0o644); err != nil {
+	if err := os.WriteFile(tmp, content, 0o600); err != nil {
 		return "", fmt.Errorf("blob: write: %w", err)
 	}
 	if err := os.Rename(tmp, path); err != nil {

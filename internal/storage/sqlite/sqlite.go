@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -27,8 +28,17 @@ func Open(path string) (*sql.DB, error) {
 	// A CLI process has no real concurrent writers; avoid SQLite lock
 	// contention entirely by capping the pool at one connection.
 	db.SetMaxOpenConns(1)
+	// The first statement is what actually creates the file; SQLite creates
+	// it 0644-minus-umask, and it holds every resource definition, snapshot
+	// and manifest in the store.
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		return nil, fmt.Errorf("sqlite: enable foreign keys: %w", err)
+	}
+	// Tightened before WAL is enabled, deliberately: SQLite copies the
+	// database file's permissions onto the -wal and -shm sidecars it creates,
+	// so doing this afterwards would leave those two world-readable.
+	if err := os.Chmod(path, 0o600); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("sqlite: restrict database file permissions: %w", err)
 	}
 	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
 		return nil, fmt.Errorf("sqlite: set journal mode: %w", err)

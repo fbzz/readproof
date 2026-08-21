@@ -108,7 +108,11 @@ func OpenWithOptions(dataDir string, opts Options) (*App, error) {
 	if dataDir == "" {
 		dataDir = DataDir()
 	}
-	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+	// 0700, not 0755. This directory is the record of everything an agent
+	// read — which is routinely the sensitive material itself — plus the
+	// resource definitions and the SQLite database. On a shared host a
+	// world-readable data directory hands all of it to every local account.
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, fmt.Errorf("app: create data dir: %w", err)
 	}
 
