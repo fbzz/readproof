@@ -1,25 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ctx — page not found</title>
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23181818'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Geist, Helvetica, Arial, sans-serif' font-size='30' font-weight='700' fill='%23fff'%3Ectx%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Geist+Mono:wght@400;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Ectx%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
 <style>
-  :root { --bg:#FFFFFF; --ink:#0A0A0A; --ink-2:#3F3F46; --muted:#6B6B74; --rule:#E4E4E7; --accent:#2F5BEA; --surface:#F5F5F5; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#181818; --ink:#F4F4F5; --ink-2:#C9C9CF; --muted:#9A9AA3; --rule:#313131; --accent:#8AA4FF; --surface:#1F1F1F; } }
-  :root[data-theme="dark"] { --bg:#181818; --ink:#F4F4F5; --ink-2:#C9C9CF; --muted:#9A9AA3; --rule:#313131; --accent:#8AA4FF; --surface:#1F1F1F; }
-  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Geist","Helvetica Neue",Arial,sans-serif; font-size:16px; line-height:24px; min-height:100vh; display:grid; place-items:center; padding:24px; box-sizing:border-box; }
-  main { max-width:680px; }
-  .code { font-family:"Geist Mono",ui-monospace,Menlo,monospace; font-size:14px; line-height:20px; color:var(--muted); margin:0 0 16px; }
-  h1 { font-size:48px; line-height:1; font-weight:700; letter-spacing:-.03em; margin:0 0 16px; text-wrap:balance; }
-  p { color:var(--ink-2); margin:0 0 24px; text-wrap:pretty; }
-  a.btn { display:inline-block; font-weight:600; padding:8px 12px; border-radius:8px; background:var(--accent); color:#fff; text-decoration:none; transition:all .7s cubic-bezier(.32,.72,0,1); }
-  a.btn:hover { transform:translateY(-1px); } a.btn:active { transform:scale(.98); } a.btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  a { color:var(--accent); }
+  :root {
+    --bg: #000000; --surface: #181818; --raised: #1F1F1F; --rule: #313131;
+    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #737373;
+    --accent: #4ADE80; --accent-contrast: #000000;
+    --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(0.32,0.72,0,1);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #FFFFFF; --surface: #FAFAFA; --raised: #F5F5F5; --rule: #E5E5E5;
+      --ink: #000000; --ink-2: #666666; --muted: #8A8A8A;
+      --accent: #15803D; --accent-contrast: #FFFFFF;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 24px; min-height: 100vh; display: grid; place-items: center; padding: 24px; -webkit-font-smoothing: antialiased; }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+  main { max-width: 640px; }
+  .term { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; font-family: var(--mono); font-size: 14px; line-height: 20px; margin: 0 0 32px; overflow-x: auto; white-space: pre; }
+  .p { color: var(--accent); font-weight: 600; } .m { color: var(--ink-2); } .err { color: #F87171; }
+  h1 { font-size: 48px; line-height: 1; font-weight: 700; letter-spacing: -.02em; margin: 0 0 16px; max-width: 680px; background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  @media (prefers-color-scheme: light) { h1 { background-image: linear-gradient(90deg, #000000 0%, #666666 100%); } }
+  @media (max-width: 720px) { h1 { font-size: 30px; line-height: 36px; } }
+  p { color: var(--ink-2); margin: 0 0 32px; max-width: 680px; text-wrap: pretty; }
+  .links { display: flex; gap: 8px; flex-wrap: wrap; }
+  a.btn { display: inline-block; font-family: var(--sans); font-size: 14px; line-height: 20px; font-weight: 600; padding: 8px 12px; border-radius: 9999px; border: 1px solid var(--rule); color: var(--ink); background: var(--surface); text-decoration: none; transition: all .7s var(--ease); }
+  a.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+  a.btn:hover { text-decoration: none; background: var(--raised); transform: translateY(-1px); }
+  a.btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
+  a.btn:active { transform: scale(.98); }
+  a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
+</head>
+<body>
 <main>
-  <p class="code">ctx: resource: not found</p>
+  <pre class="term" aria-label="Terminal error output"><span class="p">$</span> ctx get https://this.site<span class="err">/missing-page</span>
+<span class="err">error: resource not found (HTTP 404)</span>
+<span class="m"># no snapshot, no stale copy — fails loudly</span></pre>
   <h1>This page was never mounted.</h1>
   <p>The address does not resolve to anything here. Like a bad <code>ctx://</code> URI, it fails loudly instead of returning something stale.</p>
-  <a class="btn" href="/">Back to the start</a> &nbsp; <a href="/docs/">Open the docs</a>
+  <div class="links">
+    <a class="btn primary" href="/">Back to the start</a>
+    <a class="btn" href="/docs/">Open the docs</a>
+  </div>
 </main>
+</body>
+</html>

@@ -1,154 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ctx Docs</title>
+<meta name="description" content="Ctx documentation: install, sources, runs, tags, evidence bundles, server mode, SDK, MCP, LangGraph, observability, CLI reference.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000000'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='monospace' font-size='24' font-weight='700' fill='%234ADE80'%3Ectx%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
 <style>
   :root {
-    --bg: #F3F5F8; --surface: #FFFFFF; --surface-2: #E9EDF3; --ink: #161B26; --ink-2: #3C4556; --muted: #5F6A7D;
-    --rule: #D6DCE6; --accent: #2447B2; --accent-ink: #1B3790; --accent-soft: #E3E9FA;
-    --pin: #B45309; --pin-soft: #FBEBD5; --ok: #1F7A4D; --ok-soft: #DDF1E6; --warn: #8A4B00; --warn-soft: #FBEFD9;
-    --code-bg: #181818; --code-ink: #E7ECF5; --code-muted: #8E9AB3; --code-accent: #9DB4FF; --code-ok: #7ED3A3; --code-pin: #F5B26B;
-    --term-bg: #181818;
-    --shadow: 0 1px 0 rgba(22,27,38,.04), 0 10px 30px -18px rgba(22,27,38,.25);
-    --display: "Geist", "Helvetica Neue", Arial, sans-serif;
-    --sans: "Geist", "Helvetica Neue", Arial, sans-serif;
+    --bg: #000000; --surface: #181818; --raised: #1F1F1F; --hover: #272727; --rule: #313131;
+    --ink: #FFFFFF; --ink-2: #9B9B9B; --muted: #737373;
+    --accent: #4ADE80; --accent-contrast: #000000;
+    --amber: #FBBF24;
+    --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
     --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ease: cubic-bezier(0.32,0.72,0,1);
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #181818; --surface: #1F1F1F; --surface-2: #272727; --ink: #E6EAF1; --ink-2: #C0C8D6; --muted: #96A0B3;
-      --rule: #313131; --accent: #7D96F2; --accent-ink: #A5B7F7; --accent-soft: #1C2640;
-      --pin: #F0A85A; --pin-soft: #3A2A14; --ok: #6FCF97; --ok-soft: #163526; --warn: #F2B56B; --warn-soft: #3A2A10;
-      --code-bg: #000000; --code-ink: #E7ECF5; --code-muted: #8E9AB3; --code-accent: #9DB4FF; --code-ok: #7ED3A3; --code-pin: #F5B26B;
-      --term-bg: #000000;
-      --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #FFFFFF; --surface: #FAFAFA; --raised: #F5F5F5; --hover: #EFEFEF; --rule: #E5E5E5;
+      --ink: #000000; --ink-2: #666666; --muted: #8A8A8A;
+      --accent: #15803D; --accent-contrast: #FFFFFF;
+      --amber: #8A5800;
     }
   }
-  :root[data-theme="dark"] {
-    --bg: #181818; --surface: #1F1F1F; --surface-2: #272727; --ink: #E6EAF1; --ink-2: #C0C8D6; --muted: #96A0B3;
-    --rule: #313131; --accent: #7D96F2; --accent-ink: #A5B7F7; --accent-soft: #1C2640;
-    --pin: #F0A85A; --pin-soft: #3A2A14; --ok: #6FCF97; --ok-soft: #163526; --warn: #F2B56B; --warn-soft: #3A2A10;
-    --code-bg: #000000; --code-ink: #E7ECF5; --code-muted: #8E9AB3; --code-accent: #9DB4FF; --code-ok: #7ED3A3; --code-pin: #F5B26B;
-    --term-bg: #000000;
-    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
-  }
-
+  * { box-sizing: border-box; }
   html { background: var(--bg); scroll-behavior: smooth; }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 24px; -webkit-font-smoothing: antialiased; }
-  a { color: var(--accent-ink); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
-  a:hover { text-decoration-color: var(--accent); }
+  a { color: var(--accent); text-decoration: none; transition: color .7s var(--ease); }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
   a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-  code { font-family: var(--mono); font-size: 14px; line-height: 20px; background: var(--surface-2); padding: 2px 4px; border-radius: 4px; }
-  pre code { background: none; padding: 0;  }
-  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 14px; line-height: 20px; background: var(--raised); padding: 2px 6px; border-radius: 6px; }
+  pre code { background: none; padding: 0; color: inherit; }
+  strong { font-weight: 700; }
   p, li { text-wrap: pretty; }
 
   /* Shell */
-  .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 40px; max-width: 1200px; margin: 0 auto; padding: 0 24px 96px; }
-  nav.side { position: sticky; top: 0; align-self: start; height: 100vh; box-sizing: border-box; overflow-y: auto; padding: 24px 0 40px; border-right: 1px solid var(--rule); }
-  nav.side .brand { font-family: var(--display); font-weight: 700; font-size: 20px; line-height: 28px; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; }
+  .shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; max-width: 1200px; margin: 0 auto; padding: 0 24px 96px; }
+  nav.side { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 32px 0 40px; }
+  nav.side .brand { font-weight: 700; font-size: 18px; line-height: 28px; display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; }
   nav.side .brand small { font-family: var(--mono); font-weight: 400; font-size: 12px; line-height: 16px; color: var(--muted); }
-  nav.side .tag { font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--muted); margin: 0 0 24px; }
+  nav.side .tag { font-size: 14px; line-height: 20px; color: var(--muted); margin: 0 0 24px; }
   nav.side ol { list-style: none; margin: 0; padding: 0; }
-  nav.side li { margin: 0; }
-  nav.side ol a { display: block; padding: 4px 12px 4px 0; color: var(--ink-2); text-decoration: none; font-size: 14px; line-height: 20px; border-left: 2px solid transparent; padding-left: 12px; margin-left: -0px; }
-  nav.side ol a:hover { color: var(--ink); border-left-color: var(--rule); }
-  nav.side .group { font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px 12px; }
-  main { max-width: 860px; min-width: 0; padding-top: 24px; }
+  nav.side li { margin: 2px 0; }
+  nav.side ol a { display: block; padding: 6px 12px; color: var(--ink-2); text-decoration: none; font-size: 14px; line-height: 20px; font-weight: 500; border-radius: 9999px; transition: all .7s var(--ease); }
+  nav.side ol a:hover { color: var(--ink); background: var(--hover); text-decoration: none; }
+  nav.side .group { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 24px 0 8px 12px; }
+  main { max-width: 800px; min-width: 0; padding-top: 32px; }
   @media (max-width: 900px) {
-    h1 { font-size: 48px; line-height: 1; }
     .shell { grid-template-columns: 1fr; gap: 0; padding: 0 16px 64px; }
-    nav.side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); padding: 16px 0 8px; }
-    nav.side ol { display: flex; flex-wrap: wrap; gap: 2px 4px; }
+    nav.side { position: static; height: auto; padding: 24px 0 16px; border-bottom: 1px solid var(--rule); }
+    nav.side ol { display: flex; flex-wrap: wrap; gap: 4px; }
     nav.side .group { display: none; }
-    nav.side ol a { border-left: 0; padding: 4px 8px; border-radius: 9999px; background: var(--surface-2); font-size: 14px; line-height: 20px; margin: 2px 0; }
+    nav.side ol a { padding: 4px 12px; background: var(--surface); font-size: 14px; }
   }
 
   /* Type */
-  :root { --h1a: #000000; --h1b: #666666; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --h1a: #FFFFFF; --h1b: #9B9B9B; } }
-  :root[data-theme="dark"] { --h1a: #FFFFFF; --h1b: #9B9B9B; }
-  h1 { background: linear-gradient(90deg, var(--h1a), var(--h1b)); -webkit-background-clip: text; background-clip: text; color: transparent; font-family: var(--display); font-weight: 700; font-size: 60px; line-height: 1; letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
-  h2 { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 36px; letter-spacing: -.015em; margin: 0 0 8px; text-wrap: balance; scroll-margin-top: 24px; }
-  h3 { font-family: var(--display); font-weight: 600; font-size: 20px; line-height: 28px; margin: 24px 0 8px; letter-spacing: -.01em; scroll-margin-top: 24px; }
-  section { margin: 64px 0; padding-top: 8px; }
+  h1 { font-weight: 700; font-size: 48px; line-height: 1; letter-spacing: -.02em; margin: 0 0 24px; text-wrap: balance; }
+  h2 { font-weight: 700; font-size: 30px; line-height: 36px; letter-spacing: -.02em; margin: 0 0 12px; text-wrap: balance; scroll-margin-top: 24px; }
+  h3 { font-weight: 600; font-size: 18px; line-height: 28px; margin: 32px 0 8px; scroll-margin-top: 24px; }
+  section { margin: 64px 0; padding-top: 0; }
   .lede { font-size: 18px; line-height: 28px; color: var(--ink-2); margin: 0 0 16px; max-width: 66ch; }
-  p { margin: 0 0 12px; max-width: 70ch; }
-  ul, ol { margin: 0 0 12px; padding-left: 16px; max-width: 70ch; }
-  li { margin: 0 0 4px; }
-  li::marker { color: var(--muted); }
-  .eyebrow { font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  p { margin: 0 0 16px; max-width: 70ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; max-width: 70ch; }
+  li { margin: 0 0 8px; }
+  li::marker { color: var(--accent); }
+  .eyebrow { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
 
   /* Hero */
-  .hero { padding: 16px 0 8px; }
-  .hero .lede { font-size: 20px; line-height: 28px; }
-  .hero .thesis { font-family: var(--display); font-weight: 500; font-size: 18px; line-height: 28px; color: var(--ink-2); border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 16px 0 24px; max-width: 56ch; }
+  .hero { padding: 0 0 8px; }
+  .hero .lede { font-size: 18px; line-height: 28px; }
+  .hero .thesis { font-size: 18px; line-height: 28px; font-weight: 500; color: var(--ink-2); border-left: none; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); padding: 16px 24px; margin: 24px 0; max-width: 56ch; }
   .cta { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 24px; }
-  .btn { display: inline-block; font-family: var(--display); font-weight: 600; font-size: 14px; line-height: 20px; padding: 8px 16px; border-radius: 8px; text-decoration: none; border: 1px solid var(--accent); color: var(--accent-ink); background: var(--surface); }
-  .btn.primary { background: var(--accent); color: #fff; }
-  .btn.primary:hover { filter: brightness(1.08); }
-  .btn:hover { text-decoration: none; }
+  .btn { display: inline-block; font-family: var(--sans); font-weight: 600; font-size: 14px; line-height: 20px; padding: 8px 12px; border-radius: 9999px; border: 1px solid var(--rule); color: var(--ink); background: var(--surface); text-decoration: none; transition: all .7s var(--ease); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+  .btn:hover { text-decoration: none; background: var(--hover); transform: translateY(-1px); }
+  .btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
 
   /* Terminal / code */
   pre { margin: 0; }
-  .code, .term { position: relative; background: var(--code-bg); color: var(--code-ink); border-radius: 8px; padding: 16px 16px 16px; font-family: var(--mono); font-size: 12px; line-height: 16px; overflow-x: auto; box-shadow: var(--shadow); margin: 12px 0 16px; }
-  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 0; right: 46px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--code-muted); padding: 4px 0; }
-  .code .copy { position: absolute; top: 4px; right: 8px; font: 11px var(--mono); color: var(--code-muted); background: transparent; border: 1px solid rgba(255,255,255,.14); border-radius: 4px; padding: 2px 8px; cursor: pointer; }
-  .code .copy:hover { color: var(--code-ink); border-color: rgba(255,255,255,.35); }
-  .term .p { color: var(--code-accent); }
-  .term .m { color: var(--code-muted); }
-  .term .ok { color: var(--code-ok); }
-  .term .pin { color: var(--code-pin); }
-  .term .c { color: var(--code-muted); }
-  .term .hl { color: #fff; }
-  .code .k { color: var(--code-accent); }
-  .code .s { color: var(--code-ok); }
-  .code .c { color: var(--code-muted); }
-  .code .n { color: var(--code-pin); }
+  .code, .term { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; font-family: var(--mono); font-size: 14px; line-height: 20px; overflow-x: auto; margin: 16px 0 24px; }
+  .code[data-lang]::before { content: attr(data-lang); position: absolute; top: 10px; right: 60px; font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .code .copy { position: absolute; top: 8px; right: 8px; font: 500 12px/16px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 9999px; padding: 2px 8px; cursor: pointer; transition: all .7s var(--ease); }
+  .code .copy:hover { color: var(--accent); border-color: var(--accent); background: transparent; }
+  .term .p { color: var(--accent); font-weight: 600; }
+  .term .cy { color: var(--ink); }
+  .term .am { color: var(--amber); }
+  .term .pin { color: var(--amber); }
+  .term .m { color: var(--ink-2); }
+  .term .ok { color: var(--accent); }
+  .term .c { color: var(--muted); }
+  .term .hl { color: var(--ink); font-weight: 600; }
+  .code .k { color: var(--ink); font-weight: 600; }
+  .code .s { color: var(--accent); }
+  .code .c { color: var(--muted); }
+  .code .n { color: var(--amber); }
 
   /* Cards, tables, callouts */
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 16px 0 16px; }
-  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 16px 12px; box-shadow: var(--shadow); }
-  .card h4 { margin: 0 0 4px; font-family: var(--display); font-weight: 600; font-size: 16px; line-height: 24px; }
-  .card h4 code { font-size: 14px; line-height: 20px; }
-  .card p { font-size: 14px; line-height: 20px; color: var(--ink-2); margin: 0 0 4px; }
-  .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); margin: 12px 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; transition: all .7s var(--ease); }
+  .card:hover { background: var(--raised); transform: translateY(-2px); }
+  .card h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
+  .card h4 code { font-size: 14px; }
+  .card p { font-size: 14px; line-height: 20px; color: var(--ink-2); margin: 0 0 8px; }
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); margin: 16px 0 24px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 20px; }
-  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-  thead th { font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--surface-2); }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { font-size: 12px; line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--raised); }
   tbody tr:last-child td { border-bottom: none; }
   td code, th code { white-space: nowrap; }
-  .note, .warn { border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 14px; line-height: 20px; max-width: 72ch; }
-  .note { background: var(--accent-soft); border: 1px solid transparent; }
-  .warn { background: var(--warn-soft); border: 1px solid transparent; color: var(--ink); }
-  .note b, .warn b { font-weight: 600; }
-  .chip { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; letter-spacing: .05em; padding: 2px 8px; border-radius: 9999px; white-space: nowrap; vertical-align: 1px; }
-  .chip.pin { background: var(--pin-soft); color: var(--pin); }
-  .chip.ok { background: var(--ok-soft); color: var(--ok); }
-  .chip.acc { background: var(--accent-soft); color: var(--accent-ink); }
+  .note, .warn { border-radius: 16px; padding: 16px 24px; margin: 24px 0; font-size: 14px; line-height: 20px; max-width: 72ch; border: 1px solid; }
+  .note { background: var(--surface); border-color: var(--accent); }
+  .warn { background: var(--surface); border-color: var(--amber); color: var(--ink); }
+  .note b, .warn b { font-weight: 700; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; white-space: nowrap; vertical-align: 1px; border: 1px solid currentColor; }
+  .chip.pin { color: var(--amber); }
+  .chip.ok { color: var(--accent); }
+  .chip.acc { color: var(--ink-2); }
 
   /* Steps */
   ol.steps { list-style: none; padding: 0; counter-reset: s; max-width: none; }
-  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 12px; padding: 16px 0; border-top: 0px solid var(--rule); margin: 0; }
-  ol.steps > li::before { content: counter(s); font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 32px; color: var(--accent); padding-top: 2px; }
-  ol.steps h4 { margin: 0 0 4px; font-family: var(--display); font-weight: 600; font-size: 18px; line-height: 28px; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 16px; padding: 24px 0; margin: 0; }
+  ol.steps > li + li { border-top: 1px solid var(--rule); }
+  ol.steps > li::before { content: counter(s, decimal-leading-zero); font-family: var(--mono); font-weight: 600; font-size: 18px; line-height: 28px; color: var(--accent); }
+  ol.steps h4 { margin: 0 0 8px; font-weight: 600; font-size: 16px; line-height: 24px; }
   ol.steps p { max-width: 70ch; }
-  ol.steps .code, ol.steps .term { margin: 8px 0 4px; }
+  ol.steps .code, ol.steps .term { margin: 8px 0 8px; }
 
   /* Figure */
-  figure { margin: 16px 0 24px; }
-  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink); }
-  figcaption { font-size: 14px; line-height: 20px; color: var(--muted); margin-top: 8px; max-width: 72ch; }
+  figure { margin: 24px 0; }
+  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink-2); }
+  figcaption { font-size: 14px; line-height: 20px; color: var(--muted); margin-top: 12px; max-width: 72ch; }
 
-  .foot { border-top: 0px solid var(--rule); padding-top: 16px; font-size: 14px; line-height: 20px; color: var(--muted); }
-  kbd { font-family: var(--mono); font-size: 14px; line-height: 20px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 .35em; background: var(--surface); }
+  .foot { border-top: 1px solid var(--rule); padding-top: 24px; font-size: 14px; line-height: 20px; color: var(--muted); }
+  kbd { font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 6px; padding: 0 .35em; background: var(--surface); }
+
+  .skip { position: fixed; left: 16px; top: -64px; z-index: 60; background: var(--accent); color: var(--accent-contrast); padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: top .7s var(--ease); }
+  .skip:focus { top: 16px; }
 </style>
+</head>
+<body>
+
+<a class="skip" href="#overview">Skip to content</a>
 
 <div class="shell">
 <nav class="side" aria-label="Sections">
-  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">Ctx</a> <small>v0.2.0</small></p>
+  <p class="brand"><a href="../" style="color:inherit;text-decoration:none">ctx</a> <small>v0.2.0</small></p>
   <p class="tag">docs · <a href="../">home</a></p>
   <ol>
     <li><a href="#overview">Overview</a></li>
@@ -173,7 +175,7 @@
 
 <main>
 <section class="hero" id="overview">
-  <p class="eyebrow">Documentation · Ctx 0.2.0</p>
+  <p class="eyebrow">documentation · ctx 0.2.0</p>
   <h1>Give your agent's context a lockfile.</h1>
   <p class="lede">Ctx records <strong>exactly</strong> which bytes an agent read — every policy, document, or dataset, by content hash — so any run can be diffed against another, replayed byte for byte without touching the live source, and exported as evidence.</p>
   <p class="thesis">Models are probabilistic, but many context failures are infrastructural. Agent reliability is bounded by context reliability.</p>
@@ -193,7 +195,7 @@
 <span class="p">$</span> ctx run --id run-b ctx://demo/policies/refunds
 <span class="p">$</span> ctx diff run-a run-b
 <span class="m">~ ctx://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
-<span class="pin">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 08:52:32Z → 08:52:33Z</span>
+<span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 08:52:32Z → 08:52:33Z</span>
 <span class="m">  -Products can be refunded within 30 days.</span>
 <span class="m">  +Products can be refunded within 14 days.</span>
 <span class="p">$</span> ctx replay run-a                                  <span class="c"># reads the store, never the file</span>
@@ -210,21 +212,20 @@
 </section>
 
 <section id="how">
-  <p class="eyebrow">Mechanism</p>
+  <p class="eyebrow">mechanism</p>
   <h2>How it works</h2>
   <p class="lede">Six primitives, one loop: <strong>resolve → manifest → diff → replay</strong>. The picture below is the refunds walkthrough above, drawn as data flow.</p>
 
   <figure>
-    <svg viewBox="0 0 960 430" role="img" aria-label="Sources are resolved under a freshness policy into content-addressed snapshots; each run's manifest records the hash of what it delivered; replay, diff, and evidence read only from the store, never the live source." xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, ui-monospace, monospace" font-size="12">
+    <svg viewBox="0 0 960 430" role="img" aria-label="Sources are resolved under a freshness policy into content-addressed snapshots; each run's manifest records the hash of what it delivered; replay, diff, and evidence read only from the store, never the live source." xmlns="http://www.w3.org/2000/svg" font-family="Geist Mono, ui-monospace, monospace" font-size="12">
       <defs>
         <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
         <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
       </defs>
-      <!-- sources -->
       <g stroke="currentColor" fill="none" stroke-width="1.2">
-        <rect x="20" y="56" width="150" height="40" rx="6"/>
-        <rect x="20" y="112" width="150" height="40" rx="6"/>
-        <rect x="20" y="168" width="150" height="40" rx="6"/>
+        <rect x="20" y="56" width="150" height="40"/>
+        <rect x="20" y="112" width="150" height="40"/>
+        <rect x="20" y="168" width="150" height="40"/>
       </g>
       <g fill="currentColor">
         <text x="95" y="80" text-anchor="middle">filesystem</text>
@@ -232,8 +233,7 @@
         <text x="95" y="192" text-anchor="middle">HTTP</text>
         <text x="95" y="40" text-anchor="middle" font-size="11" opacity=".65">SOURCES (live)</text>
       </g>
-      <!-- resolve box -->
-      <rect x="230" y="92" width="170" height="84" rx="8" stroke="currentColor" fill="none" stroke-width="1.2"/>
+      <rect x="230" y="92" width="170" height="84" stroke="currentColor" fill="none" stroke-width="1.2"/>
       <g fill="currentColor" text-anchor="middle">
         <text x="315" y="118" font-weight="600">resolve</text>
         <text x="315" y="137" font-size="11">policy: require_fresh</text>
@@ -246,10 +246,9 @@
         <line x1="170" y1="188" x2="228" y2="158"/>
       </g>
       <text x="200" y="62" fill="currentColor" font-size="11" opacity=".75">fetch</text>
-      <!-- snapshots -->
       <g stroke="currentColor" fill="none" stroke-width="1.2">
-        <rect x="460" y="60" width="200" height="52" rx="6"/>
-        <rect x="460" y="200" width="200" height="52" rx="6"/>
+        <rect x="460" y="60" width="200" height="52"/>
+        <rect x="460" y="200" width="200" height="52"/>
       </g>
       <g fill="currentColor">
         <text x="470" y="80" font-weight="600">snapshot</text><text x="470" y="100" font-size="11">sha256:c8b0bb21…  (30 days)</text>
@@ -259,15 +258,13 @@
       <line x1="400" y1="120" x2="458" y2="90" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
       <line x1="400" y1="150" x2="458" y2="222" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
       <text x="405" y="190" fill="currentColor" font-size="11" opacity=".75">after edit</text>
-      <!-- tag -->
-      <rect x="470" y="128" width="78" height="22" rx="11" fill="#B45309" opacity=".9"/>
-      <text x="509" y="143" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">@prod</text>
-      <line x1="509" y1="128" x2="509" y2="114" stroke="#B45309" stroke-width="1.4" marker-end="url(#arr)"/>
+      <rect x="470" y="128" width="78" height="22" style="fill:var(--amber)"/>
+      <text x="509" y="143" text-anchor="middle" style="fill:var(--bg)" font-size="11" font-weight="600">@prod</text>
+      <line x1="509" y1="128" x2="509" y2="114" style="stroke:var(--amber)" stroke-width="1.4" marker-end="url(#arr)"/>
       <text x="556" y="144" fill="currentColor" font-size="11" opacity=".75">movable pointer</text>
-      <!-- manifests -->
       <g stroke="currentColor" fill="none" stroke-width="1.2">
-        <rect x="720" y="60" width="220" height="52" rx="6"/>
-        <rect x="720" y="200" width="220" height="52" rx="6"/>
+        <rect x="720" y="60" width="220" height="52"/>
+        <rect x="720" y="200" width="220" height="52"/>
       </g>
       <g fill="currentColor">
         <text x="730" y="80" font-weight="600">manifest run-a</text><text x="730" y="100" font-size="11">[0] refunds → c8b0bb21…</text>
@@ -278,11 +275,10 @@
       <line x1="660" y1="226" x2="718" y2="226" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
       <text x="689" y="78" text-anchor="middle" fill="currentColor" font-size="11" opacity=".75">mount</text>
       <text x="689" y="218" text-anchor="middle" fill="currentColor" font-size="11" opacity=".75">mount</text>
-      <!-- outcomes -->
       <g stroke="currentColor" fill="none" stroke-width="1.2">
-        <rect x="230" y="330" width="210" height="70" rx="8" style="stroke:var(--accent)" stroke-width="1.6"/>
-        <rect x="470" y="330" width="220" height="70" rx="8"/>
-        <rect x="720" y="330" width="220" height="70" rx="8"/>
+        <rect x="230" y="330" width="210" height="70" style="stroke:var(--accent)" stroke-width="1.6"/>
+        <rect x="470" y="330" width="220" height="70"/>
+        <rect x="720" y="330" width="220" height="70"/>
       </g>
       <g fill="currentColor">
         <text x="335" y="354" text-anchor="middle" font-weight="600" style="fill:var(--accent)">replay run-a</text>
@@ -315,7 +311,7 @@
 </section>
 
 <section id="install">
-  <p class="eyebrow">Use it</p>
+  <p class="eyebrow">use it</p>
   <h2>Install &amp; first resolve</h2>
   <p class="lede">Embedded mode needs only Go 1.26+. Everything lives in a local <code>.ctx</code> directory (SQLite + blobs); no services.</p>
   <pre class="code" data-lang="bash"><code>git clone &lt;this repo&gt; ctx &amp;&amp; cd ctx
@@ -414,7 +410,7 @@ ctx diff run-a run-b</code></pre>
 +++ run-b (manifest_01M0HRB68SZDF1N6TTNXC0VQCT)
 
 ~ ctx://demo/policies/refunds  (snap_01M0HRB5KJ… -> snap_01M0HRB68R…)</span>
-<span class="pin">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 2026-08-21T08:52:32Z → 2026-08-21T08:52:33Z</span>
+<span class="am">  why: source revision sha256:c8b0bb212e93 → sha256:8f4b00474456; observed 2026-08-21T08:52:32Z → 2026-08-21T08:52:33Z</span>
 <span class="m">  --- a/ctx://demo/policies/refunds
   +++ b/ctx://demo/policies/refunds
   @@ -1,2 +1,2 @@
@@ -425,11 +421,12 @@ ctx diff run-a run-b</code></pre>
     </div></li>
     <li><div>
       <h4>Replay — the invariant</h4>
-      <p><code>replay</code> rebuilds a manifest's bytes from the content addressed store and hash againes them. It never contacts the source, so it works after the file changed, after the API key expired, after the repo was archived. Any mismatch or missing blob exits nonzero.</p>
+      <p><code>replay</code> rebuilds a manifest's bytes from the content addressed store and hashes them again. It never contacts the source, so it works after the file changed, after the API key expired, after the repo was archived. Any mismatch or missing blob exits nonzero.</p>
       <pre class="code" data-lang="bash"><code>ctx replay run-a</code></pre>
       <pre class="term"><span class="m">Replaying manifest manifest_01M0HRB5KJMHPS0X0GGXF853CP (run run-a), 1 entry
 
 [0] ctx://demo/policies/refunds
+    materialization: mat_01M0HRB5KJHXZ6DHBAX3XN74NC
     content_hash (recorded):  sha256:c8b0bb212e93…
     content_hash (replayed):  sha256:c8b0bb212e93…
     match: OK
@@ -456,8 +453,9 @@ ctx get ctx://demo/policies/refunds@prod
 ctx run --id run-c ctx://demo/policies/refunds@prod
 ctx manifest run-c      <span class="c"># shows a REF column: prod</span></code></pre>
   <pre class="term"><span class="m">uri:          ctx://demo/policies/refunds@prod</span>
-<span class="pin">ref:          prod</span>
+<span class="am">ref:          prod</span>
 <span class="m">snapshot:     snap_01M0HRB5KJ2HNJBYH2TV22BBT0
+content_hash: sha256:c8b0bb212e93151d720746e36ff3b7076727cb577614feafa0d61f168965aedb
 freshness:    tagged (@prod -> snapshot snap_01M0HRB5KJ…, observed 2026-08-21T08:52:32Z, policy not consulted)
 
 --- content ---</span>
@@ -472,7 +470,7 @@ freshness:    tagged (@prod -> snapshot snap_01M0HRB5KJ…, observed 2026-08-21T
 
 <section id="evidence">
   <h2>Evidence bundles</h2>
-  <p class="lede">When someone asks "what did the agent actually see for this decision?", hand them a file. <code>ctx evidence export</code> produces an <a href="https://github.com/<code>in-toto</code>/attestation">in-toto Statement</a> whose subject digest is a Merkle root over the run's entries; <code>ctx evidence verify</code> checks it — offline if you like.</p>
+  <p class="lede">When someone asks "what did the agent actually see for this decision?", hand them a file. <code>ctx evidence export</code> produces an <a href="https://github.com/in-toto/attestation">in-toto Statement</a> whose subject digest is a Merkle root over the run's entries; <code>ctx evidence verify</code> checks it — offline if you like.</p>
   <pre class="code" data-lang="bash"><code>ctx evidence export run-a --with-content --out bundle.json
 ctx evidence verify bundle.json             <span class="c"># also cross-checks against the store via replay</span>
 ctx evidence verify bundle.json --offline   <span class="c"># merkle root + embedded content only</span></code></pre>
@@ -509,7 +507,7 @@ evidence verified: 1 entry, merkle root 8482a767…, embedded content 1/1 re-has
 </section>
 
 <section id="server">
-  <p class="eyebrow">Integrate</p>
+  <p class="eyebrow">integrate</p>
   <h2>Client/server mode &amp; HTTP API</h2>
   <p class="lede"><code>ctxd</code> is the same engine behind an HTTP API, backed by Postgres + an S3-compatible store (MinIO in dev). Teams, services, and the MCP server share one history.</p>
   <pre class="code" data-lang="bash"><code><span class="c"># full stack from a clean clone: Postgres + MinIO + ctxd (+ an OTel collector)</span>
@@ -525,7 +523,7 @@ ctx get ctx://demo/hello-world</code></pre>
   <div class="warn"><b>Containerized ctxd can't see your host filesystem.</b> Use GitHub/HTTP sources there, or mount the files. For local on the host work, run <code>ctxd</code> directly in embedded mode: <code>go build -o ctxd ./cmd/ctxd &amp;&amp; ./ctxd --addr :8080 --data-dir ~/.ctx</code> (omit <code>--postgres-dsn</code>).</div>
   <h3><code>ctxd</code> flags (all also settable as <code>CTXD_*</code> env vars)</h3>
   <pre class="code" data-lang="bash"><code>ctxd --addr :8080 \
-     --postgres-dsn 'postgres://ctx:…@localhost:5434/ctx?sslmode=disable' \
+     --postgres-dsn 'postgres://ctx:***@localhost:5434/ctx?sslmode=disable' \
      --s3-endpoint localhost:9000 --s3-access-key … --s3-secret-key … --s3-bucket ctx-blobs [--s3-use-ssl] \
      --api-key "$CTXD_API_KEY"      <span class="c"># when set, every request except /healthz needs Authorization: Bearer &lt;key&gt;</span></code></pre>
   <h3>Endpoints</h3>
@@ -542,7 +540,7 @@ ctx get ctx://demo/hello-world</code></pre>
     </tbody>
   </table></div>
   <pre class="code" data-lang="bash"><code>curl -s -X POST http://localhost:8080/v1/resolve \
-  -H 'Authorization: Bearer $CTX_API_KEY' -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer ***' -H 'Content-Type: application/json' \
   -d '{"uri":"ctx://demo/policies/refunds@prod"}' | jq '.resource.ref, .snapshot.content_hash, .freshness.status'</code></pre>
   <p>Full request/response schemas: <code>docs/api.md</code>.</p>
 </section>
@@ -576,7 +574,7 @@ refunds.resource.ref;            <span class="c">// "prod"</span>
 <span class="c">// diff two runs, with the why</span>
 <span class="k">const</span> diff = <span class="k">await</span> ctx.diff(<span class="s">"turn-41"</span>, <span class="s">"turn-42"</span>);
 <span class="k">for</span> (<span class="k">const</span> e <span class="k">of</span> diff.entries) <span class="k">if</span> (e.status === <span class="s">"changed"</span>)
-  console.log(e.uri, e.source_revision_a, <span class="s">"->"</span>, e.source_revision_b, e.unified_diff);
+  console.log(e.uri, e.source_revision_a, <span class="s">"-&gt;"</span>, e.source_revision_b, e.unified_diff);
 
 <span class="c">// replay and evidence</span>
 <span class="k">const</span> replay = <span class="k">await</span> ctx.replay(manifest.manifest_id);
@@ -682,7 +680,7 @@ ctx.run.commit                        ctx.manifest.id=manifest_… · ctx.manife
 </section>
 
 <section id="cli">
-  <p class="eyebrow">Reference</p>
+  <p class="eyebrow">reference</p>
   <h2>CLI cheat sheet</h2>
   <div class="scroll"><table>
     <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
@@ -707,7 +705,7 @@ ctx.run.commit                        ctx.manifest.id=manifest_… · ctx.manife
   <h3>What happens when the source is unreachable?</h3>
   <p><code>require_fresh</code> fails the resolve (no silent staleness). <code>allow_stale</code> serves the cached snapshot if within <code>--max-age</code>. <code>@tag</code> never touches the source. <code>replay</code> never touches the source either.</p>
   <h3>How is this different from logging tool outputs in my tracing tool?</h3>
-  <p>Traces key on spans; Ctx keys on <strong>source identity</strong>. You get a freshness policy, a run to run diff of inputs with the source revision that changed, and byte exact replay without fetch againing — and the manifest's Merkle root shows up in your trace, so the two complement each other.</p>
+  <p>Traces key on spans; Ctx keys on <strong>source identity</strong>. You get a freshness policy, a run to run diff of inputs with the source revision that changed, and byte exact replay without fetching again — and the manifest's Merkle root shows up in your trace, so the two complement each other.</p>
   <h3>Is the store encrypted / multi tenant / signed?</h3>
   <p>v0.2 is a security <strong>baseline</strong>: no plaintext credentials at rest (env refs resolved at fetch time, redaction everywhere), optional single API key on <code>ctxd</code>, dev only Compose credentials clearly labeled, dependency scanning clean. Not enterprise IAM; bundles aren't signed yet. See the roadmap.</p>
   <h3>Status</h3>
@@ -718,7 +716,6 @@ ctx.run.commit                        ctx.manifest.id=manifest_… · ctx.manife
 </div>
 
 <script>
-  // Copy buttons on code blocks. Decorative convenience only — the page is complete without it.
   (function () {
     if (!navigator.clipboard) return;
     document.querySelectorAll('pre.code').forEach(function (pre) {
@@ -734,3 +731,5 @@ ctx.run.commit                        ctx.manifest.id=manifest_… · ctx.manife
     });
   })();
 </script>
+</body>
+</html>
