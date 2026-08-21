@@ -67,6 +67,42 @@ jobs:
           npm ci
           npm run build
 
+  support-agent-example:
+    name: Support agent example build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The example's tests build ctx and ctxd themselves and run a throwaway
+      # ctxd on a free port, so this job needs the Go toolchain too.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: examples/support-agent/package-lock.json
+
+      - name: Build the SDK the example depends on
+        working-directory: sdk/typescript
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build the example
+        working-directory: examples/support-agent
+        run: |
+          npm ci
+          npm run build
+
+      # SUPPORT_FAKE_MODEL swaps in a deterministic answer function, so the
+      # whole suite runs with no Ollama and no network beyond localhost.
+      - name: Test the example (deterministic fake model, no Ollama)
+        working-directory: examples/support-agent
+        env:
+          SUPPORT_FAKE_MODEL: "1"
+        run: npm test
+
   integration:
     name: Docker Compose integration (Postgres + MinIO + ctxd)
     runs-on: ubuntu-latest
