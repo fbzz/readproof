@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"readproof/internal/ids"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
 )
 
 type ResourceStore struct {

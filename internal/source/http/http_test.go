@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"readproof/internal/source"
+	"github.com/fbzz/readproof/internal/source"
 )
 
 func TestFetch(t *testing.T) {

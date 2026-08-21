@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"readproof/internal/version"
+	"github.com/fbzz/readproof/internal/version"
 )
 
 // newVersionCmd is the subcommand form of `readproof --version` (cobra

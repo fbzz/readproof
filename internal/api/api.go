@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"readproof/internal/app"
-	"readproof/internal/diff"
-	"readproof/internal/manifest"
-	"readproof/internal/resource"
-	"readproof/internal/run"
-	"readproof/internal/snapshot"
-	"readproof/internal/tag"
-	"readproof/internal/wire"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/run"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/wire"
 )
 
 // Options configures the HTTP API.

@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"readproof/internal/api"
-	"readproof/internal/app"
-	"readproof/internal/client/remote"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
-	"readproof/internal/source"
+	"github.com/fbzz/readproof/internal/api"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/client/remote"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/source"
 )
 
 // TestTagAPIRoundTrip drives PUT/GET/DELETE /v1/tags and a tagged resolve

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"readproof/internal/run"
+	"github.com/fbzz/readproof/internal/run"
 )
 
 // ErrRunNotFound is an alias for run.ErrNotFound, kept exported here for

@@ -1,16 +1,16 @@
 package mcp
 
 import (
-	"readproof/internal/diff"
-	"readproof/internal/manifest"
-	"readproof/internal/policy"
-	"readproof/internal/redact"
-	"readproof/internal/replay"
-	"readproof/internal/resolver"
-	"readproof/internal/resource"
-	"readproof/internal/snapshot"
-	"readproof/internal/source"
-	"readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/redact"
+	"github.com/fbzz/readproof/internal/replay"
+	"github.com/fbzz/readproof/internal/resolver"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/tag"
 )
 
 // The types in this file are the JSON payloads the MCP tools return. They

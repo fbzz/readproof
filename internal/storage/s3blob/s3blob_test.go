@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/ids"
 )
 
 // testConfig builds a Config from environment variables, skipping the test

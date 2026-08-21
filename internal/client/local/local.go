@@ -7,14 +7,14 @@ package local
 import (
 	"context"
 
-	"readproof/internal/app"
-	"readproof/internal/diff"
-	"readproof/internal/manifest"
-	"readproof/internal/replay"
-	"readproof/internal/resolver"
-	"readproof/internal/resource"
-	"readproof/internal/snapshot"
-	"readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/replay"
+	"github.com/fbzz/readproof/internal/resolver"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/tag"
 )
 
 type Client struct {

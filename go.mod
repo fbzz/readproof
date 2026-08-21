@@ -1,4 +1,4 @@
-module readproof
+module github.com/fbzz/readproof
 
 go 1.26.6
 

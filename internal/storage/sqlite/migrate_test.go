@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"readproof/internal/storage/sqlite"
+	"github.com/fbzz/readproof/internal/storage/sqlite"
 )
 
 // TestMigrateUpgradesA0001OnlyDatabase proves 0002 applies to a database

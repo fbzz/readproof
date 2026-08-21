@@ -16,8 +16,8 @@ import (
 	"os"
 	"regexp"
 
-	"readproof/internal/ids"
-	"readproof/internal/source"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/source"
 )
 
 // envVarRef matches "${VAR_NAME}" references embedded anywhere in a header

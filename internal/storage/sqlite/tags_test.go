@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"readproof/internal/ids"
-	"readproof/internal/materialization"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
-	"readproof/internal/run"
-	"readproof/internal/snapshot"
-	"readproof/internal/source"
-	"readproof/internal/storage/sqlite"
-	"readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/materialization"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/run"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/storage/sqlite"
+	"github.com/fbzz/readproof/internal/tag"
 )
 
 // testDB opens a migrated SQLite database in a per-test temp dir — no

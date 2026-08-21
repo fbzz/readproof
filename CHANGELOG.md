@@ -19,7 +19,7 @@ no storage layout. The full mapping is in
 ### Changed
 
 - **Go module** `ctx` → `readproof`; every import path follows, as does
-  `-ldflags "-X readproof/internal/version.Commit=…"`.
+  `-ldflags "-X github.com/fbzz/readproof/internal/version.Commit=…"`.
 - **Binaries.** `ctx` → `readproof` and `ctxd` → `readproofd`: the cobra
   command name, the help text, the `readproof:` / `readproofd:` error
   prefixes, the Compose service, and the Docker image entrypoint.
@@ -191,7 +191,7 @@ status: [`docs/mvp.md`](docs/mvp.md).
   unknown flags) still show usage.
 - `readproof version` / `readproof --version` / `readproofd --version`
   report a single `internal/version` source (`0.2.0`, `+<sha>` via
-  `-ldflags -X readproof/internal/version.Commit=…`); the evidence
+  `-ldflags -X github.com/fbzz/readproof/internal/version.Commit=…`); the evidence
   exporter and MCP server version strings read the same constant in Go and
   TS.
 

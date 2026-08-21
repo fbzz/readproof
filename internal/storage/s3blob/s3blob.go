@@ -15,8 +15,8 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
-	"readproof/internal/ids"
-	"readproof/internal/storage/blob"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/storage/blob"
 )
 
 // Config holds the connection details for an S3-compatible object store.

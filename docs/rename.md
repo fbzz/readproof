@@ -15,7 +15,7 @@ bundle over the same documents now digests to a different root.
 | Old | New | Where |
 | --- | --- | --- |
 | Product name `Ctx` / `ctx` (prose, titles, headings) | `Readproof` / `readproof` | every doc, README, page title |
-| Go module `ctx`, imports `"ctx/internal/…"` | `readproof`, `"readproof/internal/…"` | `go.mod`, every `.go` file, `-ldflags "-X readproof/internal/version.Commit=…"` |
+| Go module `ctx`, imports `"ctx/internal/…"` | `github.com/fbzz/readproof`, `"github.com/fbzz/readproof/internal/…"` | `go.mod`, every `.go` file, `-ldflags "-X github.com/fbzz/readproof/internal/version.Commit=…"` |
 | CLI binary `ctx` (`cmd/ctx`) | `readproof` (`cmd/readproof`) | cobra `Use`, help text, version line, error prefix `readproof:`, every `./ctx …` in docs |
 | Server `ctxd` (`cmd/ctxd`) | `readproofd` (`cmd/readproofd`) | Dockerfile, Compose service, image entrypoint, `readproofd:` error prefixes in `internal/client/remote` |
 | URI scheme `ctx://` | `readproof://` | `resource.ParseURI`/`SplitRef` prefix and error messages, every doc, example, fixture and test |
@@ -41,6 +41,12 @@ bundle over the same documents now digests to a different root.
 | `ctx-mcp.cordis.yml`, `ctx-plugin.cordis.yml` | `readproof-mcp.cordis.yml`, `readproof-plugin.cordis.yml` | plus `__CTX_REPO__` → `__READPROOF_REPO__`, row ids and `serverName` |
 | Example packages `ctx-support-agent-example`, `ctx-langgraph-example` | `readproof-*-example` | `package.json`, lockfiles |
 | Version `0.2.0` | `0.3.0` | `internal/version`, `EVIDENCE_EXPORTER_VERSION`, `docs/evidence.md` |
+
+> **Later, for the public release:** the module path moved again, from the
+> bare `readproof` to `github.com/fbzz/readproof`, so that
+> `go install github.com/fbzz/readproof/cmd/readproof@latest` resolves. That
+> is a build-path change only — no package name, symbol, or wire shape moved
+> with it. See [`releasing.md`](releasing.md).
 
 ## What deliberately did *not* change
 

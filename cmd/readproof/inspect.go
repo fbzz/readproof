@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"readproof/internal/redact"
-	"readproof/internal/resource"
-	"readproof/internal/source"
-	"readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/redact"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/tag"
 )
 
 func newInspectCmd() *cobra.Command {

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"readproof/internal/app"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
-	"readproof/internal/source"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/source"
 )
 
 // seedRun builds a data directory containing one committed run, and returns

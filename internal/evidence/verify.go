@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"readproof/internal/client"
-	"readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/client"
+	"github.com/fbzz/readproof/internal/ids"
 )
 
 // VerifyOptions configures the checks Verify runs.

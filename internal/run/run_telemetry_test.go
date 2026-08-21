@@ -12,15 +12,15 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 
-	"readproof/internal/app"
-	"readproof/internal/client/local"
-	"readproof/internal/evidence"
-	"readproof/internal/merkle"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
-	"readproof/internal/source"
-	"readproof/internal/tag"
-	"readproof/internal/telemetry"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/client/local"
+	"github.com/fbzz/readproof/internal/evidence"
+	"github.com/fbzz/readproof/internal/merkle"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/telemetry"
 )
 
 const (

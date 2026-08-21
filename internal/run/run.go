@@ -10,12 +10,12 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"readproof/internal/ids"
-	"readproof/internal/manifest"
-	"readproof/internal/merkle"
-	"readproof/internal/resolver"
-	"readproof/internal/resource"
-	"readproof/internal/telemetry"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/merkle"
+	"github.com/fbzz/readproof/internal/resolver"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/telemetry"
 )
 
 // ErrNotFound is returned by RunStore.GetRun, and by Builder.Commit, when

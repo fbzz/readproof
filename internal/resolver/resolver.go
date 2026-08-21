@@ -10,15 +10,15 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"readproof/internal/ids"
-	"readproof/internal/materialization"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
-	"readproof/internal/snapshot"
-	"readproof/internal/source"
-	"readproof/internal/storage/blob"
-	"readproof/internal/tag"
-	"readproof/internal/telemetry"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/materialization"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/storage/blob"
+	"github.com/fbzz/readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/telemetry"
 )
 
 // ResolveResult is what a single Resolve call produces. Manifest-entry

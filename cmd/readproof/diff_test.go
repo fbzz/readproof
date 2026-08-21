@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/diff"
 )
 
 func TestWhyLine(t *testing.T) {

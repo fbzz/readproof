@@ -13,10 +13,10 @@ import (
 	"os"
 	"time"
 
-	"readproof/internal/api"
-	"readproof/internal/app"
-	"readproof/internal/telemetry"
-	"readproof/internal/version"
+	"github.com/fbzz/readproof/internal/api"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/telemetry"
+	"github.com/fbzz/readproof/internal/version"
 )
 
 func main() {

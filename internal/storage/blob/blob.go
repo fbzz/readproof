@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/ids"
 )
 
 // Store is the content-addressable blob interface. Payloads are immutable

@@ -10,13 +10,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"readproof/internal/app"
-	"readproof/internal/diff"
-	"readproof/internal/ids"
-	"readproof/internal/policy"
-	"readproof/internal/resource"
-	"readproof/internal/source"
-	"readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/app"
+	"github.com/fbzz/readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/ids"
+	"github.com/fbzz/readproof/internal/policy"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/source"
+	"github.com/fbzz/readproof/internal/tag"
 )
 
 func TestRefundAgentDemoReplayInvariant_Postgres(t *testing.T) {

@@ -17,12 +17,12 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"readproof/internal/client"
-	"readproof/internal/manifest"
-	"readproof/internal/resource"
-	"readproof/internal/snapshot"
-	"readproof/internal/tag"
-	"readproof/internal/version"
+	"github.com/fbzz/readproof/internal/client"
+	"github.com/fbzz/readproof/internal/manifest"
+	"github.com/fbzz/readproof/internal/resource"
+	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/tag"
+	"github.com/fbzz/readproof/internal/version"
 )
 
 const (

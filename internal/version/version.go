@@ -14,7 +14,7 @@ const Version = "0.3.0"
 // Commit is the short git SHA this binary was built from. It is empty for
 // an ordinary `go build`/`go test` and set at release time with:
 //
-//	go build -ldflags "-X readproof/internal/version.Commit=$(git rev-parse --short HEAD)" ./cmd/readproof
+//	go build -ldflags "-X github.com/fbzz/readproof/internal/version.Commit=$(git rev-parse --short HEAD)" ./cmd/readproof
 //
 // Keeping it out of Version means the version a bundle records stays
 // reproducible across builds of the same source.
