@@ -5,9 +5,15 @@ All bodies are JSON. `Content` fields are base64-encoded (Go's
 TypeScript SDK both decode it to text transparently. If `readproofd
 --api-key` is set, every route below except `/healthz` requires
 `Authorization: Bearer <key>`. Errors are `{"error": "<message>"}` with a
-4xx/5xx status — 404 for "not found", 400 for a bad request, 401 for a
-missing/wrong API key, 409 for a conflict with existing state, 500
-otherwise.
+4xx/5xx status — 404 for "not found", 400 for a bad request (including a
+source definition the server's policy refuses), 401 for a missing/wrong API
+key, 409 for a conflict with existing state, 500 otherwise.
+
+A 4xx carries the reason, because the caller needs it to fix the request. A
+**500 carries only a request id** (`internal server error (request id
+req_…)`): the detail — a host path, a driver message — is written to the
+`readproofd` log under that same id, so an operator can join the two without
+the server describing its insides to an unauthenticated peer.
 
 Source: [`internal/wire/wire.go`](../internal/wire/wire.go) (types) and
 [`internal/api/api.go`](../internal/api/api.go) (handlers).

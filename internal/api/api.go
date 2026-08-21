@@ -8,12 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/fbzz/readproof/internal/app"
 	"github.com/fbzz/readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/ids"
 	"github.com/fbzz/readproof/internal/manifest"
 	"github.com/fbzz/readproof/internal/resource"
 	"github.com/fbzz/readproof/internal/run"
@@ -452,6 +454,23 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	json.NewEncoder(w).Encode(body)
 }
 
+// writeError writes an error response.
+//
+// A 4xx describes what the caller sent, and the caller needs the detail to fix
+// the request — so it is returned verbatim. A 5xx describes readproofd's
+// insides: an absolute path on the host, a database driver's message, the
+// shape of the deployment. That belongs in the server's log, not in a response
+// to an unauthenticated peer. The response carries a generated request id and
+// nothing else; the same id prefixes the logged detail, so an operator can
+// still join the two.
 func writeError(w http.ResponseWriter, status int, err error) {
+	if status >= http.StatusInternalServerError {
+		requestID := ids.New("req")
+		log.Printf("readproofd: request %s failed: %v", requestID, err)
+		writeJSON(w, status, wire.ErrorResponse{
+			Error: fmt.Sprintf("internal server error (request id %s) — see the readproofd log for the detail", requestID),
+		})
+		return
+	}
 	writeJSON(w, status, wire.ErrorResponse{Error: err.Error()})
 }

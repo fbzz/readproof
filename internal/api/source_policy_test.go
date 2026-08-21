@@ -27,9 +27,15 @@ func serverWithOptions(t *testing.T, opts app.Options) (*app.App, *httptest.Serv
 		t.Fatalf("open app: %v", err)
 	}
 	t.Cleanup(func() { a.Close() })
+	return a, newServer(t, a)
+}
+
+// newServer wraps an already-open App in the HTTP API.
+func newServer(t *testing.T, a *app.App) *httptest.Server {
+	t.Helper()
 	server := httptest.NewServer(api.NewHandler(a, api.Options{}))
 	t.Cleanup(server.Close)
-	return a, server
+	return server
 }
 
 func postJSON(t *testing.T, url string, body any) (int, string) {

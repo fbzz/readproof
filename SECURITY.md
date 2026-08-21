@@ -91,11 +91,8 @@ Operational gaps, all tracked in the report:
   crosses the network in the clear.
 - **`--api-key` on the command line is visible in process listings.**
   Prefer `READPROOFD_API_KEY` / `READPROOF_API_KEY`.
-- **500 responses include internal error text**, which can name absolute
-  paths on the server.
-- **Data directory and blobs are created world-readable** (`0755`/`0644`);
-  restrict them yourself on a shared host.
-- **The container image runs as root.**
+- **Bundles are unsigned.** An `--offline` verify cannot detect a forgery
+  whose Merkle root was recomputed; signing is on the roadmap.
 
 ## Supported versions
 
