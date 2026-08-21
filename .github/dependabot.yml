@@ -21,6 +21,13 @@ updates:
     groups:
       npm-deps: { patterns: ["*"] }
     commit-message: { prefix: "deps(npm)" }
+    # A TypeScript major is a compiler change and @types/node tracks the Node
+    # line CI runs on; both are deliberate upgrades, not Monday bumps.
+    ignore:
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
