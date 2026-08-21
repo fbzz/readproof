@@ -155,7 +155,8 @@
   h4 { font-weight: 600; font-size: 16px; line-height: 24px; margin: 24px 0 8px; }
   /* transcripts wrap instead of hiding behind a horizontal scrollbar */
   .term { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 20px; }
-  .code { font-size: 13px; line-height: 20px; }
+  .code { font-size: 13px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .code.tree { white-space: pre; overflow-wrap: normal; }
   .code[data-lang]::before { right: 60px; }
 </style>
 </head>
