@@ -287,30 +287,15 @@ which publishes `@readproof/sdk` first and this package second, both with
 `--provenance`. [`docs/releasing.md`](../../../docs/releasing.md) has the
 whole procedure.
 
-### The `@readproof/sdk` dependency is rewritten at pack time
+### How the SDK dependency works in this repository
 
-In this repository the dependency is
-`"@readproof/sdk": "file:../../../sdk/typescript"`. That is deliberate — it
-is what lets `npm ci && npm test` here exercise the plugin against SDK
-changes that are not released yet, and it is what CI does. A `file:`
-specifier is meaningless to anyone installing from npm, so it cannot be
-what ships.
+`package.json` depends on the published `@readproof/sdk` (semver), which is
+what `npm install dsh-plugin-readproof` resolves. Inside this monorepo an npm
+`overrides` entry points the same dependency at `file:../../../sdk/typescript`,
+so `npm ci && npm test` here exercises the unreleased SDK while the published
+manifest stays correct for consumers (overrides only apply to the root project
+that declares them, never to people installing this package).
 
-npm's `prepack`/`postpack` hooks close the gap:
-
-- [`scripts/prepack.mjs`](./scripts/prepack.mjs) backs up `package.json`,
-  reads the SDK's own version out of `sdk/typescript/package.json`, and
-  writes `"@readproof/sdk": "^<that version>"` in its place. It also refuses
-  to pack a tree with no `dist/src/index.js`.
-- [`scripts/postpack.mjs`](./scripts/postpack.mjs) restores the backup, so
-  the working tree after `npm pack` or `npm publish` is byte-identical to
-  the one before it.
-
-The range therefore tracks the SDK automatically; there is no second place
-to bump. Confirm it any time with:
-
-```sh
-npm pack && tar xzOf dsh-plugin-readproof-*.tgz package/package.json | grep '@readproof/sdk'
 #   "@readproof/sdk": "^0.3.1",
 ```
 

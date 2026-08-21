@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-readproof",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "DeepSeek Harness plugin for Readproof: stable readproof:// identity, freshness policy, snapshots, per-run manifests, diff, byte-exact replay, and evidence bundles as model-callable tools.",
   "license": "Apache-2.0",
   "homepage": "https://fbzz.github.io/readproof/",
@@ -55,12 +55,10 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/test/*.test.js",
     "clean": "rm -rf dist",
-    "prepublishOnly": "npm run build && npm test",
-    "prepack": "node scripts/prepack.mjs",
-    "postpack": "node scripts/postpack.mjs"
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@readproof/sdk": "file:../../../sdk/typescript",
+    "@readproof/sdk": "^0.3.1",
     "@deepseek-ai/schemastery": "3.18.1"
   },
   "peerDependencies": {
@@ -76,5 +74,8 @@
     "@deepseek-ai/dsh-tools": "0.1.1-rc.1",
     "@types/node": "22.20.1",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@readproof/sdk": "file:../../../sdk/typescript"
   }
 }

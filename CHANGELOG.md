@@ -6,7 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- `dsh-plugin-readproof` 0.3.2: the published manifest now depends on
+  `@readproof/sdk@^0.3.1` (0.3.1 on npm carried a `file:` path because the
+  prepack rewrite does not reach the manifest `npm publish` sends). In-repo
+  development uses an npm `overrides` entry instead. 0.3.1 is deprecated.
 
 ## [0.3.1] - 2026-08-21
 
