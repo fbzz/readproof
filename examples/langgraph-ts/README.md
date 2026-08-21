@@ -48,8 +48,10 @@ From the repository root:
 cd sdk/typescript && npm ci && npm run build && cd ../..
 
 # 2. Start readproofd on the host, embedded mode, its own data dir.
+#    --filesystem-root allow-lists the directories a filesystem source may
+#    read from; without one, readproofd refuses filesystem sources outright.
 go build -o readproofd ./cmd/readproofd
-./readproofd --addr :8080 --data-dir /tmp/readproof-langgraph &
+./readproofd --addr :8080 --data-dir /tmp/readproof-langgraph --filesystem-root "$PWD" &
 
 # 3. Build and run the graph.
 cd examples/langgraph-ts

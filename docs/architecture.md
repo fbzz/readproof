@@ -27,9 +27,23 @@ One real difference: **`readproofd` in a container has no access to your
 host filesystem**, so a `filesystem` source only works there if the file
 is baked into the image or volume-mounted; GitHub and HTTP sources are the
 natural fit (`http://host.docker.internal:<port>/…` reaches a server on
-the host). To run `readproofd` outside Compose, build `./cmd/readproofd`
-and give it either `--data-dir` (embedded) or `--postgres-dsn` plus the
-`--s3-*` flags — see the HTTP API section.
+the host, and needs `--allow-private-sources`). To run `readproofd`
+outside Compose, build `./cmd/readproofd` and give it either `--data-dir`
+(embedded) or `--postgres-dsn` plus the `--s3-*` flags — see the HTTP API
+section.
+
+The second real difference is the trust boundary. Embedded, the CLI reads
+the operator's own files with the operator's own environment; a resource
+definition can name any of them because the person typing the command
+already can. Over the network the same definition is executed *by the
+server*, so `readproofd` refuses by default what it cannot vouch for:
+filesystem sources outside `--filesystem-root`, `${VAR}` header references
+outside `--header-env-allow`, and HTTP targets that resolve to loopback,
+link-local or private addresses unless `--allow-private-sources` is set.
+Enforcement lives in the source adapters (`internal/source/...`), not in
+the registration handler, so a row that predates the policy is refused too;
+registration merely reports the refusal early, as a 400 naming the flag.
+See [`docs/api.md`](api.md) and [`SECURITY.md`](../SECURITY.md).
 
 ## Data model
 

@@ -5,12 +5,32 @@ All bodies are JSON. `Content` fields are base64-encoded (Go's
 TypeScript SDK both decode it to text transparently. If `readproofd
 --api-key` is set, every route below except `/healthz` requires
 `Authorization: Bearer <key>`. Errors are `{"error": "<message>"}` with a
-4xx/5xx status — 404 for "not found", 400 for a bad request, 401 for a
-missing/wrong API key, 409 for a conflict with existing state, 500
-otherwise.
+4xx/5xx status — 404 for "not found", 400 for a bad request (including a
+source definition the server's policy refuses), 401 for a missing/wrong API
+key, 409 for a conflict with existing state, 500 otherwise.
+
+A 4xx carries the reason, because the caller needs it to fix the request. A
+**500 carries only a request id** (`internal server error (request id
+req_…)`): the detail — a host path, a driver message — is written to the
+`readproofd` log under that same id, so an operator can join the two without
+the server describing its insides to an unauthenticated peer.
 
 Source: [`internal/wire/wire.go`](../internal/wire/wire.go) (types) and
 [`internal/api/api.go`](../internal/api/api.go) (handlers).
+
+## Deploying it
+
+`readproofd` speaks plaintext HTTP and has no rate limiting of its own. The
+supported deployment is **behind a reverse proxy** (nginx, Caddy, Traefik, an
+ingress controller, a cloud load balancer) that terminates TLS and limits
+request rates — otherwise the bearer key crosses the network in the clear and
+the write endpoints have nothing but the key between them and a script.
+
+Set the key through the environment, not the command line:
+`READPROOFD_API_KEY` for the server, `READPROOF_API_KEY` for the CLI and the
+SDK. A flag value is visible to every user on the host in `ps`, so both
+binaries print a warning when the key arrives that way. Off by default means
+unauthenticated: fine on a laptop, never on a reachable port.
 
 ## `GET /healthz`
 
@@ -39,6 +59,25 @@ Register a resource.
 environment at fetch time; see the README's Security section).
 `policy.strategy` is `"require_fresh"`, `"allow_stale"` (with optional
 `max_age_seconds`), or `"pinned"` (with `pinned_snapshot_id`).
+
+**Registering a resource is a privileged action, and `readproofd` refuses
+by default what it cannot vouch for.** A resource definition tells the
+server which file to read, which address to connect to, and which of its
+own environment variables to send. All three default to deny, and each is
+opened by one explicit flag:
+
+| Source | Default on `readproofd` | Opt in with |
+| --- | --- | --- |
+| `filesystem` | refused — no path is readable | `--filesystem-root <dir>` (repeatable; env `READPROOFD_FILESYSTEM_ROOTS`, `,`- or path-separator-separated). Reads are confined to files inside a root, with symlinks resolved before the check |
+| `http` header `"${VAR}"` | refused — no variable expands | `--header-env-allow <NAME>` (repeatable; env `READPROOFD_HEADER_ENV_ALLOWLIST`, comma-separated) |
+| `http` private target | refused — loopback, link-local (incl. `169.254.169.254`), RFC1918, CGNAT, unique-local | `--allow-private-sources` (env `READPROOFD_ALLOW_PRIVATE_SOURCES=1`) |
+
+A refused definition is a `400` naming the flag that would allow it, both
+here and on `POST /v1/resolve` (the adapter, not this handler, is the
+enforcement point — a row registered under a wider policy is still refused
+at fetch time). The embedded `readproof` CLI has none of these
+restrictions: it reads the operator's own files, with the operator's own
+environment, as the operator.
 
 **Response** `201` — the registered resource, with any sensitive HTTP
 header values in `source.http.headers` replaced by `"[REDACTED]"`:

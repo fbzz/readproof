@@ -13,9 +13,10 @@ Readproof 0.3.x is a security **baseline**, not enterprise IAM:
 
 - **No plaintext credentials at rest.** `GITHUB_TOKEN` and HTTP source
   headers of the form `"${VAR_NAME}"` are resolved from the `readproofd`
-  process environment at fetch time and never stored. Raw header values are
-  masked by `internal/redact` in every API response, in `readproof inspect`,
-  and in evidence bundles — including in embedded mode.
+  process environment at fetch time and never stored — and on a server, only
+  for variables named by `--header-env-allow`. Raw header values are masked
+  by `internal/redact` in every API response, in `readproof inspect`, and in
+  evidence bundles — including in embedded mode.
 - **Optional API auth.** `readproofd --api-key` (`READPROOFD_API_KEY`)
   requires `Authorization: Bearer <key>` on every request except `/healthz`.
   Off by default.
@@ -27,56 +28,86 @@ Readproof 0.3.x is a security **baseline**, not enterprise IAM:
   `golang.org/x/crypto/openpgp`) is not imported by any package this module
   builds and is accepted.
 - **SSRF.** The HTTP source adapter enforces an http/https scheme
-  allow-list, a 64 MiB response cap and a 30s timeout, but has no target-IP
-  restrictions. That is acceptable while resources are registered only by
-  the operator running `readproof`/`readproofd`; an allow-list is on the
-  roadmap before `readproofd` accepts registrations from less-trusted
-  callers.
+  allow-list, a 64 MiB response cap and a 30s timeout. On `readproofd` it
+  additionally refuses targets that resolve to loopback, link-local
+  (including `169.254.169.254`), private, CGNAT, unique-local, multicast or
+  unspecified addresses. The check runs at **dial** time, on the address the
+  resolver actually returned — so DNS rebinding does not get past it — and
+  again on every redirect hop, with the chain capped at 5.
+  `--allow-private-sources` (`READPROOFD_ALLOW_PRIVATE_SOURCES=1`) turns it
+  off for a trusted network. The embedded CLI leaves private targets
+  reachable, since developing against `localhost` is the ordinary case.
 - **Evidence bundles are not signed yet.** `readproof evidence verify` proves
   integrity against the Merkle root and, unless `--offline`, the store;
   signing (cosign / in-toto attestation) is on the roadmap. An `--offline`
   verify cannot detect a forgery whose root was recomputed — see
   [`docs/evidence.md`](docs/evidence.md).
 
+- **Least privilege at rest and at runtime.** The data directory is created
+  `0700` and its blobs, SQLite database and exported bundles `0600`; the
+  container image runs as a non-root user. `500` responses carry a request id
+  rather than internal error text, which is logged server-side under the same
+  id.
+
+## The trust boundary: registering a resource is privileged
+
+A resource definition tells `readproofd` **which file to read, which address
+to connect to, and which of its own environment variables to send**. All three
+therefore default to deny on the server, and each is opened by one explicit
+flag. Registration is still a privileged action — it decides what the server
+reads on a caller's behalf, within those bounds — so keep `--api-key` on and a
+network boundary in front of it.
+
+Every refusal below is enforced in the source adapter, so a resource row that
+predates the policy is refused at fetch time too; registration only reports it
+earlier, as a 400 naming the flag.
+
+- **Filesystem sources are refused unless a root is allow-listed.**
+  `readproofd --filesystem-root <dir>` (repeatable; env
+  `READPROOFD_FILESYSTEM_ROOTS`, `,`- or path-separator-separated) is the
+  only way a filesystem source resolves on the server. Reads are confined
+  to files inside a root, with symlinks resolved *before* the containment
+  check, so a link inside a root cannot serve a file outside it. With no
+  root configured — the default — every filesystem source is refused, at
+  registration (400) and at fetch. The embedded `readproof` CLI is
+  deliberately unrestricted: it reads the operator's own files as the
+  operator, and an allow-list there would restrict a user's access to their
+  own documents and protect nobody. With `--server`, the server's policy is
+  what applies.
+- **`${VAR}` headers expand only what you allow-list.** A `"${VAR}"` header
+  value is resolved from `readproofd`'s own environment and sent to whatever
+  URL that resource names, so `readproofd` expands **nothing** by default:
+  `--header-env-allow NAME` (repeatable; env
+  `READPROOFD_HEADER_ENV_ALLOWLIST`, comma-separated) names the variables a
+  source header may reference. Anything else is refused at registration
+  (400, naming the variable and the flag) and at fetch. `readproofd`'s *own*
+  credentials (`READPROOFD_API_KEY`, `READPROOF_API_KEY`,
+  `READPROOFD_POSTGRES_DSN`, `READPROOFD_S3_ACCESS_KEY`,
+  `READPROOFD_S3_SECRET_KEY`) stay refused even if allow-listed.
+  `READPROOF_HTTP_HEADER_ENV_ALLOWLIST` is a second, process-level
+  allow-list that narrows every Readproof process, the embedded CLI
+  included — the CLI is otherwise permissive, because that environment
+  belongs to the person typing the command.
+- **Private network targets are refused unless you opt in.** See the SSRF
+  entry above; `--allow-private-sources` is the opt-in, and
+  `docker-compose.yml` sets it because that stack fetches from the host via
+  `host.docker.internal`.
+
 ## Known limitations
 
-From the August 2026 pre-launch audit
-([`docs/security-audit-2026-08.md`](docs/security-audit-2026-08.md)), which
-lists every finding, its status, and a concrete fix design.
+What is still open after the August 2026 pre-launch audit
+([`docs/security-audit-2026-08.md`](docs/security-audit-2026-08.md), which
+lists every finding and its status):
 
-**Registering a resource is a privileged action.** Treat it as equivalent
-to shell access on the `readproofd` host, and never expose `readproofd`
-without `--api-key` plus a network boundary:
-
-- **Filesystem sources read any file the server can read.** There is no
-  allow-list root. A resource registered with
-  `--path /etc/passwd` — or pointed at the SQLite database, or a `.env`
-  beside the binary — resolves normally and returns the bytes.
-- **HTTP source headers can read the server's environment.** A `"${VAR}"`
-  header value is resolved from `readproofd`'s environment and sent to
-  whatever URL that resource names. `readproofd`'s *own* credentials
-  (`READPROOFD_API_KEY`, `READPROOF_API_KEY`, `READPROOFD_POSTGRES_DSN`,
-  `READPROOFD_S3_ACCESS_KEY`, `READPROOFD_S3_SECRET_KEY`) are refused, and
-  setting `READPROOF_HTTP_HEADER_ENV_ALLOWLIST` to a comma-separated list
-  of variable names restricts expansion to exactly those — **recommended
-  for any deployment whose registrations are not fully trusted.** Every
-  other variable is readable by default.
-- **No SSRF address restriction.** A resource can reach loopback,
-  link-local and cloud metadata addresses, and redirects into them are
-  followed.
-
-Operational gaps, all tracked in the report:
-
-- **No TLS and no rate limiting.** `readproofd` speaks plaintext HTTP, so
-  run it behind a TLS-terminating reverse proxy — otherwise the bearer key
-  crosses the network in the clear.
-- **`--api-key` on the command line is visible in process listings.**
-  Prefer `READPROOFD_API_KEY` / `READPROOF_API_KEY`.
-- **500 responses include internal error text**, which can name absolute
-  paths on the server.
-- **Data directory and blobs are created world-readable** (`0755`/`0644`);
-  restrict them yourself on a shared host.
-- **The container image runs as root.**
+- **No TLS and no rate limiting in-process.** `readproofd` speaks plaintext
+  HTTP. The supported deployment is behind a reverse proxy that terminates
+  TLS and limits request rates; without one the bearer key crosses the
+  network in the clear. See [`docs/api.md`](docs/api.md).
+- **`--api-key` on the command line is visible in process listings.** Prefer
+  `READPROOFD_API_KEY` / `READPROOF_API_KEY`; both binaries now warn when
+  the key arrives on argv.
+- **Bundles are unsigned.** An `--offline` verify cannot detect a forgery
+  whose Merkle root was recomputed; signing is on the roadmap.
 
 ## Supported versions
 

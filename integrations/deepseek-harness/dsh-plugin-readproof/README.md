@@ -9,8 +9,8 @@ tools.
 The difference that buys: instead of "the model read some file", you get
 *this run read exactly these bytes, from this source revision, at this
 time* — a manifest id you can cite, diff against another run, replay
-byte-for-byte after the sources changed, and export as a tamper-evident
-in-toto bundle.
+byte-for-byte after the sources changed, and export as an integrity-checked
+in-toto bundle (unsigned — tamper-evident against the store, not offline).
 
 The tool names, descriptions, and result shapes mirror Readproof's MCP server
 ([`docs/mcp.md`](../../../docs/mcp.md), [`internal/mcp`](../../../internal/mcp))
@@ -60,6 +60,12 @@ A reachable `readproofd`. Either:
   go build -o /usr/local/bin/readproofd ./cmd/readproofd
   go build -o /usr/local/bin/readproof  ./cmd/readproof     # the CLI, for `readproof evidence verify`
   ```
+
+A `readproofd` refuses filesystem sources unless it was started with at least
+one `--filesystem-root` — otherwise registering a resource would be a
+file-read primitive on its host. Start it with the directory holding the
+documents you govern (`readproofd --filesystem-root /srv/policies …`), or,
+for a `spawn: true` plugin, set `filesystemRoots` in the plugin config.
 
 Register the documents you want the agent to read before it asks for them:
 
@@ -192,11 +198,12 @@ What you gain: no build step, and one fewer process model to reason about.
 | `readproofdPath` | string | `readproofd` | Executable used when `spawn` is true. |
 | `dataDir` | string | `~/.readproof` | `--data-dir` for the spawned `readproofd`. `~` is expanded. |
 | `addr` | string | `127.0.0.1:18080` | `--addr` for the spawned `readproofd`; also determines the endpoint. |
+| `filesystemRoots` | string[] | `[]` | Directories a filesystem source may read from, passed to the spawned `readproofd` as `--filesystem-root`. Empty = filesystem sources refused. `~` is expanded. |
 | `spawnTimeoutMs` | number | `10000` | How long to wait for the spawned `readproofd` to answer `/healthz`. |
 | `sessionRuns` | boolean | `true` | Mirror every model-driven `readproof_resolve` into a run keyed by the DSH session. |
 | `toolPrefix` | string | `readproof_` | Prefix for every registered tool name. |
 | `systemPromptSection` | boolean | `true` | Contribute a short "how to use Readproof" section to the system prompt (order 150, the tool-guidance band). |
-| `maxInlineBytes` | number | `1048576` | Cap on inline content per result. Past it text is cut on a UTF-8 boundary and a marker naming the content hash is appended. |
+| `maxInlineBytes` | number | `1048576` | Cap on inline content per result. Past it text is cut on a UTF-8 boundary and a marker naming the content hash is appended — except for `evidence_export --with-content`, which is **refused** past the cap rather than truncated (a bundle whose content was cut no longer matches its own merkle root; use the CLI for a full one). |
 
 With `spawn: true` the plugin does not finish loading until the child
 answers `/healthz`, and the plugin's disposer kills it — an HMR reload or an

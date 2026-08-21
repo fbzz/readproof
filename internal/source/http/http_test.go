@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -268,6 +269,293 @@ func TestFetchEnvAllowlistRestrictsExpansion(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), envAllowlistVar) {
 		t.Fatalf("error %q does not mention %s", err, envAllowlistVar)
+	}
+}
+
+// readproofd's default: no ${VAR} expands at all, and the refusal names the
+// flag that would allow it. Registering such a header is refused up front by
+// Validate, which is what turns it into a 400 rather than a later fetch error.
+func TestRestrictedEnvRefusesEverythingByDefault(t *testing.T) {
+	t.Setenv("READPROOF_TEST_TOKEN", "the-real-secret")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("the endpoint was reached with headers %v", r.Header)
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	f := NewWithOptions(Options{RestrictEnv: true})
+	cfg := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"Authorization": "Bearer ${READPROOF_TEST_TOKEN}"},
+	}}
+
+	err := f.Validate(cfg)
+	if err == nil {
+		t.Fatalf("Validate accepted a ${VAR} header with an empty allow-list")
+	}
+	if !source.IsDenied(err) {
+		t.Fatalf("Validate error %v is not a source.DeniedError", err)
+	}
+	for _, want := range []string{"READPROOF_TEST_TOKEN", "--header-env-allow"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %q does not mention %q", err, want)
+		}
+	}
+
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: cfg}); err == nil {
+		t.Fatalf("fetch expanded a ${VAR} with an empty allow-list")
+	}
+}
+
+// With an allow-list, exactly the named variables expand and nothing else —
+// including a variable that is set in the environment but unlisted, and one
+// that is listed but unset.
+func TestRestrictedEnvHonoursItsAllowlist(t *testing.T) {
+	t.Setenv("READPROOF_TEST_ALLOWED", "allowed-value")
+	t.Setenv("READPROOF_TEST_DENIED", "denied-value")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Allowed"); got != "allowed-value" {
+			t.Errorf("X-Allowed = %q, want %q", got, "allowed-value")
+		}
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	f := NewWithOptions(Options{RestrictEnv: true, EnvAllowlist: []string{"READPROOF_TEST_ALLOWED"}})
+
+	allowed := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"X-Allowed": "${READPROOF_TEST_ALLOWED}"},
+	}}
+	if err := f.Validate(allowed); err != nil {
+		t.Fatalf("Validate refused an allow-listed variable: %v", err)
+	}
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: allowed}); err != nil {
+		t.Fatalf("fetch refused an allow-listed variable: %v", err)
+	}
+
+	denied := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"X-Denied": "${READPROOF_TEST_DENIED}"},
+	}}
+	if err := f.Validate(denied); err == nil {
+		t.Fatalf("Validate accepted a variable outside the allow-list")
+	}
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: denied}); err == nil {
+		t.Fatalf("fetch expanded a variable outside the allow-list")
+	}
+
+	// An allow-listed name that is not set is a different failure — the
+	// server's environment does not have it — and must not be silently
+	// treated as an empty value.
+	unknown := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"X-Unknown": "${READPROOF_TEST_ALLOWED_BUT_UNSET}"},
+	}}
+	f.EnvAllowlist = append(f.EnvAllowlist, "READPROOF_TEST_ALLOWED_BUT_UNSET")
+	if err := f.Validate(unknown); err != nil {
+		t.Fatalf("Validate refused an allow-listed name that happens to be unset: %v", err)
+	}
+	_, err := f.Fetch(context.Background(), source.FetchRequest{Config: unknown})
+	if err == nil {
+		t.Fatalf("fetch succeeded for an unset variable")
+	}
+	if !strings.Contains(err.Error(), "not set") {
+		t.Fatalf("error %q does not say the variable is unset", err)
+	}
+}
+
+// readproofd's own credentials stay refused even when the allow-list names
+// them: reading the key that gates registration would defeat the control.
+func TestRestrictedEnvStillRefusesOwnCredentials(t *testing.T) {
+	t.Setenv("READPROOFD_API_KEY", "the-servers-own-secret")
+
+	f := NewWithOptions(Options{RestrictEnv: true, EnvAllowlist: []string{"READPROOFD_API_KEY"}})
+	err := f.Validate(source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     "https://example.invalid/x",
+		Headers: map[string]string{"X-Steal": "${READPROOFD_API_KEY}"},
+	}})
+	if err == nil {
+		t.Fatalf("an allow-list entry overrode the deny-list")
+	}
+	if !strings.Contains(err.Error(), "credentials") {
+		t.Fatalf("error %q does not explain the refusal", err)
+	}
+}
+
+// The embedded CLI is unrestricted on purpose: that environment belongs to
+// the person typing the command.
+func TestUnrestrictedEnvStillExpands(t *testing.T) {
+	t.Setenv("READPROOF_TEST_TOKEN", "the-real-secret")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Authorization"), "Bearer the-real-secret"; got != want {
+			t.Errorf("Authorization = %q, want %q", got, want)
+		}
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	f := New()
+	cfg := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{
+		URL:     server.URL,
+		Headers: map[string]string{"Authorization": "Bearer ${READPROOF_TEST_TOKEN}"},
+	}}
+	if err := f.Validate(cfg); err != nil {
+		t.Fatalf("the unrestricted fetcher refused a ${VAR} header: %v", err)
+	}
+	if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: cfg}); err != nil {
+		t.Fatalf("fetch: %v", err)
+	}
+}
+
+// RP-04. The addresses an SSRF is aiming at, and the ones it is not.
+func TestCheckIPRefusesNonPublicAddresses(t *testing.T) {
+	for _, addr := range []string{
+		"127.0.0.1", "127.7.7.7", "::1",
+		"169.254.169.254", // the cloud metadata endpoint
+		"169.254.0.1", "fe80::1",
+		"10.0.0.1", "172.16.0.1", "172.31.255.255", "192.168.1.1",
+		"fc00::1", "fd12:3456::1",
+		"100.64.0.1", "100.127.255.255", // RFC 6598 shared address space
+		"0.0.0.0", "::",
+		"224.0.0.1", "ff02::1",
+		"255.255.255.255",
+		"::ffff:127.0.0.1", "::ffff:10.0.0.1", // IPv4-mapped IPv6
+	} {
+		if err := checkIP(net.ParseIP(addr)); err == nil {
+			t.Errorf("checkIP(%s) allowed a non-public address", addr)
+		}
+	}
+	for _, addr := range []string{"8.8.8.8", "93.184.216.34", "2606:2800:220:1:248:1893:25c8:1946"} {
+		if err := checkIP(net.ParseIP(addr)); err != nil {
+			t.Errorf("checkIP(%s) refused a public address: %v", addr, err)
+		}
+	}
+}
+
+// On a server, a loopback target is refused before a byte is sent — whether
+// it is written as an IP literal or as a name — and the refusal names the
+// flag that would allow it.
+func TestFetchDeniesPrivateTargetsInServerMode(t *testing.T) {
+	reached := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reached = true
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+	port := server.URL[strings.LastIndex(server.URL, ":")+1:]
+
+	f := NewWithOptions(Options{DenyPrivateTargets: true})
+	for _, target := range []string{
+		server.URL,
+		"http://localhost:" + port + "/",
+		"http://api.localhost:" + port + "/",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://10.0.0.1/",
+	} {
+		cfg := source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{URL: target}}
+		if err := f.Validate(cfg); err == nil {
+			t.Errorf("Validate(%s) accepted a private target", target)
+		} else if !source.IsDenied(err) {
+			t.Errorf("Validate(%s) failed with %v; want a source.DeniedError", target, err)
+		} else if !strings.Contains(err.Error(), "--allow-private-sources") {
+			t.Errorf("error %q does not name --allow-private-sources", err)
+		}
+		if _, err := f.Fetch(context.Background(), source.FetchRequest{Config: cfg}); err == nil {
+			t.Errorf("Fetch(%s) succeeded against a private target", target)
+		}
+	}
+	if reached {
+		t.Fatalf("the loopback server was reached despite the address policy")
+	}
+}
+
+// The guard has to survive a name that only resolves to a private address at
+// connect time — the DNS-rebinding case — which is why it lives in the
+// dialer's Control hook and not in a pre-flight lookup.
+func TestDialGuardRefusesAtConnectTime(t *testing.T) {
+	if err := dialGuard("tcp4", "127.0.0.1:8080", nil); err == nil {
+		t.Fatalf("dialGuard allowed a loopback address")
+	}
+	if err := dialGuard("tcp4", "169.254.169.254:80", nil); err == nil {
+		t.Fatalf("dialGuard allowed the metadata endpoint")
+	}
+	if err := dialGuard("tcp4", "93.184.216.34:80", nil); err != nil {
+		t.Fatalf("dialGuard refused a public address: %v", err)
+	}
+
+	// And it is actually installed on the client the constructor builds:
+	// a request whose host is a name that resolves to loopback still fails.
+	f := NewWithOptions(Options{DenyPrivateTargets: true})
+	req, err := http.NewRequest(http.MethodGet, "http://localhost.invalid/", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if _, err := f.HTTPClient.Transport.RoundTrip(req); err == nil {
+		t.Fatalf("the transport connected to an unresolvable/private host")
+	}
+}
+
+// A redirect is a fresh target chosen by the *source*, so every hop is
+// checked — and the chain is capped well below Go's default of 10.
+func TestRedirectHopsAreCheckedAndCapped(t *testing.T) {
+	client := guardedClient(DefaultTimeout)
+
+	toPrivate, err := http.NewRequest(http.MethodGet, "http://169.254.169.254/latest/meta-data/", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	via := []*http.Request{{}}
+	err = client.CheckRedirect(toPrivate, via)
+	if err == nil {
+		t.Fatalf("a redirect into link-local space was followed")
+	}
+	if !strings.Contains(err.Error(), "--allow-private-sources") {
+		t.Fatalf("error %q does not name --allow-private-sources", err)
+	}
+
+	toLoopbackName, _ := http.NewRequest(http.MethodGet, "http://localhost:9999/", nil)
+	if err := client.CheckRedirect(toLoopbackName, via); err == nil {
+		t.Fatalf("a redirect to a loopback name was followed")
+	}
+
+	toFile, _ := http.NewRequest(http.MethodGet, "http://example.com/ok", nil)
+	if err := client.CheckRedirect(toFile, via); err != nil {
+		t.Fatalf("a redirect to a public address was refused: %v", err)
+	}
+
+	longChain := make([]*http.Request, MaxRedirects)
+	if err := client.CheckRedirect(toFile, longChain); err == nil {
+		t.Fatalf("a chain of %d redirects was not capped", MaxRedirects)
+	}
+}
+
+// The embedded CLI keeps reaching localhost: developing against a local
+// document server (or a local readproofd) is the ordinary case there, and
+// redirects between loopback servers keep working.
+func TestPrivateTargetsAllowedByDefault(t *testing.T) {
+	final := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("final body"))
+	}))
+	defer final.Close()
+
+	redirecting := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, final.URL, http.StatusFound)
+	}))
+	defer redirecting.Close()
+
+	f := New()
+	result, err := f.Fetch(context.Background(), source.FetchRequest{
+		Config: source.Config{Kind: source.KindHTTP, HTTP: &source.HTTPConfig{URL: redirecting.URL}},
+	})
+	if err != nil {
+		t.Fatalf("fetch through a loopback redirect: %v", err)
+	}
+	if string(result.Content) != "final body" {
+		t.Fatalf("content = %q, want %q", result.Content, "final body")
 	}
 }
 

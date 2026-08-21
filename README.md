@@ -156,7 +156,16 @@ export READPROOF_SERVER_URL=http://localhost:8080
 ./readproof get readproof://demo/policies/refunds
 ```
 
-> A containerized `readproofd` cannot see your host filesystem; use GitHub/HTTP sources there, or run `readproofd --data-dir ~/.readproof` on the host.
+> A containerized `readproofd` cannot see your host filesystem; use GitHub/HTTP sources there, or run `readproofd` on the host:
+>
+> ```bash
+> # --filesystem-root allow-lists the directories a filesystem source may read.
+> # Without one, readproofd refuses filesystem sources outright — registering a
+> # resource would otherwise let any caller read any file the server can.
+> readproofd --data-dir ~/.readproof --filesystem-root "$PWD"
+> ```
+>
+> The same default-deny applies to `${VAR}` headers (`--header-env-allow NAME`) and to private network targets (`--allow-private-sources`). None of it applies to the embedded CLI, which reads your own files as you. See [`docs/api.md`](docs/api.md) and [`SECURITY.md`](SECURITY.md).
 
 ## Add it to your coding agent
 
@@ -242,7 +251,7 @@ Next, in order ([`docs/roadmap.md`](docs/roadmap.md)): public release and packag
 
 ## Security
 
-No plaintext credentials at rest (env references resolved at fetch time; redaction everywhere), optional API-key auth on `readproofd`, labeled dev-only Compose credentials, dependency scanning. Not yet: SSRF allow-list for the HTTP adapter, signed bundles. Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md).
+Registering a resource tells `readproofd` which file to read, which address to connect to, and which of its own environment variables to send — so all three default to deny on the server (`--filesystem-root`, `--header-env-allow`, `--allow-private-sources` open them), enforced in the source adapters, per redirect hop and at dial time. Plus: no plaintext credentials at rest (env references resolved at fetch time; redaction everywhere), optional API-key auth, labeled dev-only Compose credentials, dependency scanning, non-root container. Not yet: TLS termination or rate limiting in-process (run it behind a reverse proxy), signed bundles. Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md).
 
 ## Contributing
 

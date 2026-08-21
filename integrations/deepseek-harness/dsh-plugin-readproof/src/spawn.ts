@@ -23,11 +23,12 @@ export async function spawnReadproofd(config: Config, log: (message: string) => 
   const dataDir = expandHome(config.dataDir)
   const endpoint = endpointForAddr(config.addr)
 
-  const child = spawn(config.readproofdPath, ['--addr', config.addr, '--data-dir', dataDir], {
+  const child = spawn(config.readproofdPath, readproofdArgs(config, dataDir), {
     // readproofd logs to stderr and speaks HTTP, so nothing needs its stdin; the
     // output is piped rather than inherited so it can be prefixed and does
     // not interleave into a CLI's own rendering.
     stdio: ['ignore', 'pipe', 'pipe'],
+    env: childEnv(),
   })
 
   const forward = (chunk: Buffer): void => {
@@ -61,6 +62,59 @@ export async function spawnReadproofd(config: Config, log: (message: string) => 
 
   log(`spawned ${config.readproofdPath} on ${endpoint} (data-dir ${dataDir})`)
   return { endpoint, stop: () => killChild(child) }
+}
+
+/**
+ * Variables the child needs in order to run at all: how to find its own
+ * executable and libraries, and where to put temporary files. Windows spellings
+ * included, because a missing SystemRoot breaks process creation there.
+ */
+const PROCESS_BASICS = ['PATH', 'Path', 'HOME', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'USERPROFILE']
+
+/**
+ * The environment a spawned `readproofd` gets.
+ *
+ * Passing no `env` means inheriting the parent's entire environment — and a
+ * `readproofd`'s environment is reachable through a `"${VAR}"` source header,
+ * so every unrelated credential the harness happens to hold would sit one
+ * resource registration away from an outbound request. (Server-side that now
+ * needs `--header-env-allow` as well, but defence in depth is the point:
+ * what the child never receives cannot be allow-listed by mistake.)
+ *
+ * Forwarded: the process basics above, plus `READPROOF*` / `READPROOFD*` —
+ * readproofd's own configuration, including the API key it must have to
+ * require one. Everything else, `OTEL_*` and cloud credentials alike, stops
+ * here; configure the child through the plugin's own config instead.
+ */
+export function childEnv(parent: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {}
+  for (const name of PROCESS_BASICS) {
+    const value = parent[name]
+    if (value !== undefined) env[name] = value
+  }
+  for (const [name, value] of Object.entries(parent)) {
+    if (value !== undefined && (name.startsWith('READPROOF_') || name.startsWith('READPROOFD_'))) {
+      env[name] = value
+    }
+  }
+  return env
+}
+
+/**
+ * argv for the child, allow-list roots included.
+ *
+ * `readproofd` refuses filesystem sources unless it is given at least one
+ * `--filesystem-root`, so a deployment that governs local documents has to
+ * name their directory here. Each root is expanded like `dataDir`: the value
+ * comes from a config file written by a human, not from a shell.
+ */
+export function readproofdArgs(config: Config, dataDir: string): string[] {
+  const args = ['--addr', config.addr, '--data-dir', dataDir]
+  for (const root of config.filesystemRoots ?? []) {
+    if (root.trim() === '') continue
+    args.push('--filesystem-root', expandHome(root))
+  }
+  return args
 }
 
 /** `:8080` and `0.0.0.0:8080` are reachable locally at 127.0.0.1. */

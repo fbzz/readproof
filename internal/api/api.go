@@ -8,16 +8,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/fbzz/readproof/internal/app"
 	"github.com/fbzz/readproof/internal/diff"
+	"github.com/fbzz/readproof/internal/ids"
 	"github.com/fbzz/readproof/internal/manifest"
 	"github.com/fbzz/readproof/internal/resource"
 	"github.com/fbzz/readproof/internal/run"
 	"github.com/fbzz/readproof/internal/snapshot"
+	"github.com/fbzz/readproof/internal/source"
 	"github.com/fbzz/readproof/internal/tag"
 	"github.com/fbzz/readproof/internal/wire"
 )
@@ -103,6 +106,16 @@ func handleRegisterResource(a *app.App) http.HandlerFunc {
 			Path:         parsed.Path,
 			SourceConfig: wire.SourceFromWire(req.Source),
 			Policy:       wire.PolicyFromWire(req.Policy),
+		}
+		// A source definition the server's policy refuses is refused here,
+		// not three calls later on the first resolve: an operator who
+		// registers a filesystem source outside every --filesystem-root
+		// should learn that from the registration, with the flag named. The
+		// adapter still enforces it at fetch time — a row can predate the
+		// policy that now refuses it.
+		if err := a.Sources.Validate(res.SourceConfig); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
 		}
 		if err := a.Resources.Create(r.Context(), res); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
@@ -386,6 +399,13 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		// race (or repeated itself) against the commit that already
 		// produced this run's one manifest.
 		writeError(w, http.StatusConflict, err)
+	case source.IsDenied(err):
+		// The server's source policy refused this resource — a filesystem
+		// path outside every allow-listed root, a private target address, an
+		// environment variable that may not be expanded. Nothing failed and
+		// nothing leaked, so this is a 400 carrying the reason (and the flag
+		// that relaxes it), not a generic 500.
+		writeError(w, http.StatusBadRequest, err)
 	case errors.Is(err, tag.ErrInvalidName), errors.Is(err, tag.ErrSnapshotMismatch):
 		// The caller sent a well-formed request naming something that can
 		// never be valid — a bad tag name, or a snapshot of another
@@ -434,6 +454,23 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	json.NewEncoder(w).Encode(body)
 }
 
+// writeError writes an error response.
+//
+// A 4xx describes what the caller sent, and the caller needs the detail to fix
+// the request — so it is returned verbatim. A 5xx describes readproofd's
+// insides: an absolute path on the host, a database driver's message, the
+// shape of the deployment. That belongs in the server's log, not in a response
+// to an unauthenticated peer. The response carries a generated request id and
+// nothing else; the same id prefixes the logged detail, so an operator can
+// still join the two.
 func writeError(w http.ResponseWriter, status int, err error) {
+	if status >= http.StatusInternalServerError {
+		requestID := ids.New("req")
+		log.Printf("readproofd: request %s failed: %v", requestID, err)
+		writeJSON(w, status, wire.ErrorResponse{
+			Error: fmt.Sprintf("internal server error (request id %s) — see the readproofd log for the detail", requestID),
+		})
+		return
+	}
 	writeJSON(w, status, wire.ErrorResponse{Error: err.Error()})
 }

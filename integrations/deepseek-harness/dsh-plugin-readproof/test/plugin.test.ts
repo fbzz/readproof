@@ -230,6 +230,33 @@ describe('dsh-plugin-readproof against a real readproofd', () => {
     assert.ok(stdout.includes(root), `the CLI report should name the same merkle root:\n${stdout}`)
   })
 
+  // RP-08: with_content embeds the full base64 of every entry, which is the
+  // one content path that used to ignore maxInlineBytes entirely.
+  it('refuses evidence_export --with-content over maxInlineBytes, and allows it under', async () => {
+    const tiny = await startApp({ endpoint: fixture.endpoint, sessionRuns: false, maxInlineBytes: 8 })
+    try {
+      const result = await tiny.call('readproof_evidence_export', { target: 'audit-a', with_content: true })
+      assert.equal(result.isError, true)
+      const message = result.isError ? result.error.message : ''
+      assert.match(message, /over this deployment's 8-byte inline limit/)
+      // The way out has to be in the message: the model cannot guess it.
+      assert.match(message, /readproof evidence export audit-a --with-content/)
+
+      // Without with_content the same target still exports — the bundle
+      // proves what was read either way.
+      const withoutContent = await tiny.value('readproof_evidence_export', { target: 'audit-a' })
+      assert.ok(list(field(field(withoutContent, 'predicate'), 'entries')).length > 0)
+    } finally {
+      await tiny.stop()
+    }
+
+    // Under the default 1 MiB cap the fixture's policy fits, so content is
+    // embedded as before.
+    const bundle = await app.value('readproof_evidence_export', { target: 'audit-a', with_content: true })
+    const entry = list(field(field(bundle, 'predicate'), 'entries'))[0]
+    assert.ok(typeof field(entry, 'content_b64') === 'string', 'content should be embedded under the cap')
+  })
+
   it('turns an unknown URI into a readable tool error and stays healthy', async () => {
     const result = await app.call('readproof_resolve', { uri: 'readproof://demo/does-not-exist' })
     assert.equal(result.isError, true)

@@ -75,7 +75,11 @@ echo "example built"
 
 step "1. Start a throwaway readproofd on $READPROOFD_URL"
 
-"$TMP/readproofd" --addr "$READPROOFD_ADDR" --data-dir "$TMP/data" >"$TMP/readproofd.log" 2>&1 &
+# --filesystem-root is not optional: readproofd refuses filesystem sources
+# unless a root is configured, so the three policy documents this example
+# governs have to live under one that is named here.
+"$TMP/readproofd" --addr "$READPROOFD_ADDR" --data-dir "$TMP/data" \
+  --filesystem-root "$EXAMPLE_DIR" >"$TMP/readproofd.log" 2>&1 &
 READPROOFD_PID=$!
 
 for _ in $(seq 1 50); do

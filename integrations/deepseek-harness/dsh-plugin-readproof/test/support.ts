@@ -83,9 +83,14 @@ export async function startFixture(): Promise<Fixture> {
 
   const port = await freePort()
   const endpoint = `http://127.0.0.1:${port}`
-  const child = spawn(readproofdBin, ['--addr', `127.0.0.1:${port}`, '--data-dir', dataDir], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  // --filesystem-root is required: a readproofd started without one refuses
+  // every filesystem source, which is the point of the flag. The fixture's
+  // policy directory is the only place these tests read from.
+  const child = spawn(
+    readproofdBin,
+    ['--addr', `127.0.0.1:${port}`, '--data-dir', dataDir, '--filesystem-root', policyDir],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  )
   const logs: string[] = []
   child.stdout?.on('data', (c: Buffer) => logs.push(c.toString('utf-8')))
   child.stderr?.on('data', (c: Buffer) => logs.push(c.toString('utf-8')))

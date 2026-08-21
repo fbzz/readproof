@@ -30,6 +30,12 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) RegisterResource(ctx context.Context, r resource.Resource) error {
+	// Same early refusal the HTTP API applies, so an embedded client and a
+	// --server client reject the same definitions with the same message. A
+	// no-op under the CLI's unrestricted source policy.
+	if err := c.App.Sources.Validate(r.SourceConfig); err != nil {
+		return err
+	}
 	return c.App.Resources.Create(ctx, r)
 }
 

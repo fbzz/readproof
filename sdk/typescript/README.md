@@ -37,6 +37,20 @@ const policy = await rp.resolve("readproof://acme/policies/refunds");
 console.log(policy.content, policy.snapshot.id, policy.snapshot.content_hash);
 ```
 
+`ReadproofOptions`:
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `endpoint` | — | Base URL of a running `readproofd`. Validated in the constructor: must be an absolute `http:`/`https:` URL. |
+| `apiKey` | — | Sent as `Authorization: Bearer …` when `readproofd` runs with `--api-key`. |
+| `timeoutMs` | `30000` | Aborts a request that has not answered. `fetch` has no timeout of its own, so without this a hung `readproofd` stalls the turn waiting on it. `0` waits indefinitely. |
+| `maxResponseBytes` | `16777216` | Refuses (does not truncate) a response body over the cap, before parsing. |
+| `fetch` | global `fetch` | Override, e.g. for tests. |
+
+Errors are `ReadproofError` with the HTTP `status` where there was one; any
+server text they quote is truncated to ~512 characters, since these messages
+reach the model in the agent-tool paths built on this SDK.
+
 ### Manifest-aware resolution
 
 Mounting a resource inside a `run` resolves it *and* records it as the next

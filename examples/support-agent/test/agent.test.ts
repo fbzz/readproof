@@ -55,9 +55,14 @@ before(async () => {
 
   const port = await freePort();
   endpoint = `http://127.0.0.1:${port}`;
-  readproofdProcess = spawn(readproofdBin, ["--addr", `:${port}`, "--data-dir", path.join(tmpDir, "data")], {
-    stdio: "ignore",
-  });
+  // readproofd refuses filesystem sources without an allow-listed root, so
+  // the copied policy directory — the only place these tests read from — is
+  // named explicitly.
+  readproofdProcess = spawn(
+    readproofdBin,
+    ["--addr", `:${port}`, "--data-dir", path.join(tmpDir, "data"), "--filesystem-root", policyDir],
+    { stdio: "ignore" },
+  );
   await waitForHealthz(endpoint);
 
   process.env["READPROOF_ENDPOINT"] = endpoint;
@@ -254,6 +259,33 @@ test("the repository's policy fixtures were never touched", () => {
   const fixtures = path.join(exampleDir, "context", "policies");
   assert.match(fs.readFileSync(path.join(fixtures, "refunds.md"), "utf-8"), /within 30 days/);
   assert.doesNotMatch(fs.readFileSync(path.join(fixtures, "tone.md"), "utf-8"), /one-line summary/);
+});
+
+// RP-21: a ticket id comes from argv and ends up in a run id, a manifest
+// lookup, and evidence --out's default file path — so it is checked once, at
+// the edge, before it reaches any of them.
+test("a ticket id is validated before it reaches a path or a run id", async () => {
+  for (const bad of [
+    "../../escape",
+    "../etc/passwd",
+    "a/b",
+    "with space",
+    "",
+    "x".repeat(65),
+    "semi;colon",
+    "tick`quote",
+  ]) {
+    assert.throws(() => agent.requireTicketId(bad), /invalid ticket id/, `accepted ${JSON.stringify(bad)}`);
+    // The paths that consume one refuse it too, rather than relying on the
+    // caller having checked.
+    assert.throws(() => agent.runIdFor(bad), /invalid ticket id/);
+    assert.throws(() => agent.loadTicket(bad), /invalid ticket id/);
+  }
+
+  for (const good of ["1001", "TICKET-42", "acme.support_99", "x".repeat(64)]) {
+    assert.equal(agent.requireTicketId(good), good);
+    assert.equal(agent.runIdFor(good), `ticket-${good}`);
+  }
 });
 
 /** Flips one character of the first entry's embedded content. */

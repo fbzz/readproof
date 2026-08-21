@@ -22,6 +22,14 @@ export interface Config {
   dataDir: string
   /** `--addr` for the spawned `readproofd`; also determines the endpoint used. */
   addr: string
+  /**
+   * Directories a filesystem-source resource may be read from, passed to the
+   * spawned `readproofd` as `--filesystem-root`. A server refuses filesystem
+   * sources outright when this is empty — registering one would otherwise be
+   * a file-read primitive on the host — so name the directory holding the
+   * documents this deployment governs, and nothing wider.
+   */
+  filesystemRoots: string[]
   /** Milliseconds to wait for a spawned `readproofd` to answer `/healthz`. */
   spawnTimeoutMs: number
   /**
@@ -67,6 +75,9 @@ export const Config: Schema<Partial<Config>, Config> = Schema.object({
   addr: Schema.string()
     .default('127.0.0.1:18080')
     .description('Listen address for the spawned readproofd.'),
+  filesystemRoots: Schema.array(Schema.string())
+    .default([])
+    .description('Directories a filesystem source may read from (--filesystem-root). Empty = filesystem sources refused.'),
   spawnTimeoutMs: Schema.number()
     .default(10_000)
     .description('How long to wait for a spawned readproofd to answer /healthz.'),

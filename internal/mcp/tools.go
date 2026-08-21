@@ -206,7 +206,7 @@ func (s *server) registerTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:  "readproof_evidence_export",
 		Title: "Export an evidence bundle",
-		Description: "Produce a portable, tamper-evident record of one run: an in-toto statement whose digest is a Merkle root over the manifest entries, plus each document's provenance, the resource definitions behind them, and a replay verification. " +
+		Description: "Produce a portable, integrity-checked record of one run: an in-toto statement whose digest is a Merkle root over the manifest entries, plus each document's provenance, the resource definitions behind them, and a replay verification. Bundles are unsigned, so they are tamper-evident against the Readproof store, not offline. " +
 			"Use it when someone needs to audit what the agent read — 'with_content' additionally embeds the bytes.",
 		Annotations: readOnly,
 	}, s.toolEvidenceExport)

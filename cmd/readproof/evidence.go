@@ -12,8 +12,11 @@ import (
 
 func newEvidenceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "evidence",
-		Short: "Export and verify tamper-evident evidence bundles for a run",
+		Use: "evidence",
+		// Not "tamper-evident" unqualified: bundles are unsigned, so an
+		// --offline verify proves the bundle is internally consistent, not
+		// that it is the bundle Readproof produced. See docs/evidence.md.
+		Short: "Export and verify integrity-checked evidence bundles for a run (unsigned; tamper-evident against the store)",
 	}
 	cmd.AddCommand(newEvidenceExportCmd(), newEvidenceVerifyCmd())
 	return cmd
@@ -54,7 +57,10 @@ func newEvidenceExportCmd() *cobra.Command {
 				_, err := os.Stdout.Write(data)
 				return err
 			}
-			if err := os.WriteFile(out, data, 0o644); err != nil {
+			// 0600: with --with-content the bundle carries the document
+			// bytes themselves, and even without it names every resource and
+			// hash a run read.
+			if err := os.WriteFile(out, data, 0o600); err != nil {
 				return fmt.Errorf("write %s: %w", out, err)
 			}
 			fmt.Printf("evidence bundle written to %s: %d entr%s, merkle root %s\n",

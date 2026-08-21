@@ -77,6 +77,18 @@ services:
       # Empty by default (unauthenticated) — set READPROOFD_API_KEY in .env to
       # require it. See .env.example.
       READPROOFD_API_KEY: ${READPROOFD_API_KEY:-}
+      # Filesystem sources are refused unless a root is allow-listed. A
+      # containerized readproofd sees only what is mounted into it, so name
+      # the in-container path of a volume you mounted, never a host path:
+      #   READPROOFD_FILESYSTEM_ROOTS: "/srv/policies"
+      READPROOFD_FILESYSTEM_ROOTS: ${READPROOFD_FILESYSTEM_ROOTS:-}
+      # ⚠️  DEV-ONLY DEFAULT. readproofd normally refuses http sources whose
+      # target resolves to a loopback, link-local or private address (the
+      # cloud metadata endpoint 169.254.169.254 among them). This stack turns
+      # that off because its documented workflow fetches from the host via
+      # host.docker.internal, which is an RFC1918 address. Set it to 0 for
+      # anything that is not a local dev machine.
+      READPROOFD_ALLOW_PRIVATE_SOURCES: ${READPROOFD_ALLOW_PRIVATE_SOURCES:-1}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
     ports:
       - "8080:8080"
