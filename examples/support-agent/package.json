@@ -1,0 +1,25 @@
+{
+  "name": "ctx-support-agent-example",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Customer-support agent that answers tickets from Ctx-governed policy documents, using an open model served by Ollama.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "agent": "node dist/src/cli.js",
+    "scenario": "bash scripts/scenario.sh",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "clean": "rm -rf dist data"
+  },
+  "dependencies": {
+    "@ctx/sdk": "file:../../sdk/typescript",
+    "ollama": "0.6.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "typescript": "5.9.3"
+  }
+}
