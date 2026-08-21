@@ -158,6 +158,46 @@ export READPROOF_SERVER_URL=http://localhost:8080
 
 > A containerized `readproofd` cannot see your host filesystem; use GitHub/HTTP sources there, or run `readproofd --data-dir ~/.readproof` on the host.
 
+## Add it to your coding agent
+
+Two minutes, either path — or both.
+
+**A. Give the agent the tools (MCP).**
+
+```bash
+# Claude Code
+claude mcp add readproof -- readproof mcp --data-dir ~/.readproof
+# DeepSeek Harness
+dsh plugin --profile web add ./integrations/deepseek-harness/dsh-plugin-readproof && dsh web
+# Cursor / Claude Desktop: mcpServers → {"command": "readproof", "args": ["mcp", "--data-dir", "~/.readproof"]}
+```
+
+The agent gets `readproof_resolve`, `readproof_run_*`, `readproof_diff`, `readproof_replay`, `readproof_tag_*`, `readproof_evidence_export`; every `resources/read` carries provenance in `_meta`. Details: [`docs/mcp.md`](docs/mcp.md).
+
+**B. Give the agent the habit (skill).** Install the skill file, or paste the block below into `CLAUDE.md`, `AGENTS.md`, or `.cursor/rules/readproof.mdc`.
+
+```bash
+mkdir -p .claude/skills/readproof && curl -fsSL \
+  https://raw.githubusercontent.com/fbzz/readproof/main/skills/readproof/SKILL.md \
+  -o .claude/skills/readproof/SKILL.md
+```
+
+```markdown
+## Readproof — record exactly what you read
+When a task reads a document that must be reproducible (policies, runbooks,
+specs, prices), read it through Readproof, never directly:
+1. `readproof run start <task-id>`
+2. `readproof run mount <task-id> readproof://<ns>/<path>[@prod]`  ← use the bytes it prints
+3. `readproof run commit <task-id>`  → put the manifest id in your output / PR / ticket
+Single shot: `readproof run --id <task-id> <uri> <uri>…`
+Register once: `readproof resource add readproof://<ns>/<path> --source-type filesystem|github|http … --policy require_fresh|allow_stale`
+Explain a change: `readproof diff <a> <b>` · reproduce: `readproof replay <id>` · prove: `readproof evidence export <id> --out bundle.json` then `readproof evidence verify bundle.json`
+Deploy a document by moving a tag (`readproof tag set <uri> prod <snapshot>`), never by editing the file in place.
+Never paste secrets into resource definitions (use `${ENV_VAR}` headers); never touch the data directory by hand.
+```
+
+Full version with setup, policies, and the do-nots: [`skills/readproof/SKILL.md`](skills/readproof/SKILL.md).
+
 ## What you get
 
 | | |
