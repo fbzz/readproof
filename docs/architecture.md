@@ -54,7 +54,7 @@ An **evidence bundle** is derived, not stored: an in-toto Statement built
 from a manifest, its snapshots, its resource definitions (source config
 redacted) and a live replay check, digested by a Merkle root over the
 entries — the same bytes from the CLI and the TypeScript SDK
-([`docs/evidence.md`](docs/evidence.md)).
+([`docs/evidence.md`](evidence.md)).
 
 `internal/resolver` is the resolution pipeline, `internal/run` the
 run/mount/commit orchestrator, `internal/replay` and `internal/diff` the
@@ -117,7 +117,7 @@ verify` recomputes the Merkle root, re-hashes embedded content, and
 cross-checks the store by replay (`--offline` skips that last part). Both
 exit non-zero on failure and work embedded or with `--server`. Format,
 Merkle rule, and what it does and doesn't prove:
-[`docs/evidence.md`](docs/evidence.md).
+[`docs/evidence.md`](evidence.md).
 
 **MCP.** `readproof mcp` runs a stdio MCP server: registered resources are
 readable `readproof://` resources (`@tag` honored; each read carries
@@ -125,11 +125,11 @@ readable `readproof://` resources (`@tag` honored; each read carries
 decision), and resolve / runs / manifest / diff / replay / tags / evidence
 export are 13 tools, reusing the same `--data-dir` / `--server` /
 `--api-key` flags as every other command. Claude Code, Claude Desktop, and
-Cursor config snippets: [`docs/mcp.md`](docs/mcp.md).
+Cursor config snippets: [`docs/mcp.md`](mcp.md).
 
 ## HTTP API (`readproofd`)
 
-Full request/response schemas: [`docs/api.md`](docs/api.md).
+Full request/response schemas: [`docs/api.md`](api.md).
 
 ```
 Resources  POST /v1/resources · GET /v1/resources · GET /v1/resources/get?uri=
@@ -160,7 +160,7 @@ are composed from the calls above, so `readproof evidence` and the SDK's
 CLI's. `@tag` refs work in `resolve()` and `mount()`; diff entries carry
 per-side `source_revision_*`, `observed_at_*`, and `ref_*`. No runtime
 dependencies (Node 18+ global `fetch`), no `any` in the public surface.
-See [`sdk/typescript/README.md`](sdk/typescript/README.md).
+See [`sdk/typescript/README.md`](../sdk/typescript/README.md).
 
 ```bash
 cd sdk/typescript && npm install && npm run build && npm test
@@ -185,7 +185,7 @@ export` signs — so a trace and an evidence bundle join on one field.
 `readproof.freshness.status` also holds. Two more metrics:
 `readproof_run_committed_total`, `readproof_tag_resolve_total`. Full
 tables, a worked trace, and the GenAI/OpenInference correlation proposal
-are in [`docs/observability.md`](docs/observability.md).
+are in [`docs/observability.md`](observability.md).
 
 Resolved content is never attached to spans or metrics — tests scan every
 recorded attribute and event for the fixture's bytes and fail if they
@@ -200,7 +200,7 @@ go build ./... && go vet ./... && go test ./...
 ```
 
 Live-infra tests skip themselves unless their env vars are set;
-[`CONTRIBUTING.md`](CONTRIBUTING.md) has that block and the pre-PR
+[`CONTRIBUTING.md`](../CONTRIBUTING.md) has that block and the pre-PR
 checklist. `internal/e2e/` runs the Refund Agent demo over embedded SQLite,
 over Postgres+MinIO, and over a real HTTP round-trip through
 `internal/api` + `internal/client/remote` — each asserting the SHA256
