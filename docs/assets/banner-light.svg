@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="Readproof — the lockfile and replay primitive for what agents read">
+  <rect width="1200" height="300" fill="#FFFFFF"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">
+    <rect x="72" y="96" width="108" height="108" rx="24" fill="#15803D"/>
+    <text x="126" y="170" text-anchor="middle" font-size="52" font-weight="700" fill="#FFFFFF">rp</text>
+    <text x="216" y="156" font-size="72" font-weight="700" fill="#000000" letter-spacing="-2">readproof</text>
+    <text x="220" y="202" font-size="22" fill="#666666">the lockfile and replay primitive for what agents read</text>
+    <text x="220" y="240" font-size="15" fill="#666666" opacity=".85">identity · freshness policy · content-addressed snapshots · manifests · diff · byte-exact replay · evidence</text>
+    <text x="1128" y="72" text-anchor="end" font-size="14" fill="#666666">SHA256(original) == SHA256(replay)</text>
+    <line x1="216" y1="222" x2="1128" y2="222" stroke="#E5E5E5" stroke-width="1"/>
+  </g>
+</svg>
