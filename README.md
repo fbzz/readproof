@@ -357,6 +357,7 @@ compose up -d` already wires `ctxd` to one.
 | [`docs/mvp.md`](docs/mvp.md) | The v0.2 work-package plan and its status |
 | [`examples/refund-agent`](examples/refund-agent) | Reference walkthrough of the replay invariant |
 | [`examples/langgraph-ts`](examples/langgraph-ts) | LangGraph.js: manifest id in the checkpoint, replay from it |
+| [`examples/support-agent`](examples/support-agent) | A support agent on an open model (Ollama): ask → diff → replay → evidence |
 
 ## Testing
 
@@ -408,8 +409,8 @@ list in [`CHANGELOG.md`](CHANGELOG.md). Storage migration `0002` applies
 automatically on open, for both SQLite and Postgres.
 
 CI (`.github/workflows/ci.yml`) runs Go build/vet/gofmt/test, the TS SDK's
-build and tests, the LangGraph example's build, and a Docker Compose
-integration test — including a CLI-driven rerun of the reference demo
+build and tests, the LangGraph example's build, the Support Agent example's
+build and end-to-end tests, and a Docker Compose integration test — including a CLI-driven rerun of the reference demo
 against the built `ctxd` image — on every push and PR. No LICENSE yet; this
 is a private-repo checkpoint, not a public release, and the name is a
 placeholder that will change before launch.
