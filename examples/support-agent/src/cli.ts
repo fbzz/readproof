@@ -16,7 +16,7 @@ import { buildEvidence, encodeEvidence } from "@readproof/sdk";
 import type { DiffEntry, ManifestEntry } from "@readproof/sdk";
 
 import { READPROOF_ENDPOINT, FAKE_MODEL, PROD_TAG, resolvePolicyURI } from "./config.js";
-import { ask, readproofClient, loadTicket, setup, ticketsFile } from "./agent.js";
+import { ask, readproofClient, loadTicket, requireTicketId, setup, ticketsFile } from "./agent.js";
 import { shortHash } from "./model.js";
 
 const USAGE = `support-agent — answer support tickets from Readproof-governed policy documents
@@ -90,11 +90,11 @@ async function cmdSetup(): Promise<void> {
 }
 
 async function cmdAsk(args: string[]): Promise<void> {
-  const ticket = args[0];
   const question = args.slice(1).join(" ").trim();
-  if (!ticket || question === "") {
+  if (!args[0] || question === "") {
     throw new UsageError('ask needs a ticket id and a question: ask 1001 "can I get a refund?"');
   }
+  const ticket = requireTicket(args[0], "ask");
 
   console.log(`ticket:   ${ticket}`);
   console.log(`question: ${question}`);
@@ -332,11 +332,22 @@ function pad(value: string, width: number): string {
   return value.length >= width ? `${value}  ` : value.padEnd(width);
 }
 
+/**
+ * A ticket id from argv, checked before it reaches a path or a run id.
+ *
+ * `evidence` resolves `ticket-${ticket}.bundle.json` and then mkdir -p's the
+ * directory it lands in, so an unchecked `../../x` writes outside the example.
+ * The one rule lives in agent.ts, next to the run ids it also shapes.
+ */
 function requireTicket(value: string | undefined, command: string): string {
   if (!value) {
     throw new UsageError(`${command} needs a ticket id`);
   }
-  return value;
+  try {
+    return requireTicketId(value);
+  } catch (err) {
+    throw new UsageError(err instanceof Error ? err.message : String(err));
+  }
 }
 
 /** Misuse of the CLI, as opposed to something going wrong while running. */

@@ -261,6 +261,33 @@ test("the repository's policy fixtures were never touched", () => {
   assert.doesNotMatch(fs.readFileSync(path.join(fixtures, "tone.md"), "utf-8"), /one-line summary/);
 });
 
+// RP-21: a ticket id comes from argv and ends up in a run id, a manifest
+// lookup, and evidence --out's default file path — so it is checked once, at
+// the edge, before it reaches any of them.
+test("a ticket id is validated before it reaches a path or a run id", async () => {
+  for (const bad of [
+    "../../escape",
+    "../etc/passwd",
+    "a/b",
+    "with space",
+    "",
+    "x".repeat(65),
+    "semi;colon",
+    "tick`quote",
+  ]) {
+    assert.throws(() => agent.requireTicketId(bad), /invalid ticket id/, `accepted ${JSON.stringify(bad)}`);
+    // The paths that consume one refuse it too, rather than relying on the
+    // caller having checked.
+    assert.throws(() => agent.runIdFor(bad), /invalid ticket id/);
+    assert.throws(() => agent.loadTicket(bad), /invalid ticket id/);
+  }
+
+  for (const good of ["1001", "TICKET-42", "acme.support_99", "x".repeat(64)]) {
+    assert.equal(agent.requireTicketId(good), good);
+    assert.equal(agent.runIdFor(good), `ticket-${good}`);
+  }
+});
+
 /** Flips one character of the first entry's embedded content. */
 function tamper(bundle: EvidenceBundle): EvidenceBundle {
   const entries = bundle.predicate.entries.map((entry, index) => {

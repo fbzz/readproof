@@ -55,9 +55,30 @@ export function readproofClient(): Readproof {
   return new Readproof({ endpoint: READPROOF_ENDPOINT, apiKey: READPROOF_API_KEY });
 }
 
+/**
+ * The shape a ticket id is allowed to have.
+ *
+ * A ticket id arrives from argv and is then interpolated into a run id, a
+ * manifest lookup, and — in `evidence --out`'s default — a file path. Without
+ * this, `../../id` resolves outside the example and `evidence` happily
+ * mkdir -p's its way there. Validating once, at the edge, is cheaper than
+ * remembering to sanitize at each of the three.
+ */
+const TICKET_ID = /^[A-Za-z0-9._-]{1,64}$/;
+
+/** Validate a ticket id and return it unchanged. Throws if it is not one. */
+export function requireTicketId(raw: string): string {
+  if (!TICKET_ID.test(raw)) {
+    throw new Error(
+      `invalid ticket id ${JSON.stringify(raw)}: use 1–64 characters from A–Z a–z 0–9 . _ -`,
+    );
+  }
+  return raw;
+}
+
 /** Run id for a ticket. Deterministic, so `show`/`replay` need no lookup table. */
 export function runIdFor(ticketId: string): string {
-  return `ticket-${ticketId}`;
+  return `ticket-${requireTicketId(ticketId)}`;
 }
 
 export type Logger = (line: string) => void;
@@ -197,6 +218,7 @@ export async function ask(
 
 /** The most recent record for a ticket. Throws if the ticket is unknown. */
 export function loadTicket(ticketId: string): TicketRecord {
+  requireTicketId(ticketId);
   if (!fs.existsSync(TICKETS_FILE)) {
     throw new Error(`no ticket log at ${TICKETS_FILE} — answer a ticket first: npm run agent -- ask <id> "<question>"`);
   }
