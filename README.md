@@ -232,7 +232,7 @@ Full version with setup, policies, and the do-nots: [`skills/readproof/SKILL.md`
 | [`docs/architecture.md`](docs/architecture.md) | Data model, internals, CLI and HTTP reference, SDK, observability, tests |
 | [`docs/api.md`](docs/api.md) · [`docs/mcp.md`](docs/mcp.md) · [`docs/evidence.md`](docs/evidence.md) · [`docs/observability.md`](docs/observability.md) | Endpoint schemas · MCP setup · bundle format and what it proves · spans, attributes, metrics |
 | [`docs/roadmap.md`](docs/roadmap.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`docs/rename.md`](docs/rename.md) | What's next · what changed · the Ctx → Readproof mapping |
-| [`docs/releasing.md`](docs/releasing.md) · [`docs/launch.md`](docs/launch.md) | How a release is cut (tag → binaries, cask, npm) · launch copy and checklist |
+| [`docs/releasing.md`](docs/releasing.md) | How a release is cut (tag → binaries, cask, npm) |
 
 ## Status
 

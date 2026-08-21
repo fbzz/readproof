@@ -44,8 +44,7 @@ shape, or storage layout changes.
   SDK is rewritten to the published semver at pack time by
   `scripts/prepack.mjs`, and restored by `scripts/postpack.mjs`.
 - **`docs/releasing.md`** — the whole procedure, including every secret the
-  owner has to create. **`docs/launch.md`** — launch copy and the
-  launch-day checklist.
+  owner has to create.
 - **MCP registry entry** in
   [`integrations/mcp-registry/`](integrations/mcp-registry/).
 - **Repository hygiene.** Issue templates and chooser, a pull request
