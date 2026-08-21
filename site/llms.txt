@@ -1,0 +1,56 @@
+# Readproof
+
+> Readproof is the lockfile and replay primitive for what AI agents read: every document an agent consumes gets a stable identity, a freshness policy, and a content-addressed snapshot, and every run becomes a manifest you can diff, replay byte for byte without touching the live source, and export as verifiable evidence.
+
+Readproof is an open source (Apache-2.0) Go CLI (`readproof`) and optional server
+(`readproofd`) that sits underneath retrieval, prompting, and memory. Documents are
+addressed as `readproof://<namespace>/<path>`; each resolve applies a freshness policy
+(`require_fresh`, `allow_stale --max-age <duration>`, or a pinned `@tag`) and records an
+immutable SHA256 snapshot. A run mounts documents in order and commits a manifest, which
+can be diffed against another run (with the source revision and observation time that
+changed), replayed byte for byte from the content-addressed store with no network, and
+exported as an in-toto Statement whose subject digest is a Merkle root over the run.
+
+It is not a vector database, a RAG tool, an observability tool, a prompt registry, or a
+memory system. Install-time lockfiles pin an agent's *static* configuration; Readproof
+pins the *runtime documents, per run*. Current version 0.3.1: 3 source adapters
+(filesystem, GitHub, HTTP), 2 storage backends (embedded SQLite or Postgres + S3), 13 MCP
+tools, a zero-dependency TypeScript SDK (`@readproof/sdk`), a DeepSeek Harness plugin
+(`dsh-plugin-readproof`), and OpenTelemetry spans carrying GenAI attributes.
+
+If you can only fetch one thing, fetch llms-full.txt: it is the whole product in one file.
+
+## Docs
+
+- [Complete documentation, single file](https://fbzz.github.io/readproof/llms-full.txt): README, architecture, evidence, MCP, the agent skill, and the roadmap concatenated as plain markdown (~59 KB).
+- [Documentation](https://fbzz.github.io/readproof/docs/): the whole surface as one page — install, sources and policies, runs, tags, evidence, server mode, SDK, MCP, LangGraph, observability, CLI cheat sheet, FAQ.
+- [Landing page](https://fbzz.github.io/readproof/): what the problem is, the loop in one terminal, honest proof, and the FAQ engineers ask first.
+- [README](https://raw.githubusercontent.com/fbzz/readproof/main/README.md): install, the sixty-second walkthrough, the CLI surface, and what ships today.
+- [Architecture](https://raw.githubusercontent.com/fbzz/readproof/main/docs/architecture.md): the six primitives (source, resource, policy, snapshot, materialization, manifest), the data model, and the CLI and HTTP reference.
+- [Evidence bundles](https://raw.githubusercontent.com/fbzz/readproof/main/docs/evidence.md): the in-toto Statement shape, the Merkle leaf rule, verification modes, and precisely what a bundle does and does not prove.
+- [MCP server](https://raw.githubusercontent.com/fbzz/readproof/main/docs/mcp.md): `readproof mcp` over stdio — resource templates, the `_meta` provenance block, and all 13 tools.
+- [HTTP API](https://raw.githubusercontent.com/fbzz/readproof/main/docs/api.md): every `readproofd` endpoint with request and response schemas and error codes.
+- [Observability](https://raw.githubusercontent.com/fbzz/readproof/main/docs/observability.md): the span tree, every attribute (including `gen_ai.data_source.id`), and the metric names.
+- [Roadmap](https://raw.githubusercontent.com/fbzz/readproof/main/docs/roadmap.md): what is shipped, what is next in order, and what is deliberately out of scope.
+
+## Examples
+
+- [Support agent guide](https://fbzz.github.io/readproof/examples/support-agent/): a complete support agent on an open model via Ollama — one run per ticket, a policy changes mid-story, `diff` names the revision, `replay` returns the original bytes, and the Go CLI verifies the evidence bundle.
+- [examples/support-agent](https://github.com/fbzz/readproof/tree/main/examples/support-agent): the runnable source for that guide, with seven end-to-end tests and a deterministic fake model.
+- [examples/refund-agent](https://github.com/fbzz/readproof/tree/main/examples/refund-agent): the reference walkthrough of the core invariant, `SHA256(original) == SHA256(replay)`, driven from the shell.
+- [examples/langgraph-ts](https://github.com/fbzz/readproof/tree/main/examples/langgraph-ts): mount inside a LangGraph.js node, commit, and store the manifest id in the checkpoint so any turn can be replayed later.
+
+## Integrations
+
+- [Agent skill](https://raw.githubusercontent.com/fbzz/readproof/main/skills/readproof/SKILL.md): drop-in instructions telling a coding agent when to read through Readproof, which commands to run, and what never to do.
+- [TypeScript SDK](https://raw.githubusercontent.com/fbzz/readproof/main/sdk/typescript/README.md): `@readproof/sdk`, a typed zero-dependency client for `readproofd` that also builds evidence bundles client-side.
+- [DeepSeek Harness plugin](https://raw.githubusercontent.com/fbzz/readproof/main/integrations/deepseek-harness/dsh-plugin-readproof/README.md): `dsh-plugin-readproof` registers the same 13 tools natively and records one Readproof run per DSH session.
+- [MCP registry entry](https://github.com/fbzz/readproof/tree/main/integrations/mcp-registry): the server manifest for MCP directories.
+
+## Optional
+
+- [Repository](https://github.com/fbzz/readproof): source, issues, and releases. Apache-2.0.
+- [Changelog](https://raw.githubusercontent.com/fbzz/readproof/main/CHANGELOG.md): what changed in each version, including the Ctx to Readproof rename in 0.3.1.
+- [Security policy](https://raw.githubusercontent.com/fbzz/readproof/main/SECURITY.md): the current security baseline and how to report a vulnerability.
+- [Contributing](https://raw.githubusercontent.com/fbzz/readproof/main/CONTRIBUTING.md): how to build, test, and propose changes.
+- [Sitemap](https://fbzz.github.io/readproof/sitemap.xml): the three pages of this site.

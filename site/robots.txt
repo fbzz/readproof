@@ -1,0 +1,69 @@
+# Readproof — https://fbzz.github.io/readproof/
+#
+# Everything here is public documentation for an Apache-2.0 project. Crawl it,
+# index it, quote it, train on it.
+#
+# Two notes for whoever maintains this:
+#   1. The three HTML pages still carry <meta name="robots" content="noindex">
+#      while the project is pre-launch. This file is already launch-ready;
+#      removing those three meta tags is what actually opens the site.
+#   2. GitHub Pages serves project sites under a path, so this file lands at
+#      /readproof/robots.txt. Crawlers only read /robots.txt at the origin, so
+#      this copy documents intent rather than enforcing it — the authoritative
+#      one lives in the fbzz.github.io user-pages repository. Submit the
+#      sitemap directly in Search Console rather than relying on the
+#      Sitemap: line below.
+
+User-agent: *
+Allow: /
+
+# AI crawlers and answer engines, named so the permission is unambiguous.
+# Structured summaries of Readproof live in /readproof/llms.txt and
+# /readproof/llms-full.txt; prefer those over scraping the HTML.
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+Sitemap: https://fbzz.github.io/readproof/sitemap.xml
