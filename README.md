@@ -38,7 +38,7 @@ It is not a vector database, not an observability tool, not a prompt registry, n
 
 **1. Give a document an identity and a freshness policy, then record a run.**
 
-```bash
+```text
 readproof resource add readproof://demo/policies/refunds \
   --source-type filesystem --path policies/refunds.md --policy require_fresh
 readproof run --id run-a readproof://demo/policies/refunds
@@ -49,7 +49,7 @@ Committed manifest manifest_01M0GQH8K8… for run run-a (1 entry)
 
 **2. The source changes. A later run picks it up — and the diff says exactly why.**
 
-```bash
+```text
 printf 'Products can be refunded within 14 days.\n' > policies/refunds.md
 readproof run --id run-b readproof://demo/policies/refunds
 readproof diff run-a run-b
@@ -63,7 +63,7 @@ readproof diff run-a run-b
 
 **3. Replay the first run from the store — the file is gone or changed, the bytes are not — and prove it.**
 
-```bash
+```text
 readproof replay run-a
 readproof evidence export run-a --with-content --out bundle.json
 readproof evidence verify bundle.json
@@ -128,10 +128,16 @@ Or download a prebuilt archive for your platform from
 One binary, a local `.readproof/` directory, no services:
 
 ```bash
-git clone https://github.com/fbzz/readproof.git && cd readproof
-go build -o readproof ./cmd/readproof                        # Go 1.26+
+git clone https://github.com/fbzz/readproof.git
+cd readproof
+go build -o readproof ./cmd/readproof        # Go 1.26+
+
+# identity + source + freshness policy
 ./readproof resource add readproof://demo/policies/refunds \
-    --source-type filesystem --path examples/refund-agent/policies/refunds.md --policy require_fresh
+  --source-type filesystem \
+  --path examples/refund-agent/policies/refunds.md \
+  --policy require_fresh
+
 ./readproof run --id run-a readproof://demo/policies/refunds
 ./readproof replay run-a
 ```
@@ -141,8 +147,12 @@ go build -o readproof ./cmd/readproof                        # Go 1.26+
 Postgres + S3-compatible store, one HTTP API for every client:
 
 ```bash
-cp .env.example .env && docker compose up -d --build           # Postgres, MinIO, OTel collector, readproofd
-export READPROOF_SERVER_URL=http://localhost:8080              # every command now talks to the server
+# Postgres, MinIO, an OTel collector and readproofd, from a clean clone
+cp .env.example .env
+docker compose up -d --build
+
+# every command now talks to the server
+export READPROOF_SERVER_URL=http://localhost:8080
 ./readproof get readproof://demo/policies/refunds
 ```
 
