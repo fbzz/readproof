@@ -18,6 +18,20 @@ the server describing its insides to an unauthenticated peer.
 Source: [`internal/wire/wire.go`](../internal/wire/wire.go) (types) and
 [`internal/api/api.go`](../internal/api/api.go) (handlers).
 
+## Deploying it
+
+`readproofd` speaks plaintext HTTP and has no rate limiting of its own. The
+supported deployment is **behind a reverse proxy** (nginx, Caddy, Traefik, an
+ingress controller, a cloud load balancer) that terminates TLS and limits
+request rates — otherwise the bearer key crosses the network in the clear and
+the write endpoints have nothing but the key between them and a script.
+
+Set the key through the environment, not the command line:
+`READPROOFD_API_KEY` for the server, `READPROOF_API_KEY` for the CLI and the
+SDK. A flag value is visible to every user on the host in `ps`, so both
+binaries print a warning when the key arrives that way. Off by default means
+unauthenticated: fine on a laptop, never on a reachable port.
+
 ## `GET /healthz`
 
 No auth required, always. Returns `200 ok` (plain text) when the process

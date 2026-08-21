@@ -12,8 +12,11 @@ import (
 
 func newEvidenceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "evidence",
-		Short: "Export and verify tamper-evident evidence bundles for a run",
+		Use: "evidence",
+		// Not "tamper-evident" unqualified: bundles are unsigned, so an
+		// --offline verify proves the bundle is internally consistent, not
+		// that it is the bundle Readproof produced. See docs/evidence.md.
+		Short: "Export and verify integrity-checked evidence bundles for a run (unsigned; tamper-evident against the store)",
 	}
 	cmd.AddCommand(newEvidenceExportCmd(), newEvidenceVerifyCmd())
 	return cmd

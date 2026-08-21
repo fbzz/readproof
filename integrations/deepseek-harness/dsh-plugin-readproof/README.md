@@ -9,8 +9,8 @@ tools.
 The difference that buys: instead of "the model read some file", you get
 *this run read exactly these bytes, from this source revision, at this
 time* — a manifest id you can cite, diff against another run, replay
-byte-for-byte after the sources changed, and export as a tamper-evident
-in-toto bundle.
+byte-for-byte after the sources changed, and export as an integrity-checked
+in-toto bundle (unsigned — tamper-evident against the store, not offline).
 
 The tool names, descriptions, and result shapes mirror Readproof's MCP server
 ([`docs/mcp.md`](../../../docs/mcp.md), [`internal/mcp`](../../../internal/mcp))

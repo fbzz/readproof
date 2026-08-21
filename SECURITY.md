@@ -86,11 +86,13 @@ without `--api-key` plus a network boundary:
 
 Operational gaps, all tracked in the report:
 
-- **No TLS and no rate limiting.** `readproofd` speaks plaintext HTTP, so
-  run it behind a TLS-terminating reverse proxy — otherwise the bearer key
-  crosses the network in the clear.
-- **`--api-key` on the command line is visible in process listings.**
-  Prefer `READPROOFD_API_KEY` / `READPROOF_API_KEY`.
+- **No TLS and no rate limiting in-process.** `readproofd` speaks plaintext
+  HTTP. The supported deployment is behind a reverse proxy that terminates
+  TLS and limits request rates; without one the bearer key crosses the
+  network in the clear. See [`docs/api.md`](docs/api.md).
+- **`--api-key` on the command line is visible in process listings.** Prefer
+  `READPROOFD_API_KEY` / `READPROOF_API_KEY`; both binaries now warn when
+  the key arrives on argv.
 - **Bundles are unsigned.** An `--offline` verify cannot detect a forgery
   whose Merkle root was recomputed; signing is on the roadmap.
 

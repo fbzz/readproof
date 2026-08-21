@@ -54,6 +54,8 @@ func main() {
 		return
 	}
 
+	warnIfAPIKeyOnArgv()
+
 	ctx := context.Background()
 	shutdownTelemetry, err := telemetry.Init(ctx, "readproofd")
 	if err != nil {
@@ -150,6 +152,19 @@ func logSourcePolicy(opts app.Options) {
 	} else {
 		log.Printf("readproofd: http sources MAY reach private addresses (--allow-private-sources)")
 	}
+}
+
+// warnIfAPIKeyOnArgv says so, once, when the key was typed on the command
+// line. argv is world-readable in `ps` on a shared host, and the value is the
+// one thing gating every write endpoint — READPROOFD_API_KEY is the same
+// setting without that property. Only an explicitly-set flag warns: the flag's
+// default already comes from the environment.
+func warnIfAPIKeyOnArgv() {
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "api-key" && f.Value.String() != "" {
+			log.Printf("readproofd: warning: --api-key on the command line is visible to every user on this host via `ps`; prefer the READPROOFD_API_KEY environment variable")
+		}
+	})
 }
 
 // describeDSN renders a Postgres DSN as the only parts worth logging: the host

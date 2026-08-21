@@ -66,12 +66,13 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			cmd.SilenceUsage = true
+			warnIfAPIKeyOnArgv(cmd)
 		},
 	}
 	root.SetVersionTemplate("readproof {{.Version}}\n")
 	root.PersistentFlags().StringVar(&dataDir, "data-dir", "", "path to the local .readproof data directory (default: .readproof, or $READPROOF_HOME); ignored with --server")
 	root.PersistentFlags().StringVar(&serverURL, "server", os.Getenv("READPROOF_SERVER_URL"), "readproofd server URL (e.g. http://localhost:8080); when unset, runs against the local embedded data directory")
-	root.PersistentFlags().StringVar(&apiKey, "api-key", os.Getenv("READPROOF_API_KEY"), "API key to send to a --server that requires one")
+	root.PersistentFlags().StringVar(&apiKey, "api-key", os.Getenv("READPROOF_API_KEY"), "API key to send to a --server that requires one (prefer READPROOF_API_KEY: a flag is visible in `ps`)")
 
 	root.AddCommand(
 		newResourceCmd(),
@@ -88,6 +89,17 @@ func newRootCmd() *cobra.Command {
 		newVersionCmd(),
 	)
 	return root
+}
+
+// warnIfAPIKeyOnArgv says so, once per invocation, when the key was typed on
+// the command line rather than read from READPROOF_API_KEY. argv is visible to
+// every user on the host through `ps`, and this is the value that authenticates
+// to readproofd. Cobra's Changed is exactly the right test: it is false when
+// the value came from the flag's environment-derived default.
+func warnIfAPIKeyOnArgv(cmd *cobra.Command) {
+	if flag := cmd.Flags().Lookup("api-key"); flag != nil && flag.Changed && apiKey != "" {
+		fmt.Fprintln(os.Stderr, "readproof: warning: --api-key on the command line is visible to every user on this host via `ps`; prefer the READPROOF_API_KEY environment variable")
+	}
 }
 
 // openClient returns the local (embedded) client by default, or a remote

@@ -1,6 +1,13 @@
-// Package evidence builds and verifies tamper-evident evidence bundles for
+// Package evidence builds and verifies integrity-checked evidence bundles for
 // a Readproof run: an in-toto Statement whose subject digest is a Merkle
 // root over the run's manifest entries.
+//
+// "Integrity-checked", not "tamper-evident", and the distinction is the whole
+// of what a bundle proves. Bundles are unsigned, so a verify that also reaches
+// the store is tamper-evident *against that store*: the recorded hashes have
+// to match what Readproof holds. An --offline verify only re-computes the root
+// over the bundle's own entries, and a forger who edits an entry recomputes it
+// too. See docs/evidence.md, which sets this out in full.
 //
 // Everything here is composed purely from client.Client calls (manifest,
 // snapshots, resources, replay), so `readproof evidence` behaves

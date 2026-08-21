@@ -438,7 +438,7 @@ export function registerTools(ctx: Context, deps: ToolDeps): void {
     defineTool({
       name: t('evidence_export'),
       description:
-        'Produce a portable, tamper-evident record of one run: an in-toto statement whose digest is a Merkle root over the manifest entries, plus each document’s provenance, the resource definitions behind them, and a replay verification. ' +
+        'Produce a portable, integrity-checked record of one run: an in-toto statement whose digest is a Merkle root over the manifest entries, plus each document’s provenance, the resource definitions behind them, and a replay verification. Bundles are unsigned, so they are tamper-evident against the Readproof store, not offline. ' +
         "Use it when someone needs to audit what the agent read — 'with_content' additionally embeds the bytes.",
       parameters: {
         target: { type: 'string', required: true, description: 'a manifest id, or the run id it was committed from' },
