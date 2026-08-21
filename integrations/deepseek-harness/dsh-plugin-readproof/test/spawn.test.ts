@@ -8,6 +8,7 @@ import { promisify } from 'node:util'
 
 import { Readproof } from '@readproof/sdk'
 
+import { childEnv } from '../src/spawn.js'
 import { field, freePort, list, repoRoot, startApp, type App } from './support.js'
 
 const execFileAsync = promisify(execFile)
@@ -116,6 +117,73 @@ describe('spawn: true', () => {
       )
     } finally {
       await bare.stop()
+    }
+  })
+
+  // RP-22: the child used to inherit the parent's entire environment, which
+  // in a harness process means every credential it happens to hold.
+  it('gives the child a minimal environment, not the parent’s', () => {
+    const env = childEnv({
+      PATH: '/usr/bin',
+      HOME: '/home/agent',
+      TMPDIR: '/tmp',
+      READPROOF_API_KEY: 'needed-by-readproofd',
+      READPROOFD_HEADER_ENV_ALLOWLIST: 'GITHUB_TOKEN',
+      AWS_SECRET_ACCESS_KEY: 'must-not-travel',
+      OPENAI_API_KEY: 'must-not-travel',
+      GITHUB_TOKEN: 'must-not-travel',
+      OTEL_EXPORTER_OTLP_HEADERS: 'authorization=must-not-travel',
+    })
+
+    assert.deepEqual(Object.keys(env).sort(), [
+      'HOME',
+      'PATH',
+      'READPROOFD_HEADER_ENV_ALLOWLIST',
+      'READPROOF_API_KEY',
+      'TMPDIR',
+    ])
+    for (const value of Object.values(env)) {
+      assert.notEqual(value, 'must-not-travel')
+    }
+  })
+
+  // …and end to end: a variable set in this process is genuinely not in the
+  // child's, so a source header referencing it resolves to nothing instead of
+  // sending it somewhere. The allow-list is set (and forwarded, being a
+  // READPROOFD_ variable) so the refusal under test is the missing value, not
+  // the header policy.
+  it('does not leak a parent variable into a ${VAR} source header', async () => {
+    process.env['SUPER_SECRET_MARKER'] = 'marker-value-that-must-not-travel'
+    process.env['READPROOFD_HEADER_ENV_ALLOWLIST'] = 'SUPER_SECRET_MARKER'
+    const addr = `127.0.0.1:${await freePort()}`
+    const spawned = await startApp({
+      spawn: true,
+      readproofdPath: readproofdBin,
+      dataDir: join(tmpDir, 'data-env'),
+      addr,
+      sessionRuns: false,
+    })
+    try {
+      const client = new Readproof({ endpoint: `http://${addr}` })
+      await client.registerResource({
+        uri: 'readproof://demo/remote-doc',
+        source: {
+          kind: 'http',
+          http: { url: 'https://docs.example.test/policy.md', headers: { Authorization: '${SUPER_SECRET_MARKER}' } },
+        },
+        policy: { strategy: 'require_fresh' },
+      })
+      await assert.rejects(client.resolve('readproof://demo/remote-doc'), (err: unknown) => {
+        const message = (err as Error).message
+        assert.match(message, /SUPER_SECRET_MARKER/)
+        assert.match(message, /not set in readproofd's environment/)
+        assert.doesNotMatch(message, /marker-value-that-must-not-travel/)
+        return true
+      })
+    } finally {
+      await spawned.stop()
+      delete process.env['SUPER_SECRET_MARKER']
+      delete process.env['READPROOFD_HEADER_ENV_ALLOWLIST']
     }
   })
 

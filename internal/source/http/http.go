@@ -204,7 +204,12 @@ func (f *Fetcher) resolveHeaderValue(value string) (string, error) {
 		}
 		v, ok := os.LookupEnv(name)
 		if !ok {
-			resolveErr = fmt.Errorf("header value references $%s, which is not set in readproofd's environment", name)
+			// Denied, not a plain error: the resource is misconfigured
+			// against this server, which is a 400 the caller can act on, not
+			// a 500 that hides behind a request id. It discloses only that a
+			// name the caller itself wrote — and an operator allow-listed —
+			// has no value here.
+			resolveErr = source.Denied("header value references $%s, which is not set in readproofd's environment", name)
 			return match
 		}
 		return v
