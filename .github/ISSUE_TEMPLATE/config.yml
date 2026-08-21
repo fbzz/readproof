@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/fbzz/readproof/discussions
+    about: "\"Does Readproof do X?\", \"would this fit the model?\", showing what you built — Discussions, not issues."
+  - name: Report a vulnerability (privately)
+    url: https://github.com/fbzz/readproof/security/advisories/new
+    about: Never open a public issue for a security problem. See SECURITY.md for scope and the current baseline.
+  - name: Documentation
+    url: https://fbzz.github.io/readproof/docs/
+    about: The full guide — data model, CLI and HTTP reference, MCP setup, evidence format, observability.

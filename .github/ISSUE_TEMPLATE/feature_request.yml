@@ -1,0 +1,67 @@
+name: Feature request
+description: Something Readproof should be able to do and cannot.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: [`docs/roadmap.md`](https://github.com/fbzz/readproof/blob/main/docs/roadmap.md)
+        lists what is already planned and roughly in what order. If your idea is
+        on it, a comment on the matching issue — or a note here saying *why*
+        you need it and what you would do with it — is more useful than a
+        duplicate.
+
+        For open-ended "would this fit?" questions, prefer
+        [Discussions](https://github.com/fbzz/readproof/discussions).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What are you trying to do, and where does Readproof stop you? Describe
+        the situation, not the solution — the fix is often not the one you
+        first reach for.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: The command, flag, endpoint, SDK method, or model change you would expect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead
+      description: The workaround, and what makes it unsatisfying.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Data model (resources, snapshots, manifests, tags)
+        - CLI
+        - Server / HTTP API
+        - Source adapters (filesystem, GitHub, HTTP, new ones)
+        - Storage backends
+        - MCP server
+        - TypeScript SDK
+        - DeepSeek Harness plugin
+        - Evidence and verification
+        - Observability
+        - Docs and examples
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I would be willing to open a PR for this.
