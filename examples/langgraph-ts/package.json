@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@readproof/sdk": "file:../../sdk/typescript",
-    "@langchain/core": "1.2.9",
-    "@langchain/langgraph": "1.4.12",
-    "zod": "4.4.3"
+    "@langchain/core": "1.2.10",
+    "@langchain/langgraph": "1.4.14",
+    "zod": "4.6.2"
   },
   "devDependencies": {
     "@types/node": "22.20.1",
